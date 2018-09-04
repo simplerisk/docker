@@ -1,3 +1,8 @@
+# Clone the SimpleRisk Docker Repository
+```
+git clone https://github.com/simplerisk/docker.git
+```
+
 # Build the SimpleRisk Docker Image
 ```
 docker build -t simplerisk:20180830-001 .
