@@ -17,7 +17,7 @@ RUN apt-get update && apt-get upgrade -y
 
 # Install required packages
 RUN dpkg-divert --local --rename /usr/bin/ischroot && ln -sf /bin/true /usr/bin/ischroot
-RUN DEBIAN_FRONTEND=noninteractive apt-get -y install libapache2-mod-php5 pwgen python-setuptools vim-tiny php5-mysql mysql-client mysql-server apache2 sendmail php5-json php5-mcrypt openssl ufw
+RUN DEBIAN_FRONTEND=noninteractive apt-get -y install libapache2-mod-php5 pwgen python-setuptools vim-tiny php5-mysql mysql-client mysql-server apache2 sendmail php5-json php5-mcrypt php5-ldap openssl ufw
 
 # Create the OpenSSL password
 RUN pwgen -cn 20 1 > /passwords/pass_openssl.txt
@@ -54,6 +54,7 @@ RUN openssl x509 -req -days 365 -in /etc/apache2/ssl/ssl.crt/simplerisk.csr -sig
 
 # Activate Apache modules
 RUN php5enmod mcrypt
+RUN php5enmod ldap
 RUN a2enmod rewrite
 RUN a2enmod ssl
 
