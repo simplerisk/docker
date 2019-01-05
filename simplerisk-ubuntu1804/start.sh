@@ -9,9 +9,6 @@ if [ ! -f /configurations/mysql-configured ]; then
 	# Set the MySQL root password
 	mysqladmin -u root password `cat /passwords/pass_mysql_root.txt`
 
-	# Set the proper mysql modes
-	mysql -uroot -p`cat /passwords/pass_mysql_root.txt` -e "SET GLOBAL sql_mode = 'STRICT_TRANS_TABLES,NO_ENGINE_SUBSTITUTION';"
-
 	# Create the SimpleRisk database
 	mysql -uroot -p`cat /passwords/pass_mysql_root.txt` -e "create database simplerisk;"
 
