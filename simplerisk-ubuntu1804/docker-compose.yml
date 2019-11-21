@@ -12,8 +12,6 @@ services:
       - CERTIFICATE
     volumes:
       - ./data/logs/www:/var/log/apache2
-      - ./simplerisk:/mnt/host:ro
-    command: "/bin/bash /mnt/host/start.sh"
     ports:
       - "8080:80"
       - "8443:443"
