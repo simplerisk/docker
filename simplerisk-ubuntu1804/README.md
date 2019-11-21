@@ -10,6 +10,7 @@
 
 - To wipe everthing and start again `rm -Rf ./data`
 - Shell into the app container with: ``docker exec -ti `docker ps | grep 'simplerisk-www' | cut -d " " -f1` /bin/bash``
+- For a completely insecure installation (because everyone knows the secrets) you can use the example env file `.env.example` by copying it: `cp .env.example .env`
 
 ## Building the images independantly of `docker-compose`
 
