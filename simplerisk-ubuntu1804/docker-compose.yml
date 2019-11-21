@@ -1,12 +1,52 @@
-server:
-  image: ubuntu:trusty
-  ports:
-    - "80:80"
-    - "443:443"
-  volumes:
-    - .:/passwords
-    - .:/configurations
-    - .:/var/log
-    - .:/var/lib/mysql
-    - .:/etc/apache2/ssl
-    - .:/var/www/simplerisk
+version: '3'
+services:
+  www:
+    container_name: 'simplerisk-www'
+    build:
+      context: ./simplerisk/
+    environment:
+      - MYSQL_DATABASE
+      - MYSQL_USER
+      - MYSQL_PASSWORD
+      - PRIVATE_KEY
+      - CERTIFICATE
+    volumes:
+      - ./data/logs/www:/var/log/apache2
+      - ./simplerisk:/mnt/host:ro
+    command: "/bin/bash /mnt/host/start.sh"
+    ports:
+      - "8080:80"
+      - "8443:443"
+    depends_on:
+      - database
+    links:
+      - database
+  database:
+    container_name: 'simplerisk-db'
+    build:
+      context: ./database/
+    restart: always
+    environment:
+      - MYSQL_ROOT_PASSWORD
+      - MYSQL_DATABASE
+      - MYSQL_USER
+      - MYSQL_PASSWORD
+    volumes:
+      - ./data/database:/var/lib/mysql
+      - ./data/logs/database:/var/log/mysql
+    ports:
+      - "3306"
+  phpmyadmin:
+    image: phpmyadmin/phpmyadmin:4.8
+    container_name: 'simplerisk-phpmyadmin'
+    environment:
+      PMA_HOST: database
+      PMA_PORT: 3306
+      PMA_USER: simplerisk
+      PMA_PASSWORD: ${MYSQL_PASSWORD}
+    volumes: 
+      - ./data/sessions:/sessions
+    ports:
+      - '8081:80'
+    links:
+      - database
