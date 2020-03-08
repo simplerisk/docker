@@ -1,0 +1,25 @@
+version: "3.6"
+
+services:
+  web:
+    image: simplerisk:latest
+    build: simplerisk-ubuntu1804
+    ports:
+      - 80:80
+      - 443:443
+    volumes:
+      - passwords:/passwords
+      - configurations:/configurations
+      - log:/var/log
+      - mysql:/var/lib/mysql
+      - ssl:/etc/apache2/ssl
+      - www:/var/www/simplerisk
+
+volumes:
+  passwords: {}
+  configurations: {}
+  log: {}
+  mysql: {}
+  ssl: {}
+  www: {}
+  
