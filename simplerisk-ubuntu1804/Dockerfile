@@ -71,8 +71,8 @@ RUN sed -i 's/ServerSignature On/ServerSignature Off/g' /etc/apache2/conf-enable
 RUN echo %sudo  ALL=NOPASSWD: ALL >> /etc/sudoers
 
 # Download SimpleRisk
-ADD https://github.com/simplerisk/database/raw/master/simplerisk-en-20200401-001.sql /simplerisk.sql
-ADD https://github.com/simplerisk/bundles/raw/master/simplerisk-20200401-001.tgz /simplerisk.tgz
+ADD https://github.com/simplerisk/database/raw/master/simplerisk-en-20200711-001.sql /simplerisk.sql
+ADD https://github.com/simplerisk/bundles/raw/master/simplerisk-20200711-001.tgz /simplerisk.tgz
 
 # Extract the SimpleRisk files
 RUN rm -rf /var/www/html
