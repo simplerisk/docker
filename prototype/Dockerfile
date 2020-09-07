@@ -1,5 +1,5 @@
-# Use the bionic image
-FROM ubuntu:bionic
+# Using dedicated PHP image with version 7.2 and Apache
+FROM php:7.2-apache 
 
 # Maintained by SimpleRisk
 LABEL maintainer="Simplerisk <support@simplerisk.com>"
