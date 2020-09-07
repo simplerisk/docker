@@ -11,7 +11,7 @@ RUN mkdir -p /etc/apache2/ssl
 RUN mkdir -p /var/www/simplerisk
 
 # Installing apt dependencies
-RUN apt-get update && apt-get -y upgrade && apt-get -y install libmcrypt-dev libldap2-dev mariadb-client mariadb-server nfs-common chrony pwgen python-setuptools vim-tiny sendmail openssl ufw supervisor
+RUN apt-get update && apt-get -y upgrade && apt-get -y install libmcrypt-dev libldap2-dev mariadb-client mariadb-server pwgen sendmail openssl ufw supervisor
 # Run configure for certain extensions
 RUN docker-php-ext-configure ldap --with-libdir=lib/x86_64-linux-gnu
 # Install extensions
@@ -71,7 +71,6 @@ RUN chown -R www-data: /var/www/simplerisk
 
 # Update the SimpleRisk config file
 RUN cat /var/www/simplerisk/includes/config.php | sed "s/DB_PASSWORD', 'simplerisk/DB_PASSWORD', '`cat /passwords/pass_simplerisk.txt`/" > /var/www/simplerisk/includes/config.php
-RUN cat /var/www/simplerisk/includes/config.php | sed "s/localhost/127.0.0.1/" > /var/www/simplerisk/includes/config.php
 
 EXPOSE 80
 EXPOSE 443
