@@ -1,23 +1,32 @@
 version: '3.6'
 
 services: 
-  simplerisk:
-    build: ./prototype
-    depends_on:
-      mariadb
-    environment:
-      SIMPLERISK_PASS: testingpass
-    ports:
-      - "80:80"
-      - "443:443"
-    networks:
-      - simplerisk
+#  simplerisk:
+#    build: ./prototype
+#    depends_on:
+#      mariadb
+#    environment:
+#      SIMPLERISK_PASS: testingpass
+#    ports:
+#      - "80:80"
+#      - "443:443"
+#    networks:
+#      - simplerisk
 
   mariadb:
+    command: mysqld --sql_mode="NO_ENGINE_SUBSTITUTION"
+    environment:
+    - MYSQL_RANDOM_ROOT_PASSWORD=1
+    - MYSQL_DATABASE=simplerisk
+    - SIMPLERISK_PASS=testingpass
     image: mariadb:10.3
-    command: mysqld --sql_mode"NO_ENGINE_SUBSTITUTION"
     networks:
       - simplerisk
+    ports:
+      - "3306:3306"
+    volumes:
+      - ./sql_init:/docker-entrypoint-initdb.d
+    #  - ./mysql-data:/var/lib/mysql
 
 networks:
   simplerisk:
