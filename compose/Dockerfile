@@ -15,7 +15,7 @@ RUN apt-get update && apt-get -y upgrade && apt-get -y install libmcrypt-dev lib
 # Run configure for certain extensions
 RUN docker-php-ext-configure ldap --with-libdir=lib/x86_64-linux-gnu
 # Install extensions
-RUN docker-php-ext-install ldap mbstring json mysqli pdo_mysql
+RUN docker-php-ext-install ldap mbstring json mysqli pdo pdo_mysql phar zlib dom
 # Installing mcrypt through pecl and enabling it
 RUN pecl install mcrypt-1.0.1 && docker-php-ext-enable mcrypt
 
@@ -71,6 +71,7 @@ RUN chown -R www-data: /var/www/simplerisk
 
 # Update the SimpleRisk config file
 RUN cat /var/www/simplerisk/includes/config.php | sed "s/DB_PASSWORD', 'simplerisk/DB_PASSWORD', '`cat /passwords/pass_simplerisk.txt`/" > /var/www/simplerisk/includes/config.php
+RUN cat /var/www/simplerisk/includes/config.php | sed "s/localhost/127.0.0.1/" > /var/www/simplerisk/includes/config.php
 
 EXPOSE 80
 EXPOSE 443

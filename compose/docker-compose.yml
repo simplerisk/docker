@@ -1,0 +1,24 @@
+version: '3.6'
+
+services: 
+  simplerisk:
+    build: ./prototype
+    depends_on:
+      mariadb
+    environment:
+      SIMPLERISK_PASS: testingpass
+    ports:
+      - "80:80"
+      - "443:443"
+    networks:
+      - simplerisk
+
+  mariadb:
+    image: mariadb:10.3
+    command: mysqld --sql_mode"NO_ENGINE_SUBSTITUTION"
+    networks:
+      - simplerisk
+
+networks:
+  simplerisk:
+    driver: bridge
