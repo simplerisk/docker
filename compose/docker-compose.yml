@@ -1,18 +1,23 @@
 version: '3.6'
 
 services: 
-#  simplerisk:
-#    #build: .
-#    depends_on:
-#    - mariadb
-#    environment:
-#    - SIMPLERISK_PASS=simplerisk
-#    image: simplerisk/simplerisk:php7.2-apache
-#    networks:
-#    - simplerisk
-#    ports:
-#      - "80:80"
-#      - "443:443"
+  simplerisk:
+    depends_on:
+    - mariadb
+    environment:
+    - SIMPLERISK_DB_HOSTNAME=testor
+    - SIMPLERISK_DB_PORT=4456
+    - SIMPLERISK_DB_USERNAME=usertest
+    - SIMPLERISK_DB_PASSWORD=simplerisk
+    - SIMPLERISK_DB_DATABASE=testdb
+    - SIMPLERISK_DB_FOR_SESSIONS=sessiontest
+    - SIMPLERISK_DB_SSL_CERT_PATH=path_test
+    image: simplerisk/simplerisk:php7.2-apache
+    networks:
+    - simplerisk
+    ports:
+      - "80:80"
+      - "443:443"
     
 
   mariadb:
