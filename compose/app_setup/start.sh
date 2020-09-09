@@ -5,33 +5,28 @@ CONFIG_PATH='/var/www/simplerisk/includes/config.php'
 # Replacing config variables if they exist
 if [ ! -z $SIMPLERISK_DB_HOSTNAME ]; then
     sed -i "s/\('DB_HOSTNAME', '\).*\(');\)/\1`echo $SIMPLERISK_DB_HOSTNAME`\2/g" $CONFIG_PATH
-else
-    SIMPLERISK_DB_HOSTNAME='localhost'
 fi
+SIMPLERISK_DB_HOSTNAME="${SIMPLERISK_DB_HOSTNAME:-localhost}"
 
 if [ ! -z $SIMPLERISK_DB_PORT ]; then
     sed -i "s/\('DB_PORT', '\).*\(');\)/\1`echo $SIMPLERISK_DB_PORT`\2/g" $CONFIG_PATH
-else
-    SIMPLERISK_DB_PORT='3306'
 fi
+SIMPLERISK_DB_PORT="${SIMPLERISK_DB_PORT:-3306}"
 
 if [ ! -z $SIMPLERISK_DB_USERNAME ]; then
     sed -i "s/\('DB_USERNAME', '\).*\(');\)/\1`echo $SIMPLERISK_DB_USERNAME`\2/g" $CONFIG_PATH
-else
-    SIMPLERISK_DB_USERNAME='simplerisk'
 fi
+SIMPLERISK_DB_USERNAME="${SIMPLERISK_DB_USERNAME:-simplerisk}"
 
 if [ ! -z $SIMPLERISK_DB_PASSWORD ]; then
     sed -i "s/\('DB_PASSWORD', '\).*\(');\)/\1`echo $SIMPLERISK_DB_PASSWORD`\2/g" $CONFIG_PATH
-else
-    SIMPLERISK_DB_PASSWORD='simplerisk'
 fi
+SIMPLERISK_DB_PASSWORD="${SIMPLERISK_DB_PASSWORD:-simplerisk}"
 
 if [ ! -z $SIMPLERISK_DB_DATABASE ]; then
     sed -i "s/\('DB_DATABASE', '\).*\(');\)/\1`echo $SIMPLERISK_DB_DATABASE`\2/g" $CONFIG_PATH
-else
-    SIMPLERISK_DB_DATABASE='simplerisk'
 fi
+SIMPLERISK_DB_DATABASE="${SIMPLERISK_DB_DATABASE:-simplerisk}"
 
 if [ ! -z $SIMPLERISK_DB_FOR_SESSIONS ]; then
     sed -i "s/\('USE_DATABASE_FOR_SESSIONS', '\).*\(');\)/\1`echo $SIMPLERISK_DB_FOR_SESSIONS`\2/g" $CONFIG_PATH
@@ -65,7 +60,7 @@ if [ ! -z $FIRST_TIME_SETUP ] && [ ! -f $SETUP_COMPLETED ]; then
     fi
 
     echo "Applying changes to MySQL database..."
-    mysql --protocol=socket -u$FIRST_TIME_SETUP_USER -p$FIRST_TIME_SETUP_PASS -h$SIMPLERISK_DB_HOSTNAME -P$SIMPLERISK_DB_PORT <<EOSQL
+    mysql --protocol=socket -u $FIRST_TIME_SETUP_USER -p $FIRST_TIME_SETUP_PASS -h $SIMPLERISK_DB_HOSTNAME -P $SIMPLERISK_DB_PORT <<EOSQL
     CREATE DATABASE '${SIMPLERISK_DB_DATABASE}';
     USE '${SIMPLERISK_DB_DATABASE}';
     \. /tmp/simplerisk.sql 
