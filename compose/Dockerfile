@@ -14,6 +14,7 @@ RUN apt-get update && apt-get -y dist-upgrade && apt-get -y install libmcrypt-de
                                                                     pwgen \
                                                                     sendmail \
                                                                     openssl \
+                                                                    mariadb \
                                                                     ufw \
                                                                     supervisor
 # Run configure for certain extensions
