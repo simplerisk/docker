@@ -5,6 +5,13 @@ services:
     depends_on:
     - mariadb
     environment:
+    # IN CASE YOU WANT TO SETUP FOR THE FIRST TIME,
+    # USE AND ADAPT THESE VARIABLES
+    # - FIRST_TIME_SETUP=1
+    # - FIRST_TIME_SETUP_ONLY=1 # Use only if you want to stop container after startup 
+    # - FIRST_TIME_SETUP_USER=root
+    # - FIRST_TIME_SETUP_PASS=rootpassword
+    # - FIRST_TIME_SETUP_WAIT=10
     - SIMPLERISK_DB_HOSTNAME=mariadb
     - SIMPLERISK_DB_PASSWORD=samplepassword
     image: simplerisk/simplerisk:php7.2-apache
@@ -18,15 +25,13 @@ services:
   mariadb:
     command: mysqld --sql_mode="NO_ENGINE_SUBSTITUTION"
     environment:
-    - MYSQL_RANDOM_ROOT_PASSWORD=1
-    - MYSQL_DATABASE=simplerisk
+    - MYSQL_ROOT_PASSWORD=rootpassword
     - SIMPLERISK_DB_PASS=samplepassword
     image: mariadb:10.3
     networks:
     -  simplerisk
     volumes:
-      - ./sql_init:/docker-entrypoint-initdb.d
-    #  - ./mysql-data:/var/lib/mysql
+    - /tmp/mysql-data:/var/lib/mysql
 
 networks:
   simplerisk:
