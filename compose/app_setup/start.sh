@@ -51,7 +51,7 @@ if [ ! -z $FIRST_TIME_SETUP ] && [ ! -f $SETUP_COMPLETED ]; then
     FIRST_TIME_SETUP_PASS="${FIRST_TIME_SETUP_PASS:-root}"
 
     echo "Applying changes to MySQL database..."
-    mysql --protocol=socket -u $FIRST_TIME_SETUP_USER -p $FIRST_TIME_SETUP_PASS -h $SIMPLERISK_DB_HOSTNAME -P $SIMPLERISK_DB_PORT <<EOSQL
+    mysql --protocol=socket -u $FIRST_TIME_SETUP_USER -p$FIRST_TIME_SETUP_PASS -h$SIMPLERISK_DB_HOSTNAME -P$SIMPLERISK_DB_PORT <<EOSQL
     CREATE DATABASE ${SIMPLERISK_DB_DATABASE};
     USE ${SIMPLERISK_DB_DATABASE};
     \. /tmp/simplerisk.sql 
