@@ -5,47 +5,51 @@ FROM php:7.2-apache
 LABEL maintainer="Simplerisk <support@simplerisk.com>"
 
 # Make necessary directories
-RUN mkdir -p /passwords
-RUN mkdir -p /configurations
 RUN mkdir -p /etc/apache2/ssl
 RUN mkdir -p /var/www/simplerisk
 
 # Installing apt dependencies
-RUN apt-get update && apt-get -y upgrade && apt-get -y install libmcrypt-dev libldap2-dev mariadb-client mariadb-server pwgen sendmail openssl ufw supervisor
+RUN apt-get update && apt-get -y dist-upgrade && apt-get -y install libmcrypt-dev \
+                                                                    libldap2-dev \
+                                                                    pwgen \
+                                                                    sendmail \
+                                                                    openssl \
+                                                                    mariadb-client \
+                                                                    ufw \
+                                                                    supervisor
 # Run configure for certain extensions
 RUN docker-php-ext-configure ldap --with-libdir=lib/x86_64-linux-gnu
 # Install extensions
-RUN docker-php-ext-install ldap mbstring json mysqli pdo pdo_mysql phar zlib dom
+RUN docker-php-ext-install ldap \
+                           mbstring \
+                           json \
+                           mysqli \
+                           pdo_mysql 
 # Installing mcrypt through pecl and enabling it
-RUN pecl install mcrypt-1.0.1 && docker-php-ext-enable mcrypt
+RUN yes | pecl install mcrypt-1.0.1 && docker-php-ext-enable mcrypt
+# Performing a cleanup
+RUN apt-get -y autoremove && apt-get -y purge && rm -rf /var/lib/apt/lists/*
 
 # Create the OpenSSL password
-RUN pwgen -cn 20 1 > /passwords/pass_openssl.txt
-# Create the MySQL root password
-RUN pwgen -cn 20 1 > /passwords/pass_mysql_root.txt
-# Create the SimpleRisk password
-RUN pwgen -cn 20 1 > /passwords/pass_simplerisk.txt
+RUN pwgen -cn 20 1 > /tmp/pass_openssl.txt
 
 # Configure supervisor
-ADD ./supervisord.conf /etc/supervisord.conf
+COPY ./app_setup/supervisord.conf /etc/supervisord.conf
 RUN service supervisor restart
 
-# Configure MySQL
-RUN sed -i 's/\[mysqld\]/\[mysqld\]\nsql-mode="NO_ENGINE_SUBSTITUTION"/g' /etc/mysql/mariadb.conf.d/50-server.cnf
-
 # Configure Apache
-ADD ./foreground.sh /etc/apache2/foreground.sh
+COPY ./app_setup/foreground.sh /etc/apache2/foreground.sh
 RUN chmod 755 /etc/apache2/foreground.sh
-ADD ./envvars /etc/apache2/envvars
-ADD ./000-default.conf /etc/apache2/sites-enabled/000-default.conf
-ADD ./default-ssl.conf /etc/apache2/sites-enabled/default-ssl.conf
+COPY ./app_setup/envvars /etc/apache2/envvars
+COPY ./app_setup/000-default.conf /etc/apache2/sites-enabled/000-default.conf
+COPY ./app_setup/default-ssl.conf /etc/apache2/sites-enabled/default-ssl.conf
 RUN sed -i 's/upload_max_filesize = 2M/upload_max_filesize = 5M/g' /usr/local/etc/php/php.ini-production
 
 # Create SSL Certificates for Apache SSL
 RUN mkdir -p /etc/apache2/ssl/ssl.crt
 RUN mkdir -p /etc/apache2/ssl/ssl.key
-RUN openssl genrsa -des3 -passout pass:/passwords/pass_openssl.txt -out /etc/apache2/ssl/ssl.key/simplerisk.pass.key
-RUN openssl rsa -passin pass:/passwords/pass_openssl.txt -in /etc/apache2/ssl/ssl.key/simplerisk.pass.key -out /etc/apache2/ssl/ssl.key/simplerisk.key
+RUN openssl genrsa -des3 -passout pass:/tmp/pass_openssl.txt -out /etc/apache2/ssl/ssl.key/simplerisk.pass.key
+RUN openssl rsa -passin pass:/tmp/pass_openssl.txt -in /etc/apache2/ssl/ssl.key/simplerisk.pass.key -out /etc/apache2/ssl/ssl.key/simplerisk.key
 RUN rm /etc/apache2/ssl/ssl.key/simplerisk.pass.key
 RUN openssl req -new -key /etc/apache2/ssl/ssl.key/simplerisk.key -out  /etc/apache2/ssl/ssl.crt/simplerisk.csr -subj "/CN=simplerisk"
 RUN openssl x509 -req -days 365 -in /etc/apache2/ssl/ssl.crt/simplerisk.csr -signkey /etc/apache2/ssl/ssl.key/simplerisk.key -out /etc/apache2/ssl/ssl.crt/simplerisk.crt
@@ -60,33 +64,24 @@ RUN sed -i 's/#ServerSignature On/ServerSignature Off/g' /etc/apache2/conf-enabl
 
 RUN echo %sudo  ALL=NOPASSWD: ALL >> /etc/sudoers
 
-# Download SimpleRisk
-ADD https://github.com/simplerisk/database/raw/master/simplerisk-en-20200711-001.sql /simplerisk.sql
-ADD https://github.com/simplerisk/bundles/raw/master/simplerisk-20200711-001.tgz /simplerisk.tgz
-
-# Extract the SimpleRisk files
-RUN rm -rf /var/www/html
-RUN cd /var/www && tar xvzf /simplerisk.tgz
+# Download and extract SimpleRisk
+RUN VERSION=`curl -sL https://updates.simplerisk.com/Current_Version.xml | grep -oP '<appversion>(.*)</appversion>' | cut -d '>' -f 2 | cut -d '<' -f 1` \
+    && curl -sL https://github.com/simplerisk/bundles/raw/master/simplerisk-$VERSION.tgz | tar xz -C /var/www && echo $VERSION > /tmp/version
 RUN chown -R www-data: /var/www/simplerisk
 
-# Update the SimpleRisk config file
-RUN cat /var/www/simplerisk/includes/config.php | sed "s/DB_PASSWORD', 'simplerisk/DB_PASSWORD', '`cat /passwords/pass_simplerisk.txt`/" > /var/www/simplerisk/includes/config.php
-RUN cat /var/www/simplerisk/includes/config.php | sed "s/localhost/127.0.0.1/" > /var/www/simplerisk/includes/config.php
-
+# Ports to expose
 EXPOSE 80
 EXPOSE 443
 
 # Create the start script and set permissions
-ADD ./start.sh /start.sh
+COPY ./app_setup/start.sh /start.sh
 RUN chmod 755 /start.sh
 
 # Data to save
-VOLUME /passwords
-VOLUME /configurations
 VOLUME /var/log
 VOLUME /var/lib/mysql
 VOLUME /etc/apache2/ssl
 VOLUME /var/www/simplerisk
 
-# Start Apache and MySQL
+# Start Apache 
 CMD ["/bin/bash", "/start.sh"]

@@ -2,22 +2,36 @@ version: '3.6'
 
 services: 
   simplerisk:
-    build: ./prototype
     depends_on:
-      mariadb
+    - mariadb
     environment:
-      SIMPLERISK_PASS: testingpass
+    # IN CASE YOU WANT TO SETUP FOR THE FIRST TIME,
+    # USE AND ADAPT THESE VARIABLES
+    # - FIRST_TIME_SETUP=1
+    # - FIRST_TIME_SETUP_ONLY=1 # Use only if you want to stop container after startup 
+    # - FIRST_TIME_SETUP_USER=root
+    # - FIRST_TIME_SETUP_PASS=rootpassword
+    # - FIRST_TIME_SETUP_WAIT=10
+    - SIMPLERISK_DB_HOSTNAME=mariadb
+    - SIMPLERISK_DB_PASSWORD=samplepassword
+    image: simplerisk/simplerisk:php7.2-apache
+    networks:
+    - simplerisk
     ports:
       - "80:80"
       - "443:443"
-    networks:
-      - simplerisk
+    
 
   mariadb:
+    command: mysqld --sql_mode="NO_ENGINE_SUBSTITUTION"
+    environment:
+    - MYSQL_ROOT_PASSWORD=rootpassword
+    - SIMPLERISK_DB_PASS=samplepassword
     image: mariadb:10.3
-    command: mysqld --sql_mode"NO_ENGINE_SUBSTITUTION"
     networks:
-      - simplerisk
+    -  simplerisk
+    volumes:
+    - /tmp/mysql-data:/var/lib/mysql
 
 networks:
   simplerisk:
