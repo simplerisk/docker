@@ -33,15 +33,15 @@ RUN apt-get -y autoremove && apt-get -y purge && rm -rf /var/lib/apt/lists/*
 RUN pwgen -cn 20 1 > /tmp/pass_openssl.txt
 
 # Configure supervisor
-ADD ./app_setup/supervisord.conf /etc/supervisord.conf
+COPY ./app_setup/supervisord.conf /etc/supervisord.conf
 RUN service supervisor restart
 
 # Configure Apache
-ADD ./app_setup/foreground.sh /etc/apache2/foreground.sh
+COPY ./app_setup/foreground.sh /etc/apache2/foreground.sh
 RUN chmod 755 /etc/apache2/foreground.sh
-ADD ./app_setup/envvars /etc/apache2/envvars
-ADD ./app_setup/000-default.conf /etc/apache2/sites-enabled/000-default.conf
-ADD ./app_setup/default-ssl.conf /etc/apache2/sites-enabled/default-ssl.conf
+COPY ./app_setup/envvars /etc/apache2/envvars
+COPY ./app_setup/000-default.conf /etc/apache2/sites-enabled/000-default.conf
+COPY ./app_setup/default-ssl.conf /etc/apache2/sites-enabled/default-ssl.conf
 RUN sed -i 's/upload_max_filesize = 2M/upload_max_filesize = 5M/g' /usr/local/etc/php/php.ini-production
 
 # Create SSL Certificates for Apache SSL
@@ -76,7 +76,7 @@ EXPOSE 80
 EXPOSE 443
 
 # Create the start script and set permissions
-ADD ./app_setup/start.sh /start.sh
+COPY ./app_setup/start.sh /start.sh
 RUN chmod 755 /start.sh
 
 # Data to save
