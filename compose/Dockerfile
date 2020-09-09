@@ -63,12 +63,8 @@ RUN sed -i 's/#ServerSignature On/ServerSignature Off/g' /etc/apache2/conf-enabl
 
 RUN echo %sudo  ALL=NOPASSWD: ALL >> /etc/sudoers
 
-# Download SimpleRisk
-ADD https://github.com/simplerisk/bundles/raw/master/simplerisk-20200711-001.tgz /simplerisk.tgz
-
-# Extract the SimpleRisk files
-RUN rm -rf /var/www/html
-RUN cd /var/www && tar xvzf /simplerisk.tgz
+# Download and extract SimpleRisk
+RUN curl -sL https://github.com/simplerisk/bundles/raw/master/simplerisk-20200711-001.tgz | tar xz -C /var/www
 RUN chown -R www-data: /var/www/simplerisk
 
 # Ports to expose
