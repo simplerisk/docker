@@ -9,14 +9,23 @@ RUN mkdir -p /etc/apache2/ssl
 RUN mkdir -p /var/www/simplerisk
 
 # Installing apt dependencies
-RUN apt-get update && apt-get -y upgrade && apt-get -y install libmcrypt-dev libldap2-dev pwgen sendmail openssl ufw supervisor
+RUN apt-get update && apt-get -y dist-upgrade && apt-get -y install libmcrypt-dev \
+                                                                    libldap2-dev \
+                                                                    pwgen \
+                                                                    sendmail \
+                                                                    openssl \
+                                                                    ufw \
+                                                                    supervisor
 # Run configure for certain extensions
 RUN docker-php-ext-configure ldap --with-libdir=lib/x86_64-linux-gnu
 # Install extensions
-RUN docker-php-ext-install ldap mbstring json mysqli pdo_mysql 
+RUN docker-php-ext-install ldap \
+                           mbstring \
+                           json \
+                           mysqli \
+                           pdo_mysql 
 # Installing mcrypt through pecl and enabling it
-RUN yes | pecl install mcrypt-1.0.1
-RUN docker-php-ext-enable mcrypt
+RUN yes | pecl install mcrypt-1.0.1 && docker-php-ext-enable mcrypt
 # Performing a cleanup
 RUN apt-get -y autoremove && apt-get -y purge && rm -rf /var/lib/apt/lists/*
 
@@ -24,15 +33,15 @@ RUN apt-get -y autoremove && apt-get -y purge && rm -rf /var/lib/apt/lists/*
 RUN pwgen -cn 20 1 > /tmp/pass_openssl.txt
 
 # Configure supervisor
-ADD ./supervisord.conf /etc/supervisord.conf
+ADD ./app_setup/supervisord.conf /etc/supervisord.conf
 RUN service supervisor restart
 
 # Configure Apache
-ADD ./foreground.sh /etc/apache2/foreground.sh
+ADD ./app_setup/foreground.sh /etc/apache2/foreground.sh
 RUN chmod 755 /etc/apache2/foreground.sh
-ADD ./envvars /etc/apache2/envvars
-ADD ./000-default.conf /etc/apache2/sites-enabled/000-default.conf
-ADD ./default-ssl.conf /etc/apache2/sites-enabled/default-ssl.conf
+ADD ./app_setup/envvars /etc/apache2/envvars
+ADD ./app_setup/000-default.conf /etc/apache2/sites-enabled/000-default.conf
+ADD ./app_setup/default-ssl.conf /etc/apache2/sites-enabled/default-ssl.conf
 RUN sed -i 's/upload_max_filesize = 2M/upload_max_filesize = 5M/g' /usr/local/etc/php/php.ini-production
 
 # Create SSL Certificates for Apache SSL
@@ -62,14 +71,12 @@ RUN rm -rf /var/www/html
 RUN cd /var/www && tar xvzf /simplerisk.tgz
 RUN chown -R www-data: /var/www/simplerisk
 
-# Update the SimpleRisk config file
-RUN cat /var/www/simplerisk/includes/config.php | sed "s/localhost/mariadb/" > /var/www/simplerisk/includes/config.php
-
+# Ports to expose
 EXPOSE 80
 EXPOSE 443
 
 # Create the start script and set permissions
-ADD ./start.sh /start.sh
+ADD ./app_setup/start.sh /start.sh
 RUN chmod 755 /start.sh
 
 # Data to save
