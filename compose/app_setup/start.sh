@@ -41,7 +41,8 @@ if [ ! -z $SIMPLERISK_DB_SSL_CERT_PATH ]; then
     sed -i "s/\('DB_SSL_CERTIFICATE_PATH', '\).*\(');\)/\1`echo $SIMPLERISK_DB_SSL_CERT_PATH`\2/g" $CONFIG_PATH
 fi
 
-if [ ! -z $FIRST_TIME_SETUP ]; then
+SETUP_COMPLETED='/tmp/database_completed'
+if [ ! -z $FIRST_TIME_SETUP ] && [ ! -f $SETUP_COMPLETED ]; then
     echo "First time setup. Will wait"
     if [ -z $FIRST_TIME_SETUP_WAIT ]; then
         sleep `echo ${FIRST_TIME_SETUP_WAIT}s`
@@ -63,6 +64,7 @@ if [ ! -z $FIRST_TIME_SETUP ]; then
         FIRST_TIME_SETUP_PASS='root'
     fi
 
+    echo "Applying changes to MySQL database..."
     mysql --protocol=socket -u$FIRST_TIME_SETUP_USER -p$FIRST_TIME_SETUP_PASS -h$SIMPLERISK_DB_HOSTNAME -P$SIMPLERISK_DB_PORT <<EOSQL
     CREATE DATABASE '${SIMPLERISK_DB_DATABASE}';
     USE '${SIMPLERISK_DB_DATABASE}';
@@ -70,6 +72,9 @@ if [ ! -z $FIRST_TIME_SETUP ]; then
     CREATE USER '${SIMPLERISK_DB_USERNAME}'@'%' IDENTIFIED BY '${SIMPLERISK_DB_PASSWORD}';
     GRANT SELECT, INSERT, UPDATE, DELETE, CREATE, DROP, REFERENCES, INDEX, ALTER ON '${SIMPLERISK_DB_DATABASE}'.* TO '${SIMPLERISK_DB_USERNAME}'@'%';
 EOSQL
+
+    echo "Changes have been done successfully!"
+    touch $SETUP_COMPLETED
 
 fi
 
