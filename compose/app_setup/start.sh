@@ -39,36 +39,27 @@ fi
 SETUP_COMPLETED='/tmp/database_completed'
 if [ ! -z $FIRST_TIME_SETUP ] && [ ! -f $SETUP_COMPLETED ]; then
     echo "First time setup. Will wait"
-    if [ -z $FIRST_TIME_SETUP_WAIT ]; then
-        sleep `echo ${FIRST_TIME_SETUP_WAIT}s`
-    else
-        sleep 20
-    fi
+    sleep `echo ${FIRST_TIME_SETUP_WAIT:-20}s`
 
-    echo "Starting preparation"
+    echo "Starting database set up"
 
     echo "Downloading schema..."
     SCHEMA_FILE='/tmp/simplerisk.sql'
     curl -sL https://github.com/simplerisk/database/raw/master/simplerisk-en-`cat /tmp/version`.sql > $SCHEMA_FILE
 
-    if [ ! -z $FIRST_TIME_SETUP_USER ]; then
-        FIRST_TIME_SETUP_USER='root'
-    fi
-    
-    if [ ! -z $FIRST_TIME_SETUP_PASS ]; then
-        FIRST_TIME_SETUP_PASS='root'
-    fi
+    FIRST_TIME_SETUP_USER="{$FIRST_TIME_SETUP_USER:-root}"
+    FIRST_TIME_SETUP_PASS="{$FIRST_TIME_SETUP_PASS:-root}"
 
     echo "Applying changes to MySQL database..."
     mysql --protocol=socket -u $FIRST_TIME_SETUP_USER -p $FIRST_TIME_SETUP_PASS -h $SIMPLERISK_DB_HOSTNAME -P $SIMPLERISK_DB_PORT <<EOSQL
-    CREATE DATABASE '${SIMPLERISK_DB_DATABASE}';
-    USE '${SIMPLERISK_DB_DATABASE}';
+    CREATE DATABASE ${SIMPLERISK_DB_DATABASE};
+    USE ${SIMPLERISK_DB_DATABASE};
     \. /tmp/simplerisk.sql 
-    CREATE USER '${SIMPLERISK_DB_USERNAME}'@'%' IDENTIFIED BY '${SIMPLERISK_DB_PASSWORD}';
-    GRANT SELECT, INSERT, UPDATE, DELETE, CREATE, DROP, REFERENCES, INDEX, ALTER ON '${SIMPLERISK_DB_DATABASE}'.* TO '${SIMPLERISK_DB_USERNAME}'@'%';
+    CREATE USER ${SIMPLERISK_DB_USERNAME}@'%' IDENTIFIED BY '${SIMPLERISK_DB_PASSWORD}';
+    GRANT SELECT, INSERT, UPDATE, DELETE, CREATE, DROP, REFERENCES, INDEX, ALTER ON ${SIMPLERISK_DB_DATABASE}.* TO ${SIMPLERISK_DB_USERNAME}@'%';
 EOSQL
 
-    echo "Changes have been done successfully!"
+    echo "Setup has been applied successfully!"
     touch $SETUP_COMPLETED
 
 fi
