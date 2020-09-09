@@ -5,13 +5,8 @@ services:
     depends_on:
     - mariadb
     environment:
-    - SIMPLERISK_DB_HOSTNAME=testor
-    - SIMPLERISK_DB_PORT=4456
-    - SIMPLERISK_DB_USERNAME=usertest
-    - SIMPLERISK_DB_PASSWORD=simplerisk
-    - SIMPLERISK_DB_DATABASE=testdb
-    - SIMPLERISK_DB_FOR_SESSIONS=sessiontest
-    - SIMPLERISK_DB_SSL_CERT_PATH=path_test
+    - SIMPLERISK_DB_HOSTNAME=mariadb
+    - SIMPLERISK_DB_PASSWORD=samplepassword
     image: simplerisk/simplerisk:php7.2-apache
     networks:
     - simplerisk
@@ -25,6 +20,7 @@ services:
     environment:
     - MYSQL_RANDOM_ROOT_PASSWORD=1
     - MYSQL_DATABASE=simplerisk
+    - SIMPLERISK_DB_PASS=samplepassword
     image: mariadb:10.3
     networks:
     -  simplerisk
