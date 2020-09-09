@@ -47,8 +47,8 @@ if [ ! -z $FIRST_TIME_SETUP ] && [ ! -f $SETUP_COMPLETED ]; then
     SCHEMA_FILE='/tmp/simplerisk.sql'
     curl -sL https://github.com/simplerisk/database/raw/master/simplerisk-en-`cat /tmp/version`.sql > $SCHEMA_FILE
 
-    FIRST_TIME_SETUP_USER="{$FIRST_TIME_SETUP_USER:-root}"
-    FIRST_TIME_SETUP_PASS="{$FIRST_TIME_SETUP_PASS:-root}"
+    FIRST_TIME_SETUP_USER="${FIRST_TIME_SETUP_USER:-root}"
+    FIRST_TIME_SETUP_PASS="${$FIRST_TIME_SETUP_PASS:-root}"
 
     echo "Applying changes to MySQL database..."
     mysql --protocol=socket -u $FIRST_TIME_SETUP_USER -p $FIRST_TIME_SETUP_PASS -h $SIMPLERISK_DB_HOSTNAME -P $SIMPLERISK_DB_PORT <<EOSQL
