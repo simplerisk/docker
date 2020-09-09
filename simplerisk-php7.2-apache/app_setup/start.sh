@@ -62,11 +62,11 @@ EOSQL
     echo "Setup has been applied successfully!"
     touch $SETUP_COMPLETED
 
-fi
+    if [ ! -z $FIRST_TIME_SETUP_ONLY ]; then
+        echo "Running on setup only. Container will exit."
+        exit 0
+    fi
 
-if [ ! -z $FIRST_TIME_SETUP_ONLY ]; then
-    echo "Running on setup only. Container will exit."
-    exit 0
 fi
 
 # Start Apache
