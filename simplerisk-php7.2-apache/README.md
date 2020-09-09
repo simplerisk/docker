@@ -14,7 +14,7 @@ Please run the following command according to your container engine:
 
 This indicates if the database is going to be set up from zero. This means installing the necessary schema and creating the user, in case there is any setup. Requires `FIRST_TIME_SETUP_USER` and `FIRST_TIME_SETUP_USER_PASS`. As long it is a non-null value, it will run. By default, it assumes everything is already set up.
 
-## FIRST_TIME_SETUP_ONLY
+### FIRST_TIME_SETUP_ONLY
 
 This indicates if the container will only be used to configure the database, and will exit after finishing it. As long it is a non-null value, it will run. By default, it will let the container alive.
 
