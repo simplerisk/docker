@@ -2,8 +2,6 @@ version: '3.6'
 
 services: 
   simplerisk:
-    depends_on:
-    - mariadb
     environment:
     # IN CASE YOU WANT TO SETUP FOR THE FIRST TIME,
     # USE AND ADAPT THESE VARIABLES
@@ -26,7 +24,6 @@ services:
     command: mysqld --sql_mode="NO_ENGINE_SUBSTITUTION"
     environment:
     - MYSQL_ROOT_PASSWORD=rootpassword
-    - SIMPLERISK_DB_PASS=samplepassword
     image: mariadb:10.3
     networks:
     -  simplerisk
