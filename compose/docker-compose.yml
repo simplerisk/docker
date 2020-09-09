@@ -26,7 +26,6 @@ services:
     command: mysqld --sql_mode="NO_ENGINE_SUBSTITUTION"
     environment:
     - MYSQL_ROOT_PASSWORD=rootpassword
-    - SIMPLERISK_DB_PASS=samplepassword
     image: mariadb:10.3
     networks:
     -  simplerisk
