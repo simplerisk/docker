@@ -8,11 +8,13 @@ This image tries to transform Simplerisk into a more microservices approach by u
 
 This indicates if the database is going to be set up from zero. This means installing the necessary schema and creating the user, in case there is any setup. Requires `FIRST_TIME_SETUP_USER` and `FIRST_TIME_SETUP_USER_PASS`. As long it is a non-null value, it will run. By default, it assumes everything is already set up.
 
+## FIRST_TIME_SETUP_ONLY
+
+This indicates if the container will only be used to configure the database, and will exit after finishing it. As long it is a non-null value, it will run. By default, it will let the container alive.
+
 ### FIRST_TIME_SETUP_USER and FIRST_TIME_SETUP_PASS
 
-Username of the privileged user that will be used to install the schema on the database. Default value is `root`.
-
-### FIRST_TIME_SETUP_USER_PASS
+Credentials for the privileged user that will be used to install the schema on the database. Default value for both is `root`.
 
 ### FIRST_TIME_SETUP_WAIT
 
