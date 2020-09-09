@@ -2,8 +2,10 @@
 set -e
 
 if [ -z $SIMPLERISK_DB_PASS ]; then
-  pwgen -cn 20 1 > /tmp/pass_simplerisk.txt
-  SIMPLERISK_DB_PASS=`cat /tmp/pass_simplerisk.txt`
+  SIMPLERISK_DB_PASS=`pwgen -cn 20 1`
+  echo "Generated Simplerisk Password: `echo $SIMPLERISK_DB_PASS`"
+else
+  echo "Using provided password"
 fi
 
 mysql --protocol=socket -uroot -p$MYSQL_ROOT_PASSWORD <<EOSQL
