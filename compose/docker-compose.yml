@@ -2,8 +2,6 @@ version: '3.6'
 
 services: 
   simplerisk:
-    depends_on:
-    - mariadb
     environment:
     # IN CASE YOU WANT TO SETUP FOR THE FIRST TIME,
     # USE AND ADAPT THESE VARIABLES
