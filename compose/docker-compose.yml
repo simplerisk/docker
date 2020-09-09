@@ -1,18 +1,18 @@
 version: '3.6'
 
 services: 
-  simplerisk:
-    #build: .
-    depends_on:
-    - mariadb
-    environment:
-    - SIMPLERISK_PASS=simplerisk
-    image: simplerisk/simplerisk:php7.2-apache
-    networks:
-    - simplerisk
-    ports:
-      - "80:80"
-      - "443:443"
+#  simplerisk:
+#    #build: .
+#    depends_on:
+#    - mariadb
+#    environment:
+#    - SIMPLERISK_PASS=simplerisk
+#    image: simplerisk/simplerisk:php7.2-apache
+#    networks:
+#    - simplerisk
+#    ports:
+#      - "80:80"
+#      - "443:443"
     
 
   mariadb:
@@ -20,7 +20,6 @@ services:
     environment:
     - MYSQL_RANDOM_ROOT_PASSWORD=1
     - MYSQL_DATABASE=simplerisk
-    - SIMPLERISK_PASS=simplerisk
     image: mariadb:10.3
     networks:
     -  simplerisk
@@ -30,5 +29,4 @@ services:
 
 networks:
   simplerisk:
-    #driver: overlay 
     driver: bridge
