@@ -13,9 +13,7 @@ RUN apt-get update && apt-get -y dist-upgrade && apt-get -y install libmcrypt-de
                                                                     libldap2-dev \
                                                                     pwgen \
                                                                     sendmail \
-                                                                    openssl \
                                                                     mariadb-client \
-                                                                    ufw \
                                                                     supervisor
 # Run configure for certain extensions
 RUN docker-php-ext-configure ldap --with-libdir=lib/x86_64-linux-gnu
