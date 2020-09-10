@@ -50,7 +50,7 @@ RUN pwgen -cn 20 1 > /tmp/pass_openssl.txt
 RUN mkdir -p /etc/apache2/ssl/ssl.crt /etc/apache2/ssl/ssl.key
 RUN openssl genrsa -des3 -passout pass:/tmp/pass_openssl.txt -out /etc/apache2/ssl/ssl.key/simplerisk.pass.key
 RUN openssl rsa -passin pass:/tmp/pass_openssl.txt -in /etc/apache2/ssl/ssl.key/simplerisk.pass.key -out /etc/apache2/ssl/ssl.key/simplerisk.key
-RUN rm /etc/apache2/ssl/ssl.key/simplerisk.pass.key
+RUN rm /etc/apache2/ssl/ssl.key/simplerisk.pass.key /tmp/pass_openssl.txt
 RUN openssl req -new -key /etc/apache2/ssl/ssl.key/simplerisk.key -out  /etc/apache2/ssl/ssl.crt/simplerisk.csr -subj "/CN=simplerisk"
 RUN openssl x509 -req -days 365 -in /etc/apache2/ssl/ssl.crt/simplerisk.csr -signkey /etc/apache2/ssl/ssl.key/simplerisk.key -out /etc/apache2/ssl/ssl.crt/simplerisk.crt
 # Activate Apache modules
@@ -61,10 +61,11 @@ RUN sed -i 's/#SSLHonorCipherOrder on/SSLHonorCipherOrder on/g' /etc/apache2/mod
 RUN sed -i 's/ServerTokens OS/ServerTokens Prod/g' /etc/apache2/conf-enabled/security.conf
 RUN sed -i 's/#ServerSignature On/ServerSignature Off/g' /etc/apache2/conf-enabled/security.conf
 
-# Download and extract SimpleRisk
+# Download and extract SimpleRisk, plus saving version for database reference
 RUN rm -rf /var/www/html && \
     VERSION=`curl -sL https://updates.simplerisk.com/Current_Version.xml | grep -oP '<appversion>(.*)</appversion>' | cut -d '>' -f 2 | cut -d '<' -f 1` && \
-    curl -sL https://github.com/simplerisk/bundles/raw/master/simplerisk-$VERSION.tgz | tar xz -C /var/www && echo $VERSION > /tmp/version && \
+    curl -sL https://github.com/simplerisk/bundles/raw/master/simplerisk-$VERSION.tgz | tar xz -C /var/www && \
+    echo $VERSION > /tmp/version && \
     mv simplerisk html
 
 # Creating Simplerisk user on www-data group and setting up ownerships
