@@ -2,9 +2,6 @@
 
 set -eo pipefail
 
-FIRST_TIME_SETUP=1
-FIRST_TIME_SETUP_WAIT=1
-
 print_log(){
     echo "$(date -u +"[%a %b %e %X.%6N %Y]") [$1] $2"
 }
@@ -69,24 +66,24 @@ db_setup(){
 
     print_log "info" "Downloading schema..."
     SCHEMA_FILE='/tmp/simplerisk.sql'
-    exec_cmd "curl -sL https://github.com/simplerisk/database/raw/master/simplerisk-en-`cat /tmp/version`.sql > $SCHEMA_FILE" "Could not download schema from Github. Exiting."
+    exec_cmd "curl -sL https://github.com/simplerisk/database/raw/master/simplerisk-en-`cat /tmp/version`.sql > $SCHEMA_FILE 2&>1" "Could not download schema from Github. Exiting."
 
     FIRST_TIME_SETUP_USER="${FIRST_TIME_SETUP_USER:-root}"
     FIRST_TIME_SETUP_PASS="${FIRST_TIME_SETUP_PASS:-root}"
 
-    print_log "info" "Applying changes to MySQL database..."
+    print_log "info" "Applying changes to MySQL database... (MySQL error will be printed to console as guidance)"
     exec_cmd "mysql --protocol=socket -u $FIRST_TIME_SETUP_USER -p$FIRST_TIME_SETUP_PASS -h$SIMPLERISK_DB_HOSTNAME -P$SIMPLERISK_DB_PORT <<EOSQL
     CREATE DATABASE ${SIMPLERISK_DB_DATABASE};
     USE ${SIMPLERISK_DB_DATABASE};
     \. /tmp/simplerisk.sql 
     CREATE USER ${SIMPLERISK_DB_USERNAME}@'%' IDENTIFIED BY '${SIMPLERISK_DB_PASSWORD}';
     GRANT SELECT, INSERT, UPDATE, DELETE, CREATE, DROP, REFERENCES, INDEX, ALTER ON ${SIMPLERISK_DB_DATABASE}.* TO ${SIMPLERISK_DB_USERNAME}@'%';
-EOSQL" "Was not able to apply settings on database. Exiting"
+EOSQL" "Was not able to apply settings on database. Check error above. Exiting."
 
     print_log "info" "Setup has been applied successfully!"
 
     if [ ! -z $FIRST_TIME_SETUP_ONLY ]; then
-        print_log "Running on setup only. Container will exit."
+        print_log "info" "Running on setup only. Container will be discarded."
         exit 0
     fi
 }
