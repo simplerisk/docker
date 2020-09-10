@@ -65,7 +65,8 @@ RUN echo %sudo  ALL=NOPASSWD: ALL >> /etc/sudoers
 # Download and extract SimpleRisk
 RUN VERSION=`curl -sL https://updates.simplerisk.com/Current_Version.xml | grep -oP '<appversion>(.*)</appversion>' | cut -d '>' -f 2 | cut -d '<' -f 1` \
     && curl -sL https://github.com/simplerisk/bundles/raw/master/simplerisk-$VERSION.tgz | tar xz -C /var/www && echo $VERSION > /tmp/version
-RUN chown -R www-data: /var/www/simplerisk
+RUN chown -R www-data:www-data /var/www/simplerisk
+RUN chmod -R 770 /var/www/simplerisk
 
 # Ports to expose
 EXPOSE 80
@@ -80,6 +81,10 @@ VOLUME /var/log
 VOLUME /var/lib/mysql
 VOLUME /etc/apache2/ssl
 VOLUME /var/www/simplerisk
+
+# Creating user to avoid root
+RUN adduser -D -G simplerisk www-data
+USER simplerisk 
 
 # Start Apache 
 CMD ["/bin/bash", "/start.sh"]
