@@ -72,13 +72,9 @@ RUN VERSION=`curl -sL https://updates.simplerisk.com/Current_Version.xml | grep 
 # Running necessary ownerships
 RUN chown -R simplerisk:www-data /var/www/simplerisk /etc/apache2 /var/run/ /var/log/apache2 && chmod -R 770 /var/www/simplerisk /etc/apache2 /var/run/ /var/log/apache2
 
-# Ports to expose
-EXPOSE 80
-EXPOSE 443
-
-# Create the start script and set permissions
-COPY ./app_setup/start.sh /start.sh
-RUN chmod 755 /start.sh
+# Create the entrypoint script and set permissions
+COPY ./app_setup/entrypoint.sh /entrypoint.sh
+RUN chmod 755 /entrypoint.sh
 
 # Data to save
 VOLUME /var/log
@@ -88,5 +84,12 @@ VOLUME /var/www/simplerisk
 # Creating user to avoid root
 USER simplerisk 
 
+# Setting up entrypoint
+ENTRYPOINT [ "/entrypoint.sh" ]
+
+# Ports to expose
+EXPOSE 80
+EXPOSE 443
+
 # Start Apache 
-CMD ["/bin/bash", "/start.sh"]
+CMD ["/usr/sbin/apache2ctl", "-D", "FOREGROUND"]
