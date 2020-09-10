@@ -69,8 +69,8 @@ RUN rm -rf /var/www/html && \
 
 # Creating Simplerisk user on www-data group and setting up ownerships
 RUN useradd -G www-data simplerisk
-RUN chown -R simplerisk:www-data /var/www/simplerisk /etc/apache2 /var/run/ /var/log/apache2 && \
-    chmod -R 770 /var/www/simplerisk /etc/apache2 /var/run/ /var/log/apache2 && \
+RUN chown -R simplerisk:www-data /var/www/html /etc/apache2 /var/run/ /var/log/apache2 && \
+    chmod -R 770 /var/www/html /etc/apache2 /var/run/ /var/log/apache2 && \
     chmod 755 /entrypoint.sh /etc/apache2/foreground.sh
 
 # Data to save
