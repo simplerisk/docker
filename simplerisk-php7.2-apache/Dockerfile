@@ -72,7 +72,7 @@ RUN VERSION=`curl -sL https://updates.simplerisk.com/Current_Version.xml | grep 
     && curl -sL https://github.com/simplerisk/bundles/raw/master/simplerisk-$VERSION.tgz | tar xz -C /var/www && echo $VERSION > /tmp/version
 
 # Running necessary ownerships
-RUN chown -R simplerisk:www-data /var/www/simplerisk /etc/apache2 /var/run /var/log/apache2 && chmod -R 770 /var/www/simplerisk /etc/apache2 /var/run/ /var/log/apache2
+RUN chown -R simplerisk:www-data /var/www/simplerisk /etc/apache2 /var/run/ /var/log/apache2 && chmod -R 770 /var/www/simplerisk /etc/apache2 /var/run/ /var/log/apache2
 
 # Ports to expose
 EXPOSE 80
