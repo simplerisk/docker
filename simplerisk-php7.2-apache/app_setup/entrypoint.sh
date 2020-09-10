@@ -95,4 +95,4 @@ _main() {
     exec "$@"
 }
 
-_main
+_main "$@"
