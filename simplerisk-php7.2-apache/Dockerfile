@@ -84,12 +84,10 @@ RUN chmod 755 /start.sh
 
 # Data to save
 VOLUME /var/log
-VOLUME /var/lib/mysql
 VOLUME /etc/apache2/ssl
 VOLUME /var/www/simplerisk
 
 # Creating user to avoid root
-RUN adduser -D -G simplerisk www-data
 USER simplerisk 
 
 # Start Apache 
