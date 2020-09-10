@@ -92,7 +92,7 @@ _main() {
     if [ ! -z $FIRST_TIME_SETUP ]; then
       db_setup
     fi
-    /usr/sbin/apache2ctl -D FOREGROUND
+    exec "$@"
 }
 
 _main
