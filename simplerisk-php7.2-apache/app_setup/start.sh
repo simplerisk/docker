@@ -7,7 +7,7 @@ print_log(){
 }
 
 exec_cmd(){
-    exec_cmd_nobail "$1" || fatal_error "$2" $?
+    exec_cmd_nobail "$1" || fatal_error "$2"
 }
 
 exec_cmd_nobail() {
@@ -15,7 +15,6 @@ exec_cmd_nobail() {
 }
 
 fatal_error(){
-    echo "$2"
     print_log "error" "$1"
     exit 1
 }
@@ -66,7 +65,7 @@ db_setup(){
 
     print_log "info" "Downloading schema..."
     SCHEMA_FILE='/tmp/simplerisk.sql'
-    exec_cmd "curl -sL https://github.com/simplerisk/database/raw/master/simplerisk-en-`cat /tmp/version`.sql > $SCHEMA_FILE 2&>1" "Could not download schema from Github. Exiting."
+    exec_cmd "curl -sL https://github.com/simplerisk/database/raw/master/simplerisk-en-`cat /tmp/version`.sql > $SCHEMA_FILE" "Could not download schema from Github. Exiting."
 
     FIRST_TIME_SETUP_USER="${FIRST_TIME_SETUP_USER:-root}"
     FIRST_TIME_SETUP_PASS="${FIRST_TIME_SETUP_PASS:-root}"
@@ -89,7 +88,6 @@ EOSQL" "Was not able to apply settings on database. Check error above. Exiting."
 }
 
 _main() {
-    
     set_config
     if [ ! -z $FIRST_TIME_SETUP ]; then
       db_setup
