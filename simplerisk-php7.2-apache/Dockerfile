@@ -6,15 +6,20 @@ LABEL maintainer="Simplerisk <support@simplerisk.com>"
 
 # Make necessary directories
 RUN mkdir -p /etc/apache2/ssl
-RUN mkdir -p /var/www/simplerisk
+
+# Creating Simplerisk user on www-data group
+RUN useradd -G www-data simplerisk
 
 # Installing apt dependencies
 RUN apt-get update && apt-get -y dist-upgrade && apt-get -y install libmcrypt-dev \
                                                                     libldap2-dev \
                                                                     pwgen \
+                                                                    libcap2-bin \
                                                                     sendmail \
                                                                     mariadb-client \
                                                                     supervisor
+# Quickly run setcap to allow port
+RUN setcap CAP_NET_BIND_SERVICE=+eip /usr/sbin/apache2
 # Run configure for certain extensions
 RUN docker-php-ext-configure ldap --with-libdir=lib/x86_64-linux-gnu
 # Install extensions
@@ -26,7 +31,7 @@ RUN docker-php-ext-install ldap \
 # Installing mcrypt through pecl and enabling it
 RUN yes | pecl install mcrypt-1.0.1 && docker-php-ext-enable mcrypt
 # Performing a cleanup
-RUN apt-get -y autoremove && apt-get -y purge && rm -rf /var/lib/apt/lists/*
+RUN apt-get -y remove libcap2-bin && apt-get -y autoremove && apt-get -y purge && rm -rf /var/lib/apt/lists/*
 
 # Create the OpenSSL password
 RUN pwgen -cn 20 1 > /tmp/pass_openssl.txt
@@ -60,12 +65,12 @@ RUN sed -i 's/#SSLHonorCipherOrder on/SSLHonorCipherOrder on/g' /etc/apache2/mod
 RUN sed -i 's/ServerTokens OS/ServerTokens Prod/g' /etc/apache2/conf-enabled/security.conf
 RUN sed -i 's/#ServerSignature On/ServerSignature Off/g' /etc/apache2/conf-enabled/security.conf
 
-RUN echo %sudo  ALL=NOPASSWD: ALL >> /etc/sudoers
-
 # Download and extract SimpleRisk
 RUN VERSION=`curl -sL https://updates.simplerisk.com/Current_Version.xml | grep -oP '<appversion>(.*)</appversion>' | cut -d '>' -f 2 | cut -d '<' -f 1` \
     && curl -sL https://github.com/simplerisk/bundles/raw/master/simplerisk-$VERSION.tgz | tar xz -C /var/www && echo $VERSION > /tmp/version
-RUN chown -R www-data: /var/www/simplerisk
+
+# Running necessary ownerships
+RUN chown -R simplerisk:www-data /var/www/simplerisk /etc/apache2 /var/run/ /var/log/apache2 && chmod -R 770 /var/www/simplerisk /etc/apache2 /var/run/ /var/log/apache2
 
 # Ports to expose
 EXPOSE 80
@@ -77,9 +82,11 @@ RUN chmod 755 /start.sh
 
 # Data to save
 VOLUME /var/log
-VOLUME /var/lib/mysql
 VOLUME /etc/apache2/ssl
 VOLUME /var/www/simplerisk
+
+# Creating user to avoid root
+USER simplerisk 
 
 # Start Apache 
 CMD ["/bin/bash", "/start.sh"]
