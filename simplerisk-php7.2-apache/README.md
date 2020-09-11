@@ -1,12 +1,24 @@
 # Simplerisk Image
 
-This image tries to transform Simplerisk into a more microservices approach by using a container based on PHP:7.2-apache and with the specific capability of setting properties of the config.php file through environment variables.
+This image runs SimpleRisk into a more microservices approach by using a container based on PHP:7.2-apache and with the specific capability of setting properties of the config.php file through environment variables. A MySQL/MariaDB instance must be created separately (a docker-compose file is provided).
 
 ## How to build this image?
 
 Please run the following command according to your container engine:
-- **Docker**: `docker build -t simplerisk/simplerisk:php7.2-apache`
+- **Docker**: `docker build -t simplerisk/simplerisk:php7.2-apache .`
 - **Podman**: `podman build -t simplerisk/simplerisk:php7.2-apache`
+
+## Ways to run the application
+
+### Set up database
+
+If this is the first time running the application, you need to set up your MySQL/MariaDB database with the SimpleRisk schema. You must provide the environment variables `FIRST_TIME_SETUP`, and optionally provide any of the variables that start with `FIRST_TIME_SETUP_*`. If you want to only set up the database (and discard the container afterwards), use `FIRST_TIME_SETUP_ONLY`. This might be helpful in a setup where you can first configure the database (like a initContainer on Kubernetes) and if the process ran successfully, then execute a new container with SimpleRisk running normally.
+
+Another detail to consider is that if you are running the database setup and the `SIMPLERISK_DB_PASSWORD` variable is not provided, the application will generate a random password. You must check the logs to get it.
+
+### Run the application normally
+
+In this case, as long as the `FIRST_TIME_SETUP` variable is not provided, then the application will run normally, considering only the `SIMPLERISK_*` variables.
 
 ## Environment variables
 
