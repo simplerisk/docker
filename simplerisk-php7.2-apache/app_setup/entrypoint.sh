@@ -82,12 +82,14 @@ db_setup(){
     exec_cmd "mysql --protocol=socket -u $FIRST_TIME_SETUP_USER -p$FIRST_TIME_SETUP_PASS -h$SIMPLERISK_DB_HOSTNAME -P$SIMPLERISK_DB_PORT <<EOSQL
     CREATE DATABASE ${SIMPLERISK_DB_DATABASE};
     USE ${SIMPLERISK_DB_DATABASE};
-    \. /tmp/simplerisk.sql 
+    \. ${SCHEMA_FILE}
     CREATE USER ${SIMPLERISK_DB_USERNAME}@'%' IDENTIFIED BY '${SIMPLERISK_DB_PASSWORD}';
     GRANT SELECT, INSERT, UPDATE, DELETE, CREATE, DROP, REFERENCES, INDEX, ALTER ON ${SIMPLERISK_DB_DATABASE}.* TO ${SIMPLERISK_DB_USERNAME}@'%';
 EOSQL" "Was not able to apply settings on database. Check error above. Exiting."
 
     print_log "initial_setup:info" "Setup has been applied successfully!"
+    print_log "initial_setup:info" "Removing schema file..."
+    exec_cmd "rm ${SCHEMA_FILE}"
 
     if [ ! -z $FIRST_TIME_SETUP_ONLY ]; then
         print_log "initial_setup:info" "Running on setup only. Container will be discarded."
