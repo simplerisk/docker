@@ -98,6 +98,11 @@ EOSQL" "Was not able to apply settings on database. Check error above. Exiting."
 }
 
 unset_variables() {
+    unset FIRST_TIME_SETUP
+    unset FIRST_TIME_SETUP_ONLY
+    unset FIRST_TIME_SETUP_USER
+    unset FIRST_TIME_SETUP_PASS
+    unset FIRST_TIME_SETUP_WAIT
     unset SIMPLERISK_DB_HOSTNAME
     unset SIMPLERISK_DB_PORT
     unset SIMPLERISK_DB_USERNAME
