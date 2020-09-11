@@ -97,11 +97,22 @@ EOSQL" "Was not able to apply settings on database. Check error above. Exiting."
     fi
 }
 
+unset_variables() {
+    unset SIMPLERISK_DB_HOSTNAME
+    unset SIMPLERISK_DB_PORT
+    unset SIMPLERISK_DB_USERNAME
+    unset SIMPLERISK_DB_PASSWORD
+    unset SIMPLERISK_DB_DATABASE
+    unset SIMPLERISK_DB_FOR_SESSIONS
+    unset SIMPLERISK_DB_SSL_CERT_PATH
+}
+
 _main() {
     set_config
     if [ ! -z $FIRST_TIME_SETUP ]; then
       db_setup
     fi
+    unset_variables
     exec "$@"
 }
 
