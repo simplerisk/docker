@@ -24,48 +24,56 @@ set_config(){
 
     # Replacing config variables if they exist
     if [ ! -z $SIMPLERISK_DB_HOSTNAME ]; then
-        sed -i "s/\('DB_HOSTNAME', '\).*\(');\)/\1`echo $SIMPLERISK_DB_HOSTNAME`\2/g" $CONFIG_PATH
+        sed -i "s/\('DB_HOSTNAME', '\).*\(');\)/\1$(echo $SIMPLERISK_DB_HOSTNAME)\2/g" $CONFIG_PATH
     fi
     SIMPLERISK_DB_HOSTNAME="${SIMPLERISK_DB_HOSTNAME:-localhost}"
 
     if [ ! -z $SIMPLERISK_DB_PORT ]; then
-        sed -i "s/\('DB_PORT', '\).*\(');\)/\1`echo $SIMPLERISK_DB_PORT`\2/g" $CONFIG_PATH
+        sed -i "s/\('DB_PORT', '\).*\(');\)/\1$(echo $SIMPLERISK_DB_PORT)\2/g" $CONFIG_PATH
     fi
     SIMPLERISK_DB_PORT="${SIMPLERISK_DB_PORT:-3306}"
 
     if [ ! -z $SIMPLERISK_DB_USERNAME ]; then
-        sed -i "s/\('DB_USERNAME', '\).*\(');\)/\1`echo $SIMPLERISK_DB_USERNAME`\2/g" $CONFIG_PATH
+        sed -i "s/\('DB_USERNAME', '\).*\(');\)/\1$(echo $SIMPLERISK_DB_USERNAME)\2/g" $CONFIG_PATH
     fi
     SIMPLERISK_DB_USERNAME="${SIMPLERISK_DB_USERNAME:-simplerisk}"
 
-    if [ ! -z $SIMPLERISK_DB_PASSWORD ]; then
-        sed -i "s/\('DB_PASSWORD', '\).*\(');\)/\1`echo $SIMPLERISK_DB_PASSWORD`\2/g" $CONFIG_PATH
+    if [ ! -z $FIRST_TIME_SETUP ]; then
+        if [ -z $SIMPLERISK_DB_PASSWORD ]; then
+            SIMPLERISK_DB_PASSWORD=$(pwgen -cn 20 1)
+            echo "As no password was provided and this is a first time setup, a random password has been generated ($(echo $SIMPLERISK_DB_PASSWORD))"
+        fi
+        sed -i "s/\('DB_PASSWORD', '\).*\(');\)/\1$(echo $SIMPLERISK_DB_PASSWORD)\2/g" $CONFIG_PATH
+    else
+        if [ ! -z $SIMPLERISK_DB_PASSWORD ]; then
+            sed -i "s/\('DB_PASSWORD', '\).*\(');\)/\1$(echo $SIMPLERISK_DB_PASSWORD)\2/g" $CONFIG_PATH
+        fi
     fi
-    SIMPLERISK_DB_PASSWORD="${SIMPLERISK_DB_PASSWORD:-simplerisk}"
+    SIMPLERISK_DB_PASSWORD="${SIMPLERISK_DB_PASSWORD:-simplerisk}" 
 
     if [ ! -z $SIMPLERISK_DB_DATABASE ]; then
-        sed -i "s/\('DB_DATABASE', '\).*\(');\)/\1`echo $SIMPLERISK_DB_DATABASE`\2/g" $CONFIG_PATH
+        sed -i "s/\('DB_DATABASE', '\).*\(');\)/\1$(echo $SIMPLERISK_DB_DATABASE)\2/g" $CONFIG_PATH
     fi
     SIMPLERISK_DB_DATABASE="${SIMPLERISK_DB_DATABASE:-simplerisk}"
 
     if [ ! -z $SIMPLERISK_DB_FOR_SESSIONS ]; then
-        sed -i "s/\('USE_DATABASE_FOR_SESSIONS', '\).*\(');\)/\1`echo $SIMPLERISK_DB_FOR_SESSIONS`\2/g" $CONFIG_PATH
+        sed -i "s/\('USE_DATABASE_FOR_SESSIONS', '\).*\(');\)/\1$(echo $SIMPLERISK_DB_FOR_SESSIONS)\2/g" $CONFIG_PATH
     fi
 
     if [ ! -z $SIMPLERISK_DB_SSL_CERT_PATH ]; then
-        sed -i "s/\('DB_SSL_CERTIFICATE_PATH', '\).*\(');\)/\1`echo $SIMPLERISK_DB_SSL_CERT_PATH`\2/g" $CONFIG_PATH
+        sed -i "s/\('DB_SSL_CERTIFICATE_PATH', '\).*\(');\)/\1$(echo $SIMPLERISK_DB_SSL_CERT_PATH)\2/g" $CONFIG_PATH
     fi
 }
 
 db_setup(){
     print_log "info" "First time setup. Will wait..."
-    exec_cmd "sleep `echo ${FIRST_TIME_SETUP_WAIT:-2O}`s > /dev/null 2>&1" "FIRST_TIME_SETUP_WAIT variable is set incorrectly. Exiting."
+    exec_cmd "sleep $(echo ${FIRST_TIME_SETUP_WAIT:-2O})s > /dev/null 2>&1" "FIRST_TIME_SETUP_WAIT variable is set incorrectly. Exiting."
 
     print_log "info" "Starting database set up"
 
     print_log "info" "Downloading schema..."
     SCHEMA_FILE='/tmp/simplerisk.sql'
-    exec_cmd "curl -sL https://github.com/simplerisk/database/raw/master/simplerisk-en-`cat /tmp/version`.sql > $SCHEMA_FILE" "Could not download schema from Github. Exiting."
+    exec_cmd "curl -sL https://github.com/simplerisk/database/raw/master/simplerisk-en-$(cat /tmp/version).sql > $SCHEMA_FILE" "Could not download schema from Github. Exiting."
 
     FIRST_TIME_SETUP_USER="${FIRST_TIME_SETUP_USER:-root}"
     FIRST_TIME_SETUP_PASS="${FIRST_TIME_SETUP_PASS:-root}"
