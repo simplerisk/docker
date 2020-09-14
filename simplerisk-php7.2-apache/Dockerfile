@@ -9,8 +9,7 @@ WORKDIR /var/www
 # Installing apt dependencies
 RUN apt-get update && \
     apt-get -y dist-upgrade && \
-    apt-get -y install libmcrypt-dev \
-                       libldap2-dev \
+    apt-get -y install libldap2-dev \
                        pwgen \
                        libcap2-bin \
                        sendmail \
@@ -23,8 +22,6 @@ RUN docker-php-ext-configure ldap --with-libdir=lib/x86_64-linux-gnu && \
                            json \
                            mysqli \
                            pdo_mysql && \
-    yes | pecl install mcrypt-1.0.1 && \
-    docker-php-ext-enable mcrypt
 # Setting up setcap for port mapping without root and removing packages 
 RUN setcap CAP_NET_BIND_SERVICE=+eip /usr/sbin/apache2 && \
     apt-get -y remove libcap2-bin && \
