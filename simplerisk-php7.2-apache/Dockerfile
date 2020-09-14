@@ -9,8 +9,7 @@ WORKDIR /var/www
 # Installing apt dependencies
 RUN apt-get update && \
     apt-get -y dist-upgrade && \
-    apt-get -y install libmcrypt-dev \
-                       libldap2-dev \
+    apt-get -y install libldap2-dev \
                        pwgen \
                        libcap2-bin \
                        sendmail \
@@ -22,9 +21,7 @@ RUN docker-php-ext-configure ldap --with-libdir=lib/x86_64-linux-gnu && \
                            mbstring \
                            json \
                            mysqli \
-                           pdo_mysql && \
-    yes | pecl install mcrypt-1.0.1 && \
-    docker-php-ext-enable mcrypt
+                           pdo_mysql
 # Setting up setcap for port mapping without root and removing packages 
 RUN setcap CAP_NET_BIND_SERVICE=+eip /usr/sbin/apache2 && \
     apt-get -y remove libcap2-bin && \
@@ -65,19 +62,18 @@ RUN sed -i 's/#ServerSignature On/ServerSignature Off/g' /etc/apache2/conf-enabl
 RUN rm -rf /var/www/html && \
     VERSION=`curl -sL https://updates.simplerisk.com/Current_Version.xml | grep -oP '<appversion>(.*)</appversion>' | cut -d '>' -f 2 | cut -d '<' -f 1` && \
     curl -sL https://github.com/simplerisk/bundles/raw/master/simplerisk-$VERSION.tgz | tar xz -C /var/www && \
-    echo $VERSION > /tmp/version && \
-    mv simplerisk html
+    echo $VERSION > /tmp/version
 
 # Creating Simplerisk user on www-data group and setting up ownerships
 RUN useradd -G www-data simplerisk
-RUN chown -R simplerisk:www-data /var/www/html /etc/apache2 /var/run/ /var/log/apache2 && \
-    chmod -R 770 /var/www/html /etc/apache2 /var/run/ /var/log/apache2 && \
+RUN chown -R simplerisk:www-data /var/www/simplerisk /etc/apache2 /var/run/ /var/log/apache2 && \
+    chmod -R 770 /var/www/simplerisk /etc/apache2 /var/run/ /var/log/apache2 && \
     chmod 755 /entrypoint.sh /etc/apache2/foreground.sh
 
 # Data to save
 VOLUME /var/log/apache2
 VOLUME /etc/apache2/ssl
-VOLUME /var/www/html
+VOLUME /var/www/simplerisk
 
 # Using simplerisk user from here 
 USER simplerisk 
