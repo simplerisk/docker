@@ -62,19 +62,18 @@ RUN sed -i 's/#ServerSignature On/ServerSignature Off/g' /etc/apache2/conf-enabl
 RUN rm -rf /var/www/html && \
     VERSION=`curl -sL https://updates.simplerisk.com/Current_Version.xml | grep -oP '<appversion>(.*)</appversion>' | cut -d '>' -f 2 | cut -d '<' -f 1` && \
     curl -sL https://github.com/simplerisk/bundles/raw/master/simplerisk-$VERSION.tgz | tar xz -C /var/www && \
-    echo $VERSION > /tmp/version && \
-    mv simplerisk html
+    echo $VERSION > /tmp/version
 
 # Creating Simplerisk user on www-data group and setting up ownerships
 RUN useradd -G www-data simplerisk
-RUN chown -R simplerisk:www-data /var/www/html /etc/apache2 /var/run/ /var/log/apache2 && \
-    chmod -R 770 /var/www/html /etc/apache2 /var/run/ /var/log/apache2 && \
+RUN chown -R simplerisk:www-data /var/www/simplerisk /etc/apache2 /var/run/ /var/log/apache2 && \
+    chmod -R 770 /var/www/simplerisk /etc/apache2 /var/run/ /var/log/apache2 && \
     chmod 755 /entrypoint.sh /etc/apache2/foreground.sh
 
 # Data to save
 VOLUME /var/log/apache2
 VOLUME /etc/apache2/ssl
-VOLUME /var/www/html
+VOLUME /var/www/simplerisk
 
 # Using simplerisk user from here 
 USER simplerisk 

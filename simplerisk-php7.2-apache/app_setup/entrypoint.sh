@@ -20,7 +20,7 @@ fatal_error(){
 }
 
 set_config(){
-    CONFIG_PATH='/var/www/html/includes/config.php'
+    CONFIG_PATH='/var/www/simplerisk/includes/config.php'
 
     # Replacing config variables if they exist
     if [ ! -z $SIMPLERISK_DB_HOSTNAME ]; then
