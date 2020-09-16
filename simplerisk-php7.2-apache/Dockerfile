@@ -10,7 +10,6 @@ WORKDIR /var/www
 RUN apt-get update && \
     apt-get -y dist-upgrade && \
     apt-get -y install libldap2-dev \
-                       pwgen \
                        libcap2-bin \
                        sendmail \
                        mariadb-client \
@@ -43,7 +42,7 @@ RUN service supervisor restart
 # Configure Apache
 RUN sed -i 's/upload_max_filesize = 2M/upload_max_filesize = 5M/g' /usr/local/etc/php/php.ini-production
 # Create SSL Certificates for Apache SSL
-RUN pwgen -cn 20 1 > /tmp/pass_openssl.txt
+RUN echo $(< /dev/urandom tr -dc _A-Z-a-z-0-9 | head -c${1:-32}) > /tmp/pass_openssl.txt
 RUN mkdir -p /etc/apache2/ssl/ssl.crt /etc/apache2/ssl/ssl.key
 RUN openssl genrsa -des3 -passout pass:/tmp/pass_openssl.txt -out /etc/apache2/ssl/ssl.key/simplerisk.pass.key
 RUN openssl rsa -passin pass:/tmp/pass_openssl.txt -in /etc/apache2/ssl/ssl.key/simplerisk.pass.key -out /etc/apache2/ssl/ssl.key/simplerisk.key
