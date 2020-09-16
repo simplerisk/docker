@@ -40,7 +40,7 @@ set_config(){
 
     if [ ! -z $FIRST_TIME_SETUP ]; then
         if [ -z $SIMPLERISK_DB_PASSWORD ]; then
-            SIMPLERISK_DB_PASSWORD=$(pwgen -cn 20 1)
+            SIMPLERISK_DB_PASSWORD=$(< /dev/urandom tr -dc _A-Z-a-z-0-9 | head -c${1:-21})
             print_log "initial_setup:warn" "As no password was provided and this is a first time setup, a random password has been generated ($(echo $SIMPLERISK_DB_PASSWORD))"
         fi
         sed -i "s/\('DB_PASSWORD', '\).*\(');\)/\1$(echo $SIMPLERISK_DB_PASSWORD)\2/g" $CONFIG_PATH
