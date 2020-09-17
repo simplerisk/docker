@@ -12,7 +12,6 @@ RUN apt-get update && \
     apt-get -y install libldap2-dev \
                        libcap2-bin \
                        libonig-dev \
-                       sendmail \
                        mariadb-client \
                        supervisor
 # Configure all PHP extensions 
