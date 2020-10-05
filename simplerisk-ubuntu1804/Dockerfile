@@ -17,7 +17,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends apt-utils && ap
 
 # Install required packages
 RUN dpkg-divert --local --rename /usr/bin/ischroot && ln -sf /bin/true /usr/bin/ischroot
-RUN DEBIAN_FRONTEND=noninteractive apt-get -y install apache2 php php-mysql php-json mysql-client mysql-server php-dev libmcrypt-dev php-pear php-ldap php7.2-mbstring nfs-common chrony
+RUN DEBIAN_FRONTEND=noninteractive apt-get -y install apache2 php php-mysql php-json mysql-client mysql-server php-dev libmcrypt-dev php-pear php-ldap php7.2-mbstring php-curl nfs-common chrony
 RUN DEBIAN_FRONTEND=noninteractive apt-get -y install pwgen python-setuptools vim-tiny sendmail openssl ufw supervisor
 RUN pecl channel-update pecl.php.net
 RUN yes '' | pecl install mcrypt-1.0.1
