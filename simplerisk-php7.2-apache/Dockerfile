@@ -11,9 +11,9 @@ RUN apt-get update && \
     apt-get -y dist-upgrade && \
     apt-get -y install libldap2-dev \
                        libcap2-bin \
-                       sendmail \
-                       mariadb-client \
-                       supervisor
+                       libcurl4-gnutls-dev \
+                       supervisor \
+                       mariadb-client
 # Configure all PHP extensions 
 RUN docker-php-ext-configure ldap --with-libdir=lib/x86_64-linux-gnu && \
     docker-php-ext-install ldap \

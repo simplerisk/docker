@@ -12,15 +12,17 @@ RUN apt-get update && \
     apt-get -y install libldap2-dev \
                        libcap2-bin \
                        libonig-dev \
-                       mariadb-client \
-                       supervisor
+                       libcurl4-gnutls-dev \
+                       supervisor \
+                       mariadb-client
 # Configure all PHP extensions 
 RUN docker-php-ext-configure ldap --with-libdir=lib/x86_64-linux-gnu && \
     docker-php-ext-install ldap \
                            mbstring \
                            json \
                            mysqli \
-                           pdo_mysql
+                           pdo_mysql \
+                           curl
 # Setting up setcap for port mapping without root and removing packages 
 RUN setcap CAP_NET_BIND_SERVICE=+eip /usr/sbin/apache2 && \
     apt-get -y remove libcap2-bin && \
