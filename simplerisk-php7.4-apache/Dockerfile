@@ -1,5 +1,5 @@
-# Using dedicated PHP image with version 7.2 and Apache
-FROM php:7.2-apache 
+# Using dedicated PHP image with version 7.4 and Apache
+FROM php:7.4-apache 
 
 # Maintained by SimpleRisk
 LABEL maintainer="Simplerisk <support@simplerisk.com>"
@@ -11,6 +11,7 @@ RUN apt-get update && \
     apt-get -y dist-upgrade && \
     apt-get -y install libldap2-dev \
                        libcap2-bin \
+                       libonig-dev \
                        libcurl4-gnutls-dev \
                        supervisor \
                        mariadb-client
