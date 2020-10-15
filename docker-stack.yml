@@ -9,7 +9,7 @@ services:
     - FIRST_TIME_SETUP_WAIT=10
     - SIMPLERISK_DB_HOSTNAME=mariadb
     - SIMPLERISK_DB_PASSWORD=samplepassword
-    image: wolfangaukang/simplerisk-minimal:20201014-001
+    image: wolfangaukang/simplerisk-minimal:20201005-001
     networks:
     - simplerisk
     ports:
