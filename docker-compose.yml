@@ -3,16 +3,13 @@ version: '3.6'
 services: 
   simplerisk:
     environment:
-    # IN CASE YOU WANT TO SETUP FOR THE FIRST TIME,
-    # USE AND ADAPT THE COMMENTED VARIABLES
-    #- FIRST_TIME_SETUP=1
-    #- FIRST_TIME_SETUP_ONLY=1 # Use only if you want to stop container after startup
-    #- FIRST_TIME_SETUP_USER=root
-    #- FIRST_TIME_SETUP_PASS=rootpassword
-    #- FIRST_TIME_SETUP_WAIT=10
+    - FIRST_TIME_SETUP=1
+    - FIRST_TIME_SETUP_USER=root
+    - FIRST_TIME_SETUP_PASS=rootpassword
+    - FIRST_TIME_SETUP_WAIT=10
     - SIMPLERISK_DB_HOSTNAME=mariadb
     - SIMPLERISK_DB_PASSWORD=samplepassword
-    image: simplerisk/simplerisk:php7.4-apache 
+    image: wolfangaukang/simplerisk-minimal:20201014-001
     networks:
     - simplerisk
     ports:
@@ -23,11 +20,10 @@ services:
     command: mysqld --sql_mode="NO_ENGINE_SUBSTITUTION"
     environment:
     - MYSQL_ROOT_PASSWORD=rootpassword
-    image: mariadb:10.3
+    image: mariadb:10.4
     networks:
     -  simplerisk
 
-  # Configure to your needs (https://hub.docker.com/r/namshi/smtp)
   smtp:
     image: namshi/smtp
     networks:
