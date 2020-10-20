@@ -6,18 +6,20 @@ It uses PHP 7.X with Apache as a base image. Also has the capability of setting 
 
 ## Build
 
-Follow these instructions:
+To build this image, run the following commands:
 
 ```
-git clone https://github.com/wolfangaukang/docker
+# From the root directory of the repository
 cd simplerisk-minimal
 VERSION=7.X
 docker build -f php$VERSION/Dockerfile -t simplerisk/simplerisk-minimal:$VERSION .
 ```
 
-## Ways to run the application
+## Run 
 
-### Run the application normally
+There are two ways to run the application:
+
+### Normal execution
 
 If the database is already set up for SimpleRisk to use it, run the container without the `FIRST_TIME_SETUP` variables.
 
