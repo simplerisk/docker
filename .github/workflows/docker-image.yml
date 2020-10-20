@@ -2,7 +2,7 @@ name: SimpleRisk Minimal Image Build and Scan
 
 on:
   push:
-    branches: [ testing ]
+    branches: [ CICD ]
 #  pull_request:
 #    branches: [ master ]
 
@@ -15,7 +15,7 @@ jobs:
     steps:
     - uses: actions/checkout@v2
     - name: Build the Docker image
-      run: for version in ${{ env.VERSIONS }}; do docker build simplerisk-minimal/php$version --file Dockerfile --tag localbuild/testimage:$version; done
+      run: for version in ${{ env.VERSIONS }}; do docker build -t localbuild/testimage:$version -f simplerisk-minimal/php$version/Dockerfile simplerisk-minimal ; done
     - uses: anchore/scan-action@v2.0.0
       id: scan-simplerisk-minimal-php7.2
       with:
