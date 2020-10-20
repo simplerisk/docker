@@ -4,6 +4,17 @@ This image is intended to run SimpleRisk in a 'microservices' approach (database
 
 It uses PHP 7.X with Apache as a base image. Also has the capability of setting properties of the `config.php` file through environment variables. 
 
+## Build
+
+Follow these instructions:
+
+```
+git clone https://github.com/wolfangaukang/docker
+cd simplerisk-minimal
+VERSION=7.X
+docker build -f php$VERSION/Dockerfile -t simplerisk/simplerisk-minimal:$VERSION .
+```
+
 ## Ways to run the application
 
 ### Run the application normally
