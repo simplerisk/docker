@@ -1,0 +1,38 @@
+name: SimpleRisk Minimal Image Build and Scan
+
+on:
+  push:
+    branches: [ testing ]
+#  pull_request:
+#    branches: [ master ]
+
+env:
+  VERSIONS: 7.2 7.4
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v2
+    - name: Build the Docker image
+      run: for version in ${{ env.VERSIONS }}; do docker build simplerisk-minimal/php$version --file Dockerfile --tag localbuild/testimage:$version; done
+    - uses: anchore/scan-action@v2.0.0
+      id: scan-simplerisk-minimal-php7.2
+      with:
+        image: "localbuild/testimage:7.2"
+        fail-build: true
+        acs-report-enable: true
+    - name: upload Anchore scan SARIF report
+      uses: github/codeql-action/upload-sarif@v1
+      with:
+        sarif_file: ${{ steps.scan-simplerisk-minimal-php7.2.outputs.sarif }}
+    - uses: anchore/scan-action@v2.0.0
+      id: scan-simplerisk-minimal-php7.4
+      with:
+        image: "localbuild/testimage:7.4"
+        fail-build: true
+        acs-report-enable: true
+    - name: upload Anchore scan SARIF report
+      uses: github/codeql-action/upload-sarif@v1
+      with:
+        sarif_file: ${{ steps.scan-simplerisk-minimal-php7.4.outputs.sarif }}      
