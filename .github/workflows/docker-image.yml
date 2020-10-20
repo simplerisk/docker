@@ -21,6 +21,7 @@ jobs:
       with:
         image: "localbuild/testimage:7.2"
         fail-build: true
+        severity-cutoff: "high"
         acs-report-enable: true
     - name: upload Anchore scan SARIF report
       uses: github/codeql-action/upload-sarif@v1
@@ -31,6 +32,7 @@ jobs:
       with:
         image: "localbuild/testimage:7.4"
         fail-build: true
+        severity-cutoff: "high"
         acs-report-enable: true
     - name: upload Anchore scan SARIF report
       uses: github/codeql-action/upload-sarif@v1
