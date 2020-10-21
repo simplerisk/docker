@@ -1,0 +1,31 @@
+name: Testing for Simplerisk Minimal (PHP 7.4)
+
+on:
+  push:
+    branches:
+      - CICD 
+
+jobs:
+  build-and-scan:
+    name: Build
+    runs-on: ubuntu-18.04
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v2
+
+      - name: Build an image from Dockerfile
+        run: |
+          docker build -t local/simplerisk-minimal:php7.4 -f simplerisk-minimal/php7.4/Dockerfile simplerisk-minimal
+          
+      - name: Run Trivy vulnerability scanner
+        uses: aquasecurity/trivy-action@master
+        with:
+          image-ref: "local/simplerisk-minimal:php7.2"
+          format: 'template'
+          template: '@/contrib/sarif.tpl'
+          output: 'trivy-results.sarif'
+
+      - name: Upload Trivy scan results to GitHub Security tab
+        uses: github/codeql-action/upload-sarif@v1
+        with:
+          sarif_file: 'trivy-results.sarif'
