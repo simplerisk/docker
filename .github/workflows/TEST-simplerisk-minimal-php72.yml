@@ -15,12 +15,12 @@ jobs:
 
       - name: Build an image from Dockerfile
         run: |
-          docker build -t local/simplerisk-minimal:php7.2 -f simplerisk-minimal/php7.2/Dockerfile simplerisk-minimal
+          docker build -t localbuild/testimage:php7.2 -f simplerisk-minimal/php7.2/Dockerfile simplerisk-minimal
           
       - name: Run Trivy vulnerability scanner
         uses: aquasecurity/trivy-action@master
         with:
-          image-ref: "local/simplerisk-minimal:php7.2"
+          image-ref: "localbuild/testimage:php7.2"
           format: 'template'
           template: '@/contrib/sarif.tpl'
           output: 'trivy-results.sarif'
