@@ -4,7 +4,7 @@
 # and parameters, see https://github.com/anchore/scan-action. For more
 # information on Anchore's container image scanning tool Grype, see
 # https://github.com/anchore/grype
-name: Simplerisk Minimal (PHP 7.4) Scan
+name: Simplerisk Minimal (PHP 7.2) Scan
 on:
   push:
     branches: [ testing ]
@@ -18,7 +18,7 @@ jobs:
     - name: Checkout the code
       uses: actions/checkout@v2
     - name: Build the Docker image
-      run: docker build -t localbuild/testimage:latest -f simplerisk-minimal/php7.4/Dockerfile simplerisk-minimal
+      run: docker build -t localbuild/testimage:latest -f simplerisk-minimal/php7.2/Dockerfile simplerisk-minimal
     - name: Run the Anchore scan action itself with GitHub Advanced Security code scanning integration enabled
       uses: anchore/scan-action@main
       with:
