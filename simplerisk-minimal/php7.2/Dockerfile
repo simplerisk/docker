@@ -10,7 +10,6 @@ WORKDIR /var/www
                                                                     
 # Installing apt dependencies     
 RUN apt-get update && \
-    apt-get -y dist-upgrade && \
     apt-get -y install libldap2-dev \
                        libcap2-bin \
                        libcurl4-gnutls-dev \
