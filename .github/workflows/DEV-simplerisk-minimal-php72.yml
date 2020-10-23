@@ -1,0 +1,25 @@
+name: Development Checkup for SimpleRisk Minimal (PHP 7.2) 
+
+on:
+  pull_request:
+    branches:
+      - 'testing'
+
+jobs:
+  oci-check:
+    name: 'OCI Check' 
+    runs-on: ubuntu-18.04
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v2
+
+      - name: Build an image from Dockerfile
+        run: |
+          docker build -t simplerisk/simplerisk-minimal:php7.2 -f simplerisk-minimal/php7.2/Dockerfile simplerisk-minimal
+          
+      - name: Run Dockle 
+        uses: hands-lab/dockle-action@v1
+        with:
+          image: "simplerisk/simplerisk-minimal:php7.2"
+          exit-code: '1'
+          exit-level: FATAL

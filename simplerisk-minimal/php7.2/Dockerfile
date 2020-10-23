@@ -10,12 +10,12 @@ WORKDIR /var/www
                                                                     
 # Installing apt dependencies     
 RUN apt-get update && \
-    apt-get -y dist-upgrade && \
     apt-get -y install libldap2-dev \
                        libcap2-bin \
                        libcurl4-gnutls-dev \
                        supervisor \
-                       mariadb-client
+                       mariadb-client && \
+    rm -rf /var/lib/apt/lists/*
 # Configure all PHP extensions
 RUN docker-php-ext-configure ldap --with-libdir=lib/x86_64-linux-gnu && \
     docker-php-ext-install ldap \
@@ -28,8 +28,7 @@ RUN docker-php-ext-configure ldap --with-libdir=lib/x86_64-linux-gnu && \
 RUN setcap CAP_NET_BIND_SERVICE=+eip /usr/sbin/apache2 && \
     apt-get -y remove libcap2-bin && \
     apt-get -y autoremove && \
-    apt-get -y purge && \
-    rm -rf /var/lib/apt/lists/*
+    apt-get -y purge 
 
 # Copying all files
 COPY common/supervisord.conf /etc/supervisord.conf
