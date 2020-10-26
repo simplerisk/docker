@@ -14,6 +14,10 @@ exec_cmd_nobail() {
     bash -c "$1"
 }
 
+generate_random_password() {
+    echo $(< /dev/urandom tr -dc _A-Z-a-z-0-9 | head -c${1:-21})
+}
+
 fatal_error(){
     print_log "error" "$1"
     exit 1
@@ -22,14 +26,13 @@ fatal_error(){
 set_db_password(){
     if [ ! -z "${FIRST_TIME_SETUP:-}" ]; then
         if [ -z "${SIMPLERISK_DB_PASSWORD:-}" ]; then
-            SIMPLERISK_DB_PASSWORD=$(< /dev/urandom tr -dc _A-Z-a-z-0-9 | head -c${1:-21})
-            print_log "initial_setup:warn" "As no password was provided and this is a first time setup, a random password has been generated ($SIMPLERISK_DB_PASSWORD)"
+          SIMPLERISK_DB_PASSWORD=$(generate_random_password)
+          print_log "initial_setup:warn" "As no password was provided and this is a first time setup, a random password has been generated ($SIMPLERISK_DB_PASSWORD)"
         fi
         sed -i "s/\('DB_PASSWORD', '\).*\(');\)/\1$(echo $SIMPLERISK_DB_PASSWORD)\2/g" $CONFIG_PATH
     else
         [ "${SIMPLERISK_DB_PASSWORD:-simplerisk}" != 'simplerisk' ] && sed -i "s/\('DB_PASSWORD', '\).*\(');\)/\1$(echo $SIMPLERISK_DB_PASSWORD)\2/g" $CONFIG_PATH || SIMPLERISK_DB_PASSWORD="simplerisk"
     fi
-    echo $SIMPLERISK_DB_PASSWORD
 }
 
 set_config(){
@@ -42,7 +45,7 @@ set_config(){
 
     [ "${SIMPLERISK_DB_USERNAME:-simplerisk}" != 'simplerisk' ] && sed -i "s/\('DB_USERNAME', '\).*\(');\)/\1$(echo $SIMPLERISK_DB_USERNAME)\2/g" $CONFIG_PATH || SIMPLERISK_DB_USERNAME="simplerisk"
 
-    SIMPLERISK_DB_PASSWORD=$(set_db_password)
+    set_db_password
 
     [ "${SIMPLERISK_DB_DATABASE:-simplerisk}" != 'simplerisk' ] && sed -i "s/\('DB_DATABASE', '\).*\(');\)/\1$(echo $SIMPLERISK_DB_DATABASE)\2/g" $CONFIG_PATH || SIMPLERISK_DB_DATABASE="simplerisk"
 
