@@ -19,55 +19,41 @@ fatal_error(){
     exit 1
 }
 
+set_db_password(){
+    if [ ! -z "${FIRST_TIME_SETUP:-}" ]; then
+        if [ -z "${SIMPLERISK_DB_PASSWORD:-}" ]; then
+            SIMPLERISK_DB_PASSWORD=$(< /dev/urandom tr -dc _A-Z-a-z-0-9 | head -c${1:-21})
+            print_log "initial_setup:warn" "As no password was provided and this is a first time setup, a random password has been generated ($SIMPLERISK_DB_PASSWORD)"
+        fi
+        sed -i "s/\('DB_PASSWORD', '\).*\(');\)/\1$(echo $SIMPLERISK_DB_PASSWORD)\2/g" $CONFIG_PATH
+    else
+        [ "${SIMPLERISK_DB_PASSWORD:-simplerisk}" != 'simplerisk' ] && sed -i "s/\('DB_PASSWORD', '\).*\(');\)/\1$(echo $SIMPLERISK_DB_PASSWORD)\2/g" $CONFIG_PATH || SIMPLERISK_DB_PASSWORD="simplerisk"
+    fi
+    echo $SIMPLERISK_DB_PASSWORD
+}
+
 set_config(){
     CONFIG_PATH='/var/www/simplerisk/includes/config.php'
 
     # Replacing config variables if they exist
-    if [ ! -z $SIMPLERISK_DB_HOSTNAME ]; then
-        sed -i "s/\('DB_HOSTNAME', '\).*\(');\)/\1$(echo $SIMPLERISK_DB_HOSTNAME)\2/g" $CONFIG_PATH
-    fi
-    SIMPLERISK_DB_HOSTNAME="${SIMPLERISK_DB_HOSTNAME:-localhost}"
+    [ "${SIMPLERISK_DB_HOSTNAME:-localhost}" != 'localhost' ] && sed -i "s/\('DB_HOSTNAME', '\).*\(');\)/\1$(echo $SIMPLERISK_DB_HOSTNAME)\2/g" $CONFIG_PATH || SIMPLERISK_DB_HOSTNAME="localhost"
 
-    if [ ! -z $SIMPLERISK_DB_PORT ]; then
-        sed -i "s/\('DB_PORT', '\).*\(');\)/\1$(echo $SIMPLERISK_DB_PORT)\2/g" $CONFIG_PATH
-    fi
-    SIMPLERISK_DB_PORT="${SIMPLERISK_DB_PORT:-3306}"
+    [ "${SIMPLERISK_DB_PORT:-3306}" != '3306' ] && sed -i "s/\('DB_PORT', '\).*\(');\)/\1$(echo $SIMPLERISK_DB_PORT)\2/g" $CONFIG_PATH || SIMPLERISK_DB_PORT="3306"
 
-    if [ ! -z $SIMPLERISK_DB_USERNAME ]; then
-        sed -i "s/\('DB_USERNAME', '\).*\(');\)/\1$(echo $SIMPLERISK_DB_USERNAME)\2/g" $CONFIG_PATH
-    fi
-    SIMPLERISK_DB_USERNAME="${SIMPLERISK_DB_USERNAME:-simplerisk}"
+    [ "${SIMPLERISK_DB_USERNAME:-simplerisk}" != 'simplerisk' ] && sed -i "s/\('DB_USERNAME', '\).*\(');\)/\1$(echo $SIMPLERISK_DB_USERNAME)\2/g" $CONFIG_PATH || SIMPLERISK_DB_USERNAME="simplerisk"
 
-    if [ ! -z $FIRST_TIME_SETUP ]; then
-        if [ -z $SIMPLERISK_DB_PASSWORD ]; then
-            SIMPLERISK_DB_PASSWORD=$(< /dev/urandom tr -dc _A-Z-a-z-0-9 | head -c${1:-21})
-            print_log "initial_setup:warn" "As no password was provided and this is a first time setup, a random password has been generated ($(echo $SIMPLERISK_DB_PASSWORD))"
-        fi
-        sed -i "s/\('DB_PASSWORD', '\).*\(');\)/\1$(echo $SIMPLERISK_DB_PASSWORD)\2/g" $CONFIG_PATH
-    else
-        if [ ! -z $SIMPLERISK_DB_PASSWORD ]; then
-            sed -i "s/\('DB_PASSWORD', '\).*\(');\)/\1$(echo $SIMPLERISK_DB_PASSWORD)\2/g" $CONFIG_PATH
-        fi
-    fi
-    SIMPLERISK_DB_PASSWORD="${SIMPLERISK_DB_PASSWORD:-simplerisk}" 
+    SIMPLERISK_DB_PASSWORD=$(set_db_password)
 
-    if [ ! -z $SIMPLERISK_DB_DATABASE ]; then
-        sed -i "s/\('DB_DATABASE', '\).*\(');\)/\1$(echo $SIMPLERISK_DB_DATABASE)\2/g" $CONFIG_PATH
-    fi
-    SIMPLERISK_DB_DATABASE="${SIMPLERISK_DB_DATABASE:-simplerisk}"
+    [ "${SIMPLERISK_DB_DATABASE:-simplerisk}" != 'simplerisk' ] && sed -i "s/\('DB_DATABASE', '\).*\(');\)/\1$(echo $SIMPLERISK_DB_DATABASE)\2/g" $CONFIG_PATH || SIMPLERISK_DB_DATABASE="simplerisk"
 
-    if [ ! -z $SIMPLERISK_DB_FOR_SESSIONS ]; then
-        sed -i "s/\('USE_DATABASE_FOR_SESSIONS', '\).*\(');\)/\1$(echo $SIMPLERISK_DB_FOR_SESSIONS)\2/g" $CONFIG_PATH
-    fi
+    [ ! -z "${SIMPLERISK_DB_FOR_SESSIONS:-}" ] && sed -i "s/\('USE_DATABASE_FOR_SESSIONS', '\).*\(');\)/\1$(echo $SIMPLERISK_DB_FOR_SESSIONS)\2/g" $CONFIG_PATH || true
 
-    if [ ! -z $SIMPLERISK_DB_SSL_CERT_PATH ]; then
-        sed -i "s/\('DB_SSL_CERTIFICATE_PATH', '\).*\(');\)/\1$(echo $SIMPLERISK_DB_SSL_CERT_PATH)\2/g" $CONFIG_PATH
-    fi
+    [ ! -z "${SIMPLERISK_DB_SSL_CERT_PATH:-}" ] && sed -i "s/\('DB_SSL_CERTIFICATE_PATH', '\).*\(');\)/\1$(echo $SIMPLERISK_DB_SSL_CERT_PATH)\2/g" $CONFIG_PATH || true
 }
 
 db_setup(){
     print_log "initial_setup:info" "First time setup. Will wait..."
-    exec_cmd "sleep $(echo ${FIRST_TIME_SETUP_WAIT:-2O})s > /dev/null 2>&1" "FIRST_TIME_SETUP_WAIT variable is set incorrectly. Exiting."
+    exec_cmd "sleep ${FIRST_TIME_SETUP_WAIT:-20}s > /dev/null 2>&1" "FIRST_TIME_SETUP_WAIT variable is set incorrectly. Exiting."
 
     print_log "initial_setup:info" "Starting database set up"
 
@@ -91,7 +77,7 @@ EOSQL" "Was not able to apply settings on database. Check error above. Exiting."
     print_log "initial_setup:info" "Removing schema file..."
     exec_cmd "rm ${SCHEMA_FILE}"
 
-    if [ ! -z $FIRST_TIME_SETUP_ONLY ]; then
+    if [ ! -z "${FIRST_TIME_SETUP_ONLY:-}" ]; then
         print_log "initial_setup:info" "Running on setup only. Container will be discarded."
         exit 0
     fi
@@ -114,7 +100,7 @@ unset_variables() {
 
 _main() {
     set_config
-    if [ ! -z $FIRST_TIME_SETUP ]; then
+    if [ ! -z "${FIRST_TIME_SETUP:-}" ]; then
       db_setup
     fi
     unset_variables
