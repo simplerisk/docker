@@ -8,7 +8,7 @@ These images are available on [DockerHub](https://hub.docker.com/u/simplerisk).
 
 ## Using Docker Compose/Swarm
 
-A `docker-compose.yml` file is provided for a stack deployment of the application on Docker Compose, while `docker-stack.yml` is for Docker Swarm. It will deploy the application with the following components:
+A `stack.yml` file is provided for a stack deployment of the application through Docker Compose or Docker Swarm. It will deploy the application with the following components:
 - [SimpleRisk Application](https://hub.docker.com/r/wolfangaukang/simplerisk-minimal) (`simplerisk-minimal`)
 - [MariaDB Database](https://hub.docker.com/_/mariadb) (version 10.4)
 - [SMTP Server](https://hub.docker.com/r/namshi/smtp)
