@@ -51,7 +51,8 @@ RUN dpkg-divert --local --rename /usr/bin/ischroot && \\
                                                       sendmail \\
                                                       openssl \\
                                                       ufw \\
-                                                      supervisor
+                                                      supervisor && \\
+    rm -rf /var/lib/apt/lists
 
 RUN pecl channel-update pecl.php.net
 RUN yes '' | pecl install mcrypt-$mcrypt_version
@@ -105,12 +106,11 @@ RUN sed -i 's/ServerSignature On/ServerSignature Off/g' /etc/apache2/conf-enable
 RUN echo %sudo  ALL=NOPASSWD: ALL >> /etc/sudoers
 
 # Download SimpleRisk
-ADD https://github.com/simplerisk/database/raw/master/simplerisk-en-$release.sql /simplerisk.sql
-ADD https://github.com/simplerisk/bundles/raw/master/simplerisk-$release.tgz /simplerisk.tgz
+RUN rm -rf /var/www/html && \\
+    curl -sL https://github.com/simplerisk/database/raw/master/simplerisk-en-$release.sql > /simplerisk.sql && \\
+    curl -sL https://github.com/simplerisk/bundles/raw/master/simplerisk-$release.tgz | tar xz -C /var/www
 
-# Extract the SimpleRisk files
-RUN rm -rf /var/www/html
-RUN cd /var/www && tar xvzf /simplerisk.tgz
+# Permissions
 RUN chown -R www-data: /var/www/simplerisk
 
 # Update the SimpleRisk config file
