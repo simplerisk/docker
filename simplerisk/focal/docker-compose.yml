@@ -1,0 +1,12 @@
+server:
+  image: ubuntu:trusty
+  ports:
+    - "80:80"
+    - "443:443"
+  volumes:
+    - .:/passwords
+    - .:/configurations
+    - .:/var/log
+    - .:/var/lib/mysql
+    - .:/etc/apache2/ssl
+    - .:/var/www/simplerisk
