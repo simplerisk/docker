@@ -3,7 +3,7 @@ name: Development Checkup for SimpleRisk Minimal (PHP 7.2)
 on:
   pull_request:
     branches:
-      - 'testing'
+      - 'master'
 
 jobs:
   oci-check:
