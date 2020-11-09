@@ -22,20 +22,11 @@ SimpleRisk – Transforming Risk Management. Simple. Effective. Affordable.
 
 To build this image, run the following commands:
 
-### Currently supported images (Bionic and Focal)
 ```
 # From the root directory of the repository
 cd simplerisk
-VERSION=ubuntu-version
-docker build -t simplerisk/simplerisk -f $VERSION/Dockerfile $VERSION 
-```
-
-### Obsolete or not fully supported images (Trusty)
-```
-# From the root directory of the repository
-cd simplerisk
-VERSION=ubuntu-version
-docker build -t simplerisk/simplerisk $VERSION
+VERSION=ubuntu-version # Can be bionic or focal
+docker build -t simplerisk/simplerisk -f $VERSION/Dockerfile . 
 ```
 
 ## Run
