@@ -27,7 +27,7 @@ To build this image, run the following commands:
 # From the root directory of the repository
 cd simplerisk
 VERSION=ubuntu-version
-podman build -t simplerisk/simplerisk -f $VERSION/Dockerfile $VERSION 
+docker build -t simplerisk/simplerisk -f $VERSION/Dockerfile $VERSION 
 ```
 
 ### Obsolete or not fully supported images (Trusty)
@@ -35,7 +35,7 @@ podman build -t simplerisk/simplerisk -f $VERSION/Dockerfile $VERSION
 # From the root directory of the repository
 cd simplerisk
 VERSION=ubuntu-version
-podman build -t simplerisk/simplerisk $VERSION
+docker build -t simplerisk/simplerisk $VERSION
 ```
 
 ## Run
