@@ -28,7 +28,7 @@ RUN docker-php-ext-configure ldap --with-libdir=lib/x86_64-linux-gnu && \
 RUN setcap CAP_NET_BIND_SERVICE=+eip /usr/sbin/apache2 && \
     apt-get -y remove libcap2-bin && \
     apt-get -y autoremove && \
-    apt-get -y purge 
+    apt-get -y purge
 
 # Copying all files
 COPY common/supervisord.conf /etc/supervisord.conf
@@ -61,8 +61,8 @@ RUN sed -i 's/#ServerSignature On/ServerSignature Off/g' /etc/apache2/conf-enabl
 
 # Download and extract SimpleRisk, plus saving version for database reference
 RUN rm -rf /var/www/html && \
-    curl -sL https://github.com/simplerisk/bundles/raw/master/simplerisk-20201005-001.tgz | tar xz -C /var/www && \
-    echo 20201005-001 > /tmp/version
+    curl -sL https://github.com/simplerisk/bundles/raw/master/simplerisk-20201106-001.tgz | tar xz -C /var/www && \
+    echo 20201106-001 > /tmp/version
 
 # Creating Simplerisk user on www-data group and setting up ownerships
 RUN useradd -G www-data simplerisk
