@@ -1,8 +1,9 @@
 #!/bin/bash
 
-release=$1
-images=('bionic' 'focal')
+set -euo pipefail
 
+[ -z "${1:-}" ] && echo "No release version provided. Aborting." && exit 1 || release=$1
+images=('bionic' 'focal')
 
 for image in ${images[*]}
 do

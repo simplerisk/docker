@@ -59,7 +59,7 @@ RUN sed -i 's/#SSLHonorCipherOrder on/SSLHonorCipherOrder on/g' /etc/apache2/mod
 RUN sed -i 's/ServerTokens OS/ServerTokens Prod/g' /etc/apache2/conf-enabled/security.conf
 RUN sed -i 's/#ServerSignature On/ServerSignature Off/g' /etc/apache2/conf-enabled/security.conf
 
-# Download and extract SimpleRisk, plus saving version for database reference
+# Download and extract SimpleRisk, plus saving release version for database reference
 RUN rm -rf /var/www/html && \
     curl -sL https://github.com/simplerisk/bundles/raw/master/simplerisk-20201106-001.tgz | tar xz -C /var/www && \
     echo 20201106-001 > /tmp/version
