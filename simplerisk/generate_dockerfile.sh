@@ -1,8 +1,10 @@
 #!/bin/bash
 
-release=$1
-images=('bionic' 'focal')
+set -euo pipefail
 
+[ -z "${1:-}" ] && echo "No release version provided. Aborting." && exit 1 || release=$1
+[ $release == "testing" ] && echo "Using testing release. This is a work in progress and building the generated Dockerfile will fail."
+images=('bionic' 'focal')
 
 for image in ${images[*]}
 do
@@ -107,8 +109,22 @@ RUN echo %sudo  ALL=NOPASSWD: ALL >> /etc/sudoers
 
 # Download SimpleRisk
 RUN rm -rf /var/www/html && \\
+EOF
+
+if [ $release == "testing" ]; then
+    cat << EOF >> "$image/Dockerfile"
+    curl -sL https://github.com/simplerisk/database-location/testing.sql > /simplerisk.sql && \\
+    curl -sL https://github.com/simplerisk/code/archive/testing.zip > /tmp/simplerisk.zip && \\
+    unzip /tmp/simplerisk.zip -d /tmp/unzipped | mv /tmp/unzipped/code-testing/simplerisk /var/www | rm -rf /tmp/{unzipped,simplerisk.zip}
+EOF
+else
+    cat << EOF >> "$image/Dockerfile"
     curl -sL https://github.com/simplerisk/database/raw/master/simplerisk-en-$release.sql > /simplerisk.sql && \\
     curl -sL https://github.com/simplerisk/bundles/raw/master/simplerisk-$release.tgz | tar xz -C /var/www
+EOF
+fi
+
+cat << EOF >> "$image/Dockerfile"
 
 # Permissions
 RUN chown -R www-data: /var/www/simplerisk
