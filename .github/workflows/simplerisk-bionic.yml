@@ -15,7 +15,7 @@ jobs:
 
       - name: Build an image from Dockerfile
         run: |
-          docker build -t simplerisk/simplerisk:bionic simplerisk/bionic
+          docker build -t simplerisk/simplerisk:bionic -f simplerisk/bionic/Dockerfile simplerisk
           
       - name: Run Dockle 
         uses: hands-lab/dockle-action@v1
