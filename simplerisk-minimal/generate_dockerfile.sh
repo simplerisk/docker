@@ -3,6 +3,7 @@
 set -euo pipefail
 
 [ -z "${1:-}" ] && echo "No release version provided. Aborting." && exit 1 || release=$1
+[ $release == "testing" ] && echo "Using testing release. This is a work in progress and building the generated Dockerfile will fail."
 images=('7.2' '7.4')
 
 for image in ${images[*]}
@@ -74,7 +75,19 @@ RUN sed -i 's/#ServerSignature On/ServerSignature Off/g' /etc/apache2/conf-enabl
 
 # Download and extract SimpleRisk, plus saving release version for database reference
 RUN rm -rf /var/www/html && \\
+EOF
+if [ $release == "testing" ]; then
+    cat << EOF >> "php$image/Dockerfile"
+    curl -sL https://github.com/simplerisk/code/archive/testing.zip > /tmp/simplerisk.zip && \\
+    unzip /tmp/simplerisk.zip -d /tmp/unzipped | mv /tmp/unzipped/code-testing/simplerisk /var/www | rm -rf /tmp/{unzipped,simplerisk.zip} && \\
+EOF
+else
+    cat << EOF >> "php$image/Dockerfile"
     curl -sL https://github.com/simplerisk/bundles/raw/master/simplerisk-$release.tgz | tar xz -C /var/www && \\
+EOF
+fi
+
+cat << EOF >> "php$image/Dockerfile"
     echo $release > /tmp/version
 
 # Creating Simplerisk user on www-data group and setting up ownerships
