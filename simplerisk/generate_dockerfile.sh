@@ -6,7 +6,6 @@ set -euo pipefail
 [ $release == "testing" ] && echo "Using testing release. This is a work in progress and building the generated Dockerfile will fail."
 images=('bionic' 'focal')
 
-
 for image in ${images[*]}
 do
 
