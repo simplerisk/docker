@@ -5,9 +5,8 @@ services:
     environment:
     - FIRST_TIME_SETUP=1
     - FIRST_TIME_SETUP_PASS=rootpassword
-    - FIRST_TIME_SETUP_WAIT=10
     - SIMPLERISK_DB_HOSTNAME=mariadb
-    image: wolfangaukang/simplerisk-minimal:20201005-001
+    image: wolfangaukang/simplerisk-minimal:20201106-001
     ports:
     - "80:80"
     - "443:443"

@@ -25,8 +25,8 @@ To build this image, run the following commands:
 ```
 # From the root directory of the repository
 cd simplerisk
-VERSION=ubuntu-version # Currently supports Trusty and Bionic
-podman build -t simplerisk/simplerisk $VERSION 
+VERSION=ubuntu-version # Can be bionic or focal
+docker build -t simplerisk/simplerisk -f $VERSION/Dockerfile . 
 ```
 
 ## Run
