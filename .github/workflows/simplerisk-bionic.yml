@@ -1,0 +1,25 @@
+name: Development Checkup for SimpleRisk (Ubuntu 18.04-Bionic) 
+
+on:
+  pull_request:
+    branches:
+      - 'master'
+
+jobs:
+  oci-check:
+    name: 'OCI Check' 
+    runs-on: ubuntu-18.04
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v2
+
+      - name: Build an image from Dockerfile
+        run: |
+          docker build -t simplerisk/simplerisk:bionic -f simplerisk/bionic/Dockerfile simplerisk
+          
+      - name: Run Dockle 
+        uses: hands-lab/dockle-action@v1
+        with:
+          image: "simplerisk/simplerisk:bionic"
+          exit-code: '1'
+          exit-level: FATAL
