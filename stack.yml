@@ -1,12 +1,14 @@
+# Compose file generated automatically
+
 version: '3.6'
 
-services: 
+services:
   simplerisk:
     environment:
     - FIRST_TIME_SETUP=1
-    - FIRST_TIME_SETUP_PASS=rootpassword
+    - FIRST_TIME_SETUP_PASS=cPL8F7qw2YNtA-xSgnq4O
     - SIMPLERISK_DB_HOSTNAME=mariadb
-    image: wolfangaukang/simplerisk-minimal:20201106-001
+    image: simplerisk/simplerisk-minimal:20210305-001
     ports:
     - "80:80"
     - "443:443"
@@ -14,8 +16,8 @@ services:
   mariadb:
     command: mysqld --sql_mode="NO_ENGINE_SUBSTITUTION"
     environment:
-    - MYSQL_ROOT_PASSWORD=rootpassword
-    image: mariadb:10.4
+    - MYSQL_ROOT_PASSWORD=cPL8F7qw2YNtA-xSgnq4O
+    image: mariadb:10.5
 
   smtp:
     image: namshi/smtp
