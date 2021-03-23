@@ -2,9 +2,16 @@
 
 set -euo pipefail
 
-[ -z "${1:-}" ] && echo "No release version provided. Aborting." && exit 1 || release=$1
-[ $release == "testing" ] && echo "Using testing release. This is a work in progress and building the generated Dockerfile will fail."
-images=('7.2' '7.4')
+if [ $# -gt 0 ]; then
+  release=$1
+  images=('7.2' '7.4')
+  if [ $release == "testing" ]; then
+    [ -z "${2:-}" ] && echo "Building testing image, but no version provided. Aborting." && exit 1 || version=$2
+    images=('7.4')
+  fi
+else
+  echo "No release version provided. Aborting." && exit 1
+fi
 
 for image in ${images[*]}
 do
@@ -78,17 +85,17 @@ RUN rm -rf /var/www/html && \\
 EOF
 if [ $release == "testing" ]; then
     cat << EOF >> "php$image/Dockerfile"
-    curl -sL https://github.com/simplerisk/code/archive/testing.zip > /tmp/simplerisk.zip && \\
-    unzip /tmp/simplerisk.zip -d /tmp/unzipped | mv /tmp/unzipped/code-testing/simplerisk /var/www | rm -rf /tmp/{unzipped,simplerisk.zip} && \\
+    echo $version > /tmp/version
+COPY ./simplerisk/ /var/www/simplerisk
 EOF
 else
     cat << EOF >> "php$image/Dockerfile"
     curl -sL https://github.com/simplerisk/bundles/raw/master/simplerisk-$release.tgz | tar xz -C /var/www && \\
+    echo $release > /tmp/version
 EOF
 fi
 
 cat << EOF >> "php$image/Dockerfile"
-    echo $release > /tmp/version
 
 # Creating Simplerisk user on www-data group and setting up ownerships
 RUN useradd -G www-data simplerisk
