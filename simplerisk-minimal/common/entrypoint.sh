@@ -25,13 +25,10 @@ fatal_error(){
 
 set_db_password(){
     if [ ! -z "${FIRST_TIME_SETUP:-}" ]; then
-        if [ -z "${SIMPLERISK_DB_PASSWORD:-}" ]; then
-          SIMPLERISK_DB_PASSWORD=$(generate_random_password)
-          print_log "initial_setup:warn" "As no password was provided and this is a first time setup, a random password has been generated ($SIMPLERISK_DB_PASSWORD)"
-        fi
+        [ -z "${SIMPLERISK_DB_PASSWORD:-}" ] && SIMPLERISK_DB_PASSWORD=$(generate_random_password) && print_log "initial_setup:warn" "As no password was provided and this is a first time setup, a random password has been generated ($SIMPLERISK_DB_PASSWORD)" || true
         sed -i "s/\('DB_PASSWORD', '\).*\(');\)/\1$(echo $SIMPLERISK_DB_PASSWORD)\2/g" $CONFIG_PATH
     else
-        [ "${SIMPLERISK_DB_PASSWORD:-simplerisk}" != 'simplerisk' ] && sed -i "s/\('DB_PASSWORD', '\).*\(');\)/\1$(echo $SIMPLERISK_DB_PASSWORD)\2/g" $CONFIG_PATH || SIMPLERISK_DB_PASSWORD="simplerisk"
+        SIMPLERISK_DB_PASSWORD=${SIMPLERISK_DB_PASSWORD:-simplerisk} && sed -i "s/\('DB_PASSWORD', '\).*\(');\)/\1$(echo $SIMPLERISK_DB_PASSWORD)\2/g" $CONFIG_PATH
     fi
 }
 
@@ -39,15 +36,15 @@ set_config(){
     CONFIG_PATH='/var/www/simplerisk/includes/config.php'
 
     # Replacing config variables if they exist
-    [ "${SIMPLERISK_DB_HOSTNAME:-localhost}" != 'localhost' ] && sed -i "s/\('DB_HOSTNAME', '\).*\(');\)/\1$(echo $SIMPLERISK_DB_HOSTNAME)\2/g" $CONFIG_PATH || SIMPLERISK_DB_HOSTNAME="localhost"
+    SIMPLERISK_DB_HOSTNAME=${SIMPLERISK_DB_HOSTNAME:-localhost} && sed -i "s/\('DB_HOSTNAME', '\).*\(');\)/\1$(echo $SIMPLERISK_DB_HOSTNAME)\2/g" $CONFIG_PATH
 
-    [ "${SIMPLERISK_DB_PORT:-3306}" != '3306' ] && sed -i "s/\('DB_PORT', '\).*\(');\)/\1$(echo $SIMPLERISK_DB_PORT)\2/g" $CONFIG_PATH || SIMPLERISK_DB_PORT="3306"
+    SIMPLERISK_DB_PORT=${SIMPLERISK_DB_PORT:-3306} && sed -i "s/\('DB_PORT', '\).*\(');\)/\1$(echo $SIMPLERISK_DB_PORT)\2/g" $CONFIG_PATH
 
-    [ "${SIMPLERISK_DB_USERNAME:-simplerisk}" != 'simplerisk' ] && sed -i "s/\('DB_USERNAME', '\).*\(');\)/\1$(echo $SIMPLERISK_DB_USERNAME)\2/g" $CONFIG_PATH || SIMPLERISK_DB_USERNAME="simplerisk"
+    SIMPLERISK_DB_USERNAME=${SIMPLERISK_DB_USERNAME:-simplerisk} && sed -i "s/\('DB_USERNAME', '\).*\(');\)/\1$(echo $SIMPLERISK_DB_USERNAME)\2/g" $CONFIG_PATH
 
     set_db_password
 
-    [ "${SIMPLERISK_DB_DATABASE:-simplerisk}" != 'simplerisk' ] && sed -i "s/\('DB_DATABASE', '\).*\(');\)/\1$(echo $SIMPLERISK_DB_DATABASE)\2/g" $CONFIG_PATH || SIMPLERISK_DB_DATABASE="simplerisk"
+    SIMPLERISK_DB_DATABASE=${SIMPLERISK_DB_DATABASE:-simplerisk} && sed -i "s/\('DB_DATABASE', '\).*\(');\)/\1$(echo $SIMPLERISK_DB_DATABASE)\2/g" $CONFIG_PATH
 
     [ ! -z "${SIMPLERISK_DB_FOR_SESSIONS:-}" ] && sed -i "s/\('USE_DATABASE_FOR_SESSIONS', '\).*\(');\)/\1$(echo $SIMPLERISK_DB_FOR_SESSIONS)\2/g" $CONFIG_PATH || true
 
