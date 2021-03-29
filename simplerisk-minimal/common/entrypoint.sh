@@ -57,9 +57,15 @@ db_setup(){
 
     print_log "initial_setup:info" "Starting database set up"
 
-    print_log "initial_setup:info" "Downloading schema..."
-    SCHEMA_FILE='/tmp/simplerisk.sql'
-    exec_cmd "curl -sL https://github.com/simplerisk/database/raw/master/simplerisk-en-$(cat /tmp/version).sql > $SCHEMA_FILE" "Could not download schema from Github. Exiting."
+    if [ $(cat /tmp/version) == "testing" ]; then
+        print_log "initial_setup:info" "Testing version detected. Looking for SQL script (simplerisk.sql) at /var/www/simplerisk/..."
+        SCHEMA_FILE='/var/www/simplerisk/simplerisk.sql'
+        exec_cmd "[ -f $SCHEMA_FILE ]" "SQL script not found. Exiting."
+    else
+        print_log "initial_setup:info" "Downloading schema..."
+        SCHEMA_FILE='/tmp/simplerisk.sql'
+        exec_cmd "curl -sL https://github.com/simplerisk/database/raw/master/simplerisk-en-$(cat /tmp/version).sql > $SCHEMA_FILE" "Could not download schema from Github. Exiting."
+    fi
 
     FIRST_TIME_SETUP_USER="${FIRST_TIME_SETUP_USER:-root}"
     FIRST_TIME_SETUP_PASS="${FIRST_TIME_SETUP_PASS:-root}"

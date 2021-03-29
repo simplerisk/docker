@@ -2,13 +2,9 @@
 
 set -euo pipefail
 
-if [ $# -gt 0 ]; then
+if [ $# -eq 1 ]; then
   release=$1
-  images=('7.2' '7.4')
-  if [ $release == "testing" ]; then
-    [ -z "${2:-}" ] && echo "Building testing image, but no version provided. Aborting." && exit 1 || version=$2
-    images=('7.4')
-  fi
+  [ $release == "testing" ] && images=('7.4') || images=('7.2' '7.4')
 else
   echo "No release version provided. Aborting." && exit 1
 fi
@@ -83,17 +79,10 @@ RUN sed -i 's/#ServerSignature On/ServerSignature Off/g' /etc/apache2/conf-enabl
 # Download and extract SimpleRisk, plus saving release version for database reference
 RUN rm -rf /var/www/html && \\
 EOF
-if [ $release == "testing" ]; then
-    cat << EOF >> "php$image/Dockerfile"
-    echo $version > /tmp/version
-COPY ./simplerisk/ /var/www/simplerisk
-EOF
-else
-    cat << EOF >> "php$image/Dockerfile"
-    curl -sL https://github.com/simplerisk/bundles/raw/master/simplerisk-$release.tgz | tar xz -C /var/www && \\
-    echo $release > /tmp/version
-EOF
-fi
+
+[ ! $release == "testing" ] && echo "    curl -sL https://github.com/simplerisk/bundles/raw/master/simplerisk-$release.tgz | tar xz -C /var/www && \\" >> "php$image/Dockerfile" || true
+echo "    echo $release > /tmp/version" >> "php$image/Dockerfile"
+[ $release == "testing" ] && echo "COPY ./simplerisk/ /var/www/simplerisk" >> "php$image/Dockerfile" || true
 
 cat << EOF >> "php$image/Dockerfile"
 
