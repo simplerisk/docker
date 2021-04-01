@@ -82,7 +82,12 @@ EOF
 
 [ ! $release == "testing" ] && echo "    curl -sL https://github.com/simplerisk/bundles/raw/master/simplerisk-$release.tgz | tar xz -C /var/www && \\" >> "php$image/Dockerfile" || true
 echo "    echo $release > /tmp/version" >> "php$image/Dockerfile"
-[ $release == "testing" ] && echo "COPY ./simplerisk/ /var/www/simplerisk" >> "php$image/Dockerfile" || true
+if [ $release == "testing" ]; then
+    cat << EOF >> "php$image/Dockerfile"
+COPY ./simplerisk/ /var/www/simplerisk
+COPY common/simplerisk.sql /var/www/simplerisk/simplerisk.sql
+EOF
+fi
 
 cat << EOF >> "php$image/Dockerfile"
 

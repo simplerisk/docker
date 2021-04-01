@@ -49,6 +49,28 @@ set_config(){
     [ ! -z "${SIMPLERISK_DB_FOR_SESSIONS:-}" ] && sed -i "s/\('USE_DATABASE_FOR_SESSIONS', '\).*\(');\)/\1$(echo $SIMPLERISK_DB_FOR_SESSIONS)\2/g" $CONFIG_PATH || true
 
     [ ! -z "${SIMPLERISK_DB_SSL_CERT_PATH:-}" ] && sed -i "s/\('DB_SSL_CERTIFICATE_PATH', '\).*\(');\)/\1$(echo $SIMPLERISK_DB_SSL_CERT_PATH)\2/g" $CONFIG_PATH || true
+
+    if [ $(cat /tmp/version) == "testing" ]; then
+        TO_MODIFY=/tmp/config.php
+        head -n -2 $CONFIG_PATH > $TO_MODIFY
+        if [[ ! -z $(grep "SERVICES_URL" $TO_MODIFY) ]]; then
+            sed -i "s|//\(define('SERVICES_URL'\)|\1|g" $TO_MODIFY
+        else
+            echo "define('SERVICES_URL', 'https://services-test.simplerisk.com');" >> $TO_MODIFY
+        fi
+        if [[ ! -z $(grep "UPDATES_URL" $TO_MODIFY) ]]; then
+            sed -i "s|//\(define('UPDATES_URL'\)|\1|g" $TO_MODIFY
+        else
+            echo "define('UPDATES_URL', 'https://updates-test.simplerisk.com');" >> $TO_MODIFY
+        fi
+        if [[ ! -z $(grep "PING_URL" $TO_MODIFY) ]]; then
+            sed -i "s|//\(define('PING_URL'\)|\1|g" $TO_MODIFY
+        else
+            echo "define('PING_URL', 'https://ping-test.simplerisk.com');" >> $TO_MODIFY
+        fi
+        printf "\n?>\n" >> $TO_MODIFY
+        mv $TO_MODIFY $CONFIG_PATH
+    fi
 }
 
 db_setup(){
