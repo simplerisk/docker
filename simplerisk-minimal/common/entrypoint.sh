@@ -15,7 +15,7 @@ exec_cmd_nobail() {
 }
 
 generate_random_password() {
-    echo $(< /dev/urandom tr -dc _A-Z-a-z-0-9 | head -c${1:-21})
+    echo "$(< /dev/urandom tr -dc _A-Z-a-z-0-9 | head -c21)"
 }
 
 fatal_error(){
@@ -25,12 +25,12 @@ fatal_error(){
 
 set_db_password(){
     if [ -n "${FIRST_TIME_SETUP:-}" ]; then
+        # shellcheck disable=SC2015
         [ -z "${SIMPLERISK_DB_PASSWORD:-}" ] && SIMPLERISK_DB_PASSWORD=$(generate_random_password) && print_log "initial_setup:warn" "As no password was provided and this is a first time setup, a random password has been generated ($SIMPLERISK_DB_PASSWORD)" || true
-        exec_cmd "sed -i \"s/\('DB_PASSWORD', '\).*\(');\)/\1$SIMPLERISK_DB_PASSWORD\2/g\" $CONFIG_PATH"
     else
         SIMPLERISK_DB_PASSWORD=${SIMPLERISK_DB_PASSWORD:-simplerisk}
-        exec_cmd "sed -i \"s/\('DB_PASSWORD', '\).*\(');\)/\1$SIMPLERISK_DB_PASSWORD\2/g\" $CONFIG_PATH"
     fi
+    exec_cmd "sed -i \"s/\('DB_PASSWORD', '\).*\(');\)/\1$SIMPLERISK_DB_PASSWORD\2/g\" $CONFIG_PATH"
 }
 
 set_config(){
@@ -47,14 +47,14 @@ set_config(){
 
     SIMPLERISK_DB_DATABASE=${SIMPLERISK_DB_DATABASE:-simplerisk} && exec_cmd "sed -i \"s/\('DB_DATABASE', '\).*\(');\)/\1$SIMPLERISK_DB_DATABASE\2/g\" $CONFIG_PATH"
 
+    # shellcheck disable=SC2015
     [ -n "${SIMPLERISK_DB_FOR_SESSIONS:-}" ] && sed -i "s/\('USE_DATABASE_FOR_SESSIONS', '\).*\(');\)/\1$SIMPLERISK_DB_FOR_SESSIONS\2/g" $CONFIG_PATH || true
 
+    # shellcheck disable=SC2015
     [ -n "${SIMPLERISK_DB_SSL_CERT_PATH:-}" ] && sed -i "s/\('DB_SSL_CERTIFICATE_PATH', '\).*\(');\)/\1$SIMPLERISK_DB_SSL_CERT_PATH\2/g" $CONFIG_PATH || true
 
-    if [ "$(cat /tmp/version)" == "testing" ]; then
-        exec_cmd "sed -i \"s|//\(define('.*_URL\)|\1|g\" $CONFIG_PATH"
-    fi
-    cat $CONFIG_PATH
+    # shellcheck disable=SC2015
+    [ "$(cat /tmp/version)" == "testing" ] && exec_cmd "sed -i \"s|//\(define('.*_URL\)|\1|g\" $CONFIG_PATH" || true
 }
 
 db_setup(){
@@ -88,11 +88,10 @@ EOSQL" "Was not able to apply settings on database. Check error above. Exiting."
     print_log "initial_setup:info" "Setup has been applied successfully!"
     print_log "initial_setup:info" "Removing schema file..."
     exec_cmd "rm ${SCHEMA_FILE}"
+    print_log "initial_setup:info" "Schema file removed!"
 
-    if [ -n "${FIRST_TIME_SETUP_ONLY:-}" ]; then
-        print_log "initial_setup:info" "Running on setup only. Container will be discarded."
-        exit 0
-    fi
+    # shellcheck disable=SC2015
+    [ -n "${FIRST_TIME_SETUP_ONLY:-}" ] && print_log "initial_setup:info" "Running on setup only. Container will be discarded." && exit 0 || true
 }
 
 unset_variables() {
@@ -112,9 +111,8 @@ unset_variables() {
 
 _main() {
     set_config
-    if [ -n "${FIRST_TIME_SETUP:-}" ]; then
-      db_setup
-    fi
+    # shellcheck disable=SC2015
+    [ -n "${FIRST_TIME_SETUP:-}" ] && db_setup || true
     unset_variables
     exec "$@"
 }
