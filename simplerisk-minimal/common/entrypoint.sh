@@ -24,11 +24,12 @@ fatal_error(){
 }
 
 set_db_password(){
-    if [ ! -z "${FIRST_TIME_SETUP:-}" ]; then
+    if [ -n "${FIRST_TIME_SETUP:-}" ]; then
         [ -z "${SIMPLERISK_DB_PASSWORD:-}" ] && SIMPLERISK_DB_PASSWORD=$(generate_random_password) && print_log "initial_setup:warn" "As no password was provided and this is a first time setup, a random password has been generated ($SIMPLERISK_DB_PASSWORD)" || true
-        sed -i "s/\('DB_PASSWORD', '\).*\(');\)/\1$(echo $SIMPLERISK_DB_PASSWORD)\2/g" $CONFIG_PATH
+        exec_cmd "sed -i \"s/\('DB_PASSWORD', '\).*\(');\)/\1$SIMPLERISK_DB_PASSWORD\2/g\" $CONFIG_PATH"
     else
-        SIMPLERISK_DB_PASSWORD=${SIMPLERISK_DB_PASSWORD:-simplerisk} && sed -i "s/\('DB_PASSWORD', '\).*\(');\)/\1$(echo $SIMPLERISK_DB_PASSWORD)\2/g" $CONFIG_PATH
+        SIMPLERISK_DB_PASSWORD=${SIMPLERISK_DB_PASSWORD:-simplerisk}
+        exec_cmd "sed -i \"s/\('DB_PASSWORD', '\).*\(');\)/\1$SIMPLERISK_DB_PASSWORD\2/g\" $CONFIG_PATH"
     fi
 }
 
@@ -36,23 +37,24 @@ set_config(){
     CONFIG_PATH='/var/www/simplerisk/includes/config.php'
 
     # Replacing config variables if they exist
-    SIMPLERISK_DB_HOSTNAME=${SIMPLERISK_DB_HOSTNAME:-localhost} && sed -i "s/\('DB_HOSTNAME', '\).*\(');\)/\1$(echo $SIMPLERISK_DB_HOSTNAME)\2/g" $CONFIG_PATH
+    SIMPLERISK_DB_HOSTNAME=${SIMPLERISK_DB_HOSTNAME:-localhost} && exec_cmd "sed -i \"s/\('DB_HOSTNAME', '\).*\(');\)/\1$SIMPLERISK_DB_HOSTNAME\2/g\" $CONFIG_PATH"
 
-    SIMPLERISK_DB_PORT=${SIMPLERISK_DB_PORT:-3306} && sed -i "s/\('DB_PORT', '\).*\(');\)/\1$(echo $SIMPLERISK_DB_PORT)\2/g" $CONFIG_PATH
+    SIMPLERISK_DB_PORT=${SIMPLERISK_DB_PORT:-3306} && exec_cmd "sed -i \"s/\('DB_PORT', '\).*\(');\)/\1$SIMPLERISK_DB_PORT\2/g\" $CONFIG_PATH"
 
-    SIMPLERISK_DB_USERNAME=${SIMPLERISK_DB_USERNAME:-simplerisk} && sed -i "s/\('DB_USERNAME', '\).*\(');\)/\1$(echo $SIMPLERISK_DB_USERNAME)\2/g" $CONFIG_PATH
+    SIMPLERISK_DB_USERNAME=${SIMPLERISK_DB_USERNAME:-simplerisk} && exec_cmd "sed -i \"s/\('DB_USERNAME', '\).*\(');\)/\1$SIMPLERISK_DB_USERNAME\2/g\" $CONFIG_PATH"
 
     set_db_password
 
-    SIMPLERISK_DB_DATABASE=${SIMPLERISK_DB_DATABASE:-simplerisk} && sed -i "s/\('DB_DATABASE', '\).*\(');\)/\1$(echo $SIMPLERISK_DB_DATABASE)\2/g" $CONFIG_PATH
+    SIMPLERISK_DB_DATABASE=${SIMPLERISK_DB_DATABASE:-simplerisk} && exec_cmd "sed -i \"s/\('DB_DATABASE', '\).*\(');\)/\1$SIMPLERISK_DB_DATABASE\2/g\" $CONFIG_PATH"
 
-    [ ! -z "${SIMPLERISK_DB_FOR_SESSIONS:-}" ] && sed -i "s/\('USE_DATABASE_FOR_SESSIONS', '\).*\(');\)/\1$(echo $SIMPLERISK_DB_FOR_SESSIONS)\2/g" $CONFIG_PATH || true
+    [ -n "${SIMPLERISK_DB_FOR_SESSIONS:-}" ] && sed -i "s/\('USE_DATABASE_FOR_SESSIONS', '\).*\(');\)/\1$SIMPLERISK_DB_FOR_SESSIONS\2/g" $CONFIG_PATH || true
 
-    [ ! -z "${SIMPLERISK_DB_SSL_CERT_PATH:-}" ] && sed -i "s/\('DB_SSL_CERTIFICATE_PATH', '\).*\(');\)/\1$(echo $SIMPLERISK_DB_SSL_CERT_PATH)\2/g" $CONFIG_PATH || true
+    [ -n "${SIMPLERISK_DB_SSL_CERT_PATH:-}" ] && sed -i "s/\('DB_SSL_CERTIFICATE_PATH', '\).*\(');\)/\1$SIMPLERISK_DB_SSL_CERT_PATH\2/g" $CONFIG_PATH || true
 
-    if [ $(cat /tmp/version) == "testing" ]; then
-        sed -i "s|//\(define('.*_URL\)|\1|g" $CONFIG_PATH
+    if [ "$(cat /tmp/version)" == "testing" ]; then
+        exec_cmd "sed -i \"s|//\(define('.*_URL\)|\1|g\" $CONFIG_PATH"
     fi
+    cat $CONFIG_PATH
 }
 
 db_setup(){
@@ -61,7 +63,7 @@ db_setup(){
 
     print_log "initial_setup:info" "Starting database set up"
 
-    if [ $(cat /tmp/version) == "testing" ]; then
+    if [ "$(cat /tmp/version)" == "testing" ]; then
         print_log "initial_setup:info" "Testing version detected. Looking for SQL script (simplerisk.sql) at /var/www/simplerisk/..."
         SCHEMA_FILE='/var/www/simplerisk/simplerisk.sql'
         exec_cmd "[ -f $SCHEMA_FILE ]" "SQL script not found. Exiting."
@@ -87,7 +89,7 @@ EOSQL" "Was not able to apply settings on database. Check error above. Exiting."
     print_log "initial_setup:info" "Removing schema file..."
     exec_cmd "rm ${SCHEMA_FILE}"
 
-    if [ ! -z "${FIRST_TIME_SETUP_ONLY:-}" ]; then
+    if [ -n "${FIRST_TIME_SETUP_ONLY:-}" ]; then
         print_log "initial_setup:info" "Running on setup only. Container will be discarded."
         exit 0
     fi
@@ -110,7 +112,7 @@ unset_variables() {
 
 _main() {
     set_config
-    if [ ! -z "${FIRST_TIME_SETUP:-}" ]; then
+    if [ -n "${FIRST_TIME_SETUP:-}" ]; then
       db_setup
     fi
     unset_variables
