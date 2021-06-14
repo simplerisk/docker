@@ -25,7 +25,23 @@ pipeline {
 				stage ('Build Simplerisk Ubuntu 20.04') {
 					steps {
 						sh """
-							sudo docker build -t simplerisk/simplerisk:$current_version-focal -f simplerisk/bionic/Dockerfile simplerisk/
+							sudo docker build -t simplerisk/simplerisk:$current_version-focal -f simplerisk/focal/Dockerfile simplerisk/
+						"""
+					}
+				}
+				stage ('Build Simplerisk Minimal PHP 7.2') {
+					steps {
+						sh """
+							sudo docker build -t simplerisk/simplerisk-minimal -f simplerisk-minimal/php7.2/Dockerfile simplerisk-minimal/
+							sudo docker build -t simplerisk/simplerisk-minimal:$current_version -f simplerisk-minimal/php7.2/Dockerfile simplerisk-minimal/
+							sudo docker build -t simplerisk/simplerisk-minimal:$current_version-php7.2 -f simplerisk-minimal/php7.2/Dockerfile simplerisk-minimal/
+						"""
+					}
+				}
+				stage ('Build Simplerisk Minimal PHP 7.4') {
+					steps {
+						sh """
+							sudo docker build -t simplerisk/simplerisk-minimal:$current_version-php7.4 -f simplerisk-minimal/php7.4/Dockerfile simplerisk-minimal/
 						"""
 					}
 				}
@@ -35,7 +51,15 @@ pipeline {
 					node("jenkins") {
 						terminateInstance("${med_id}")
 					}
+					error("Stopping full build")
 				}
+			}
+		}
+		stage ('Verify Images') {
+			steps {
+				sh """
+					sudo docker images
+				"""
 			}
 		}
 	}
