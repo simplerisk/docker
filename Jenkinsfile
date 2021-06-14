@@ -67,6 +67,50 @@ pipeline {
 				}
 			}
 		}
+		stage ('Push images to Docker Hub') {
+			parallel {
+				stage ('Push SimpleRisk latest') {
+					steps {
+						sh "sudo docker push simplerisk/simplerisk"
+					}
+				}
+				stage ('Push SimpleRisk current version') {
+					steps {
+						sh "sudo docker push simplerisk/simplerisk:$current_version"
+					}
+				}
+				stage ('Push SimpleRisk current version for Bionic') {
+					steps {
+						sh "sudo docker push simplerisk/simplerisk:$current_version-bionic"
+					}
+				}
+				stage ('Push SimpleRisk current version for Focal') {
+					steps {
+						sh "sudo docker push simplerisk/simplerisk:$current_version-focal"
+					}
+				}
+				stage ('Push SimpleRisk Minimal latest') {
+					steps {
+						sh "sudo docker push simplerisk/simplerisk-minimal"
+					}
+				}
+				stage ('Push SimpleRisk Minimal current version') {
+					steps {
+						sh "sudo docker push simplerisk/simplerisk-minimal:$current_version"
+					}
+				}
+				stage ('Push SimpleRisk Minimal current version for PHP 7.2') {
+					steps {
+						sh "sudo docker push simplerisk/simplerisk-minimal:$current_version-php72"
+					}
+				}
+				stage ('Push SimpleRisk Minimal current version for PHP 7.4') {
+					steps {
+						sh "sudo docker push simplerisk/simplerisk-minimal:$current_version-php74"
+					}
+				}
+			}
+		}
 	}
 }
 
