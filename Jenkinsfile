@@ -13,7 +13,7 @@ pipeline {
 		}
 		stage ('Build') {
 			parallel {
-				stage ('Build Simplerisk Ubuntu 18.04') {
+				stage ('Build SimpleRisk Ubuntu 18.04') {
 					steps {
 						sh """
 							sudo docker build -t simplerisk/simplerisk -f simplerisk/bionic/Dockerfile simplerisk/
@@ -22,26 +22,26 @@ pipeline {
 						"""
 					}
 				}
-				stage ('Build Simplerisk Ubuntu 20.04') {
+				stage ('Build SimpleRisk Ubuntu 20.04') {
 					steps {
 						sh """
 							sudo docker build -t simplerisk/simplerisk:$current_version-focal -f simplerisk/focal/Dockerfile simplerisk/
 						"""
 					}
 				}
-				stage ('Build Simplerisk Minimal PHP 7.2') {
+				stage ('Build SimpleRisk Minimal PHP 7.2') {
 					steps {
 						sh """
 							sudo docker build -t simplerisk/simplerisk-minimal -f simplerisk-minimal/php7.2/Dockerfile simplerisk-minimal/
 							sudo docker build -t simplerisk/simplerisk-minimal:$current_version -f simplerisk-minimal/php7.2/Dockerfile simplerisk-minimal/
-							sudo docker build -t simplerisk/simplerisk-minimal:$current_version-php7.2 -f simplerisk-minimal/php7.2/Dockerfile simplerisk-minimal/
+							sudo docker build -t simplerisk/simplerisk-minimal:$current_version-php72 -f simplerisk-minimal/php7.2/Dockerfile simplerisk-minimal/
 						"""
 					}
 				}
-				stage ('Build Simplerisk Minimal PHP 7.4') {
+				stage ('Build SimpleRisk Minimal PHP 7.4') {
 					steps {
 						sh """
-							sudo docker build -t simplerisk/simplerisk-minimal:$current_version-php7.4 -f simplerisk-minimal/php7.4/Dockerfile simplerisk-minimal/
+							sudo docker build -t simplerisk/simplerisk-minimal:$current_version-php74 -f simplerisk-minimal/php7.4/Dockerfile simplerisk-minimal/
 						"""
 					}
 				}
@@ -55,18 +55,19 @@ pipeline {
 				}
 			}
 		}
-		stage ('Verify Images') {
+		stage ('Log into Docker Hub') {
 			steps {
-				sh """
-					sudo docker images
-				"""
+				withCredentials([usernamePassword(credentialsId: 'cb153fa6-2299-4bdb-9ef0-9c3e6382c87a', passwordVariable: 'docker_pass', usernameVariable: 'docker_user')]) {
+					sh '''
+						set +x
+						echo $docker_pass >> /tmp/password.txt
+						cat /tmp/password.txt | sudo docker login --username $docker_user --password-stdin
+						rm /tmp/password.txt
+					'''
+				}
 			}
 		}
 	}
-}
-
-def getCurrentDate() {
-	return sh(script: "date +\"%Y%m%d-001\"", returnStdout: true).trim()
 }
 
 def getEC2Metadata(String attribute){
