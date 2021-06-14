@@ -7,7 +7,7 @@ pipeline {
 			steps {
 				script {
 					current_version = getOfficialVersion("updates")
-					med_id = getEC2Metadata("instance-id")
+					instance_id = getEC2Metadata("instance-id")
 				}
 			}
 		}
@@ -49,7 +49,7 @@ pipeline {
 			post {
 				failure {
 					node("jenkins") {
-						terminateInstance("${med_id}")
+						terminateInstance("${instance_id}")
 					}
 					error("Stopping full build")
 				}
@@ -64,6 +64,14 @@ pipeline {
 						cat /tmp/password.txt | sudo docker login --username $docker_user --password-stdin
 						rm /tmp/password.txt
 					'''
+				}
+			}
+			post {
+				failure {
+					node("jenkins") {
+						terminateInstance("${instance_id}")
+					}
+					error("Stopping full build")
 				}
 			}
 		}
@@ -108,6 +116,16 @@ pipeline {
 					steps {
 						sh "sudo docker push simplerisk/simplerisk-minimal:$current_version-php74"
 					}
+				}
+			}
+			post {
+				always {
+					node("jenkins") {
+						terminateInstance("${instance_id}")
+					}
+				}
+				failure {
+					error("Stopping full build")
 				}
 			}
 		}
