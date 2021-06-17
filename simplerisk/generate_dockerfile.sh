@@ -155,7 +155,10 @@ VOLUME /var/lib/mysql
 VOLUME /etc/apache2/ssl
 VOLUME /var/www/simplerisk
 
+# Setting up entrypoint
+ENTRYPOINT [ "/start.sh" ]
+
 # Start Apache and MySQL
-CMD ["/bin/bash", "/start.sh"]
+CMD ["/usr/sbin/apache2ctl", "-D", "FOREGROUND"]
 EOF
 done

@@ -36,8 +36,7 @@ configure_db() {
 
 _main() {
 	configure_db
-	# Start Apache
-	/usr/sbin/apache2ctl -D FOREGROUND
+	exec "$@"
 }
 
 _main "$@"
