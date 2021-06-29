@@ -47,6 +47,7 @@ RUN dpkg-divert --local --rename /usr/bin/ischroot && \\
                                                       php-curl \\
                                                       nfs-common \\
                                                       chrony \\
+                                                      cron \\
                                                       pwgen \\
                                                       python-setuptools \\
                                                       vim-tiny \\
@@ -131,6 +132,11 @@ RUN chown -R www-data: /var/www/simplerisk
 
 # Update the SimpleRisk config file
 RUN cat /var/www/simplerisk/includes/config.php | sed "s/DB_PASSWORD', 'simplerisk/DB_PASSWORD', '\$(cat /passwords/pass_simplerisk.txt)/" > /var/www/simplerisk/includes/config.php
+
+# Setting up cronjob
+RUN echo "* * * * * /usr/bin/php -f /var/www/simplerisk/cron/cron.php" >> /etc/cron.d/backup-cron && \\
+    chmod 0644 /etc/cron.d/backup-cron && \\
+    crontab /etc/cron.d/backup-cron
 
 EXPOSE 80
 EXPOSE 443
