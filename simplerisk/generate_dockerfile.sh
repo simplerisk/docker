@@ -41,7 +41,6 @@ RUN dpkg-divert --local --rename /usr/bin/ischroot && \\
                                                       php-curl \\
                                                       nfs-common \\
                                                       chrony \\
-                                                      pwgen \\
                                                       python-setuptools \\
                                                       vim-tiny \\
                                                       sendmail \\
@@ -51,13 +50,7 @@ RUN dpkg-divert --local --rename /usr/bin/ischroot && \\
     rm -rf /var/lib/apt/lists
 
 # Create the OpenSSL password
-RUN pwgen -cn 20 1 > /passwords/pass_openssl.txt
-
-# Create the MySQL root password
-RUN pwgen -cn 20 1 > /passwords/pass_mysql_root.txt
-
-# Create the SimpleRisk password
-RUN pwgen -cn 20 1 > /passwords/pass_simplerisk.txt
+RUN < /dev/urandom tr -dc _A-Z-a-z-0-9 | head -c21 > /passwords/pass_openssl.txt
 
 # Install and configure supervisor
 COPY common/supervisord.conf /etc/supervisord.conf
@@ -116,9 +109,6 @@ cat << EOF >> "$image/Dockerfile"
 
 # Permissions
 RUN chown -R www-data: /var/www/simplerisk
-
-# Update the SimpleRisk config file
-RUN cat /var/www/simplerisk/includes/config.php | sed "s/DB_PASSWORD', 'simplerisk/DB_PASSWORD', '\$(cat /passwords/pass_simplerisk.txt)/" > /var/www/simplerisk/includes/config.php
 
 EXPOSE 80
 EXPOSE 443
