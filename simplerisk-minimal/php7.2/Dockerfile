@@ -43,6 +43,7 @@ RUN service supervisor restart
 
 # Configure Apache
 RUN sed -i 's/upload_max_filesize = 2M/upload_max_filesize = 5M/g' /usr/local/etc/php/php.ini-production
+RUN echo 'memory_limit = 256M' >> /usr/local/etc/php/conf.d/docker-php-memlimit.ini
 # Create SSL Certificates for Apache SSL
 RUN echo $(< /dev/urandom tr -dc _A-Z-a-z-0-9 | head -c${1:-32}) > /tmp/pass_openssl.txt
 RUN mkdir -p /etc/apache2/ssl/ssl.crt /etc/apache2/ssl/ssl.key
@@ -61,8 +62,8 @@ RUN sed -i 's/#ServerSignature On/ServerSignature Off/g' /etc/apache2/conf-enabl
 
 # Download and extract SimpleRisk, plus saving release version for database reference
 RUN rm -rf /var/www/html && \
-    curl -sL https://github.com/simplerisk/bundles/raw/master/simplerisk-20210305-001.tgz | tar xz -C /var/www && \
-    echo 20210305-001 > /tmp/version
+    curl -sL https://github.com/simplerisk/bundles/raw/master/simplerisk-20210630-001.tgz | tar xz -C /var/www && \
+    echo 20210630-001 > /tmp/version
 
 # Creating Simplerisk user on www-data group and setting up ownerships
 RUN useradd -G www-data simplerisk
