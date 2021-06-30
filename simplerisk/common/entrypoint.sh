@@ -13,9 +13,9 @@ run_sql_command() {
 }
 
 set_db_password(){
-	local ROOT_DB_PASS=$(generate_random_password) && echo $ROOT_DB_PASS >> /passwords/pass_mysql_root.txt
-	local SIMPLERISK_DB_PASS=$(generate_random_password) && echo $SIMPLERISK_DB_PASS >> /passwords/pass_simplerisk.txt
-	sed -i "s/\('DB_PASSWORD', '\).*\(');\)/\1$(cat /passwords/pass_simplerisk.txt)\2/g" $CONFIG_PATH
+	echo "$(generate_random_password)" >> /passwords/pass_mysql_root.txt
+	echo "$(generate_random_password)" >> /passwords/pass_simplerisk.txt
+	sed -i "s/\('DB_PASSWORD', '\).*\(');\)/\1$(cat /passwords/pass_simplerisk.txt)\2/g" "$CONFIG_PATH"
 }
 
 set_config(){
@@ -38,18 +38,18 @@ configure_db() {
 	if [ ! -f /configurations/mysql-configured ]; then
 		password=$(cat /passwords/pass_mysql_root.txt)
 		# Set the MySQL root password
-		mysqladmin -u root password $password
+		mysqladmin -u root password "$password"
 
 		# Create the SimpleRisk database
-		run_sql_command $password "create database simplerisk;"
+		run_sql_command "$password" "create database simplerisk;"
 
 		# Load the SimpleRisk database schema
 		#mysql -uroot -p`cat /passwords/pass_mysql_root.txt` -e "use simplerisk; \. /simplerisk.sql"
-		run_sql_command $password "use simplerisk; \. /simplerisk.sql" && rm /simplerisk.sql
+		run_sql_command "$password" "use simplerisk; \. /simplerisk.sql" && rm /simplerisk.sql
 
 		# Set the permissions for the SimpleRisk database
-		run_sql_command $password "CREATE USER 'simplerisk'@'localhost' IDENTIFIED BY '$(cat /passwords/pass_simplerisk.txt)'"
-		run_sql_command $password "GRANT SELECT, INSERT, UPDATE, DELETE, CREATE, DROP, REFERENCES, INDEX, ALTER ON simplerisk.* TO 'simplerisk'@'localhost'"
+		run_sql_command "$password" "CREATE USER 'simplerisk'@'localhost' IDENTIFIED BY '$(cat /passwords/pass_simplerisk.txt)'"
+		run_sql_command "$password" "GRANT SELECT, INSERT, UPDATE, DELETE, CREATE, DROP, REFERENCES, INDEX, ALTER ON simplerisk.* TO 'simplerisk'@'localhost'"
 
 		# Create a file so this doesn't run again
 		touch /configurations/mysql-configured
