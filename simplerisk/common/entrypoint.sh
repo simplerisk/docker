@@ -1,6 +1,6 @@
 #!/bin/bash
 
-set -exo pipefail
+set -eo pipefail
 
 generate_random_password() {
 	echo "$(< /dev/urandom tr -dc _A-Z-a-z-0-9 | head -c21)"
