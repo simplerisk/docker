@@ -103,7 +103,7 @@ RUN chown -R simplerisk:www-data /var/www/simplerisk /etc/apache2 /var/run/ /var
     chmod 755 /entrypoint.sh /etc/apache2/foreground.sh
 
 # Setting up cronjob
-RUN echo "* * * * * /usr/local/bin/php -f /var/www/simplerisk/cron/cron.php" >> /etc/cron.d/backup-cron && \\
+RUN echo "* * * * * /usr/local/bin/php -f /var/www/simplerisk/cron/cron.php > /dev/null 2>&1" >> /etc/cron.d/backup-cron && \\
     chmod 0644 /etc/cron.d/backup-cron && \\
     crontab /etc/cron.d/backup-cron
 

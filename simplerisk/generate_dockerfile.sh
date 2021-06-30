@@ -88,7 +88,8 @@ RUN sed -i 's/#SSLHonorCipherOrder on/SSLHonorCipherOrder on/g' /etc/apache2/mod
 RUN sed -i 's/ServerTokens OS/ServerTokens Prod/g' /etc/apache2/conf-enabled/security.conf
 RUN sed -i 's/ServerSignature On/ServerSignature Off/g' /etc/apache2/conf-enabled/security.conf
 
-RUN echo %sudo  ALL=NOPASSWD: ALL >> /etc/sudoers
+RUN echo %sudo  ALL=NOPASSWD: ALL >> /etc/sudoers && \\
+    echo "$release" > /tmp/version
 
 EOF
 
@@ -112,7 +113,7 @@ cat << EOF >> "$image/Dockerfile"
 RUN chown -R www-data: /var/www/simplerisk
 
 # Setting up cronjob
-RUN echo "* * * * * /usr/bin/php -f /var/www/simplerisk/cron/cron.php" >> /etc/cron.d/backup-cron && \\
+RUN echo "* * * * * /usr/bin/php -f /var/www/simplerisk/cron/cron.php > /dev/null 2>&1" >> /etc/cron.d/backup-cron && \\
     chmod 0644 /etc/cron.d/backup-cron && \\
     crontab /etc/cron.d/backup-cron
 
