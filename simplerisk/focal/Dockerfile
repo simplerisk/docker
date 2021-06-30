@@ -20,14 +20,12 @@ RUN dpkg-divert --local --rename /usr/bin/ischroot && \
                                                       mysql-client \
                                                       mysql-server \
                                                       php-dev \
-                                                      libmcrypt-dev \
-                                                      php-pear \
                                                       php-ldap \
                                                       php7.4-mbstring \
                                                       php-curl \
                                                       nfs-common \
                                                       chrony \
-                                                      pwgen \
+                                                      cron \
                                                       python-setuptools \
                                                       vim-tiny \
                                                       sendmail \
@@ -36,19 +34,8 @@ RUN dpkg-divert --local --rename /usr/bin/ischroot && \
                                                       supervisor && \
     rm -rf /var/lib/apt/lists
 
-RUN pecl channel-update pecl.php.net
-RUN yes '' | pecl install mcrypt-1.0.3
-RUN sed -i 's/;extension=xsl/;extension=xsl\nextension=mcrypt.so/g' /etc/php/7.4/apache2/php.ini
-RUN sed -i 's/;extension=xsl/;extension=xsl\nextension=mcrypt.so/g' /etc/php/7.4/cli/php.ini
-
 # Create the OpenSSL password
-RUN pwgen -cn 20 1 > /passwords/pass_openssl.txt
-
-# Create the MySQL root password
-RUN pwgen -cn 20 1 > /passwords/pass_mysql_root.txt
-
-# Create the SimpleRisk password
-RUN pwgen -cn 20 1 > /passwords/pass_simplerisk.txt
+RUN < /dev/urandom tr -dc _A-Z-a-z-0-9 | head -c21 > /passwords/pass_openssl.txt
 
 # Install and configure supervisor
 COPY common/supervisord.conf /etc/supervisord.conf
@@ -85,18 +72,21 @@ RUN sed -i 's/#SSLHonorCipherOrder on/SSLHonorCipherOrder on/g' /etc/apache2/mod
 RUN sed -i 's/ServerTokens OS/ServerTokens Prod/g' /etc/apache2/conf-enabled/security.conf
 RUN sed -i 's/ServerSignature On/ServerSignature Off/g' /etc/apache2/conf-enabled/security.conf
 
-RUN echo %sudo  ALL=NOPASSWD: ALL >> /etc/sudoers
+RUN echo %sudo  ALL=NOPASSWD: ALL >> /etc/sudoers && \
+    echo "20210630-001" > /tmp/version
 
 # Download SimpleRisk
 RUN rm -rf /var/www/html && \
-    curl -sL https://github.com/simplerisk/database/raw/master/simplerisk-en-20210305-001.sql > /simplerisk.sql && \
-    curl -sL https://github.com/simplerisk/bundles/raw/master/simplerisk-20210305-001.tgz | tar xz -C /var/www
+    curl -sL https://github.com/simplerisk/database/raw/master/simplerisk-en-20210630-001.sql > /simplerisk.sql && \
+    curl -sL https://github.com/simplerisk/bundles/raw/master/simplerisk-20210630-001.tgz | tar xz -C /var/www
 
 # Permissions
 RUN chown -R www-data: /var/www/simplerisk
 
-# Update the SimpleRisk config file
-RUN cat /var/www/simplerisk/includes/config.php | sed "s/DB_PASSWORD', 'simplerisk/DB_PASSWORD', '$(cat /passwords/pass_simplerisk.txt)/" > /var/www/simplerisk/includes/config.php
+# Setting up cronjob
+RUN echo "* * * * * /usr/bin/php -f /var/www/simplerisk/cron/cron.php > /dev/null 2>&1" >> /etc/cron.d/backup-cron && \
+    chmod 0644 /etc/cron.d/backup-cron && \
+    crontab /etc/cron.d/backup-cron
 
 EXPOSE 80
 EXPOSE 443
