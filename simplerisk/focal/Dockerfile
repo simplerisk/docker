@@ -101,17 +101,9 @@ RUN cat /var/www/simplerisk/includes/config.php | sed "s/DB_PASSWORD', 'simpleri
 EXPOSE 80
 EXPOSE 443
 
-# Initialize the MySQL database
-#ADD ./mysql_setup.sh /mysql_setup.sh
-#RUN chmod 755 /mysql_setup.sh
-#CMD ["/bin/bash", "/mysql_setup.sh"]
-
-# Run Apache
-#CMD ["/usr/sbin/apache2ctl", "-D", "FOREGROUND"]
-
 # Create the start script and set permissions
-COPY common/start.sh /start.sh
-RUN chmod 755 /start.sh
+COPY common/entrypoint.sh /entrypoint.sh
+RUN chmod 755 /entrypoint.sh
 
 # Data to save
 VOLUME /passwords
@@ -121,5 +113,8 @@ VOLUME /var/lib/mysql
 VOLUME /etc/apache2/ssl
 VOLUME /var/www/simplerisk
 
+# Setting up entrypoint
+ENTRYPOINT [ "/entrypoint.sh" ]
+
 # Start Apache and MySQL
-CMD ["/bin/bash", "/start.sh"]
+CMD ["/usr/sbin/apache2ctl", "-D", "FOREGROUND"]
