@@ -61,6 +61,8 @@ RUN service supervisor restart
 # Configure Apache
 RUN sed -i 's/upload_max_filesize = 2M/upload_max_filesize = 5M/g' /usr/local/etc/php/php.ini-production
 RUN echo 'memory_limit = 256M' >> /usr/local/etc/php/conf.d/docker-php-memlimit.ini
+RUN echo 'log_errors = On' >> /usr/local/etc/php/conf.d/docker-php-error_logging.ini
+RUN echo 'error_log = /dev/stderr' >> /usr/local/etc/php/conf.d/docker-php-error_logging.ini
 # Create SSL Certificates for Apache SSL
 RUN echo \$(< /dev/urandom tr -dc _A-Z-a-z-0-9 | head -c\${1:-32}) > /tmp/pass_openssl.txt
 RUN mkdir -p /etc/apache2/ssl/ssl.crt /etc/apache2/ssl/ssl.key
@@ -83,7 +85,12 @@ EOF
 
 [ ! $release == "testing" ] && echo "    curl -sL https://github.com/simplerisk/bundles/raw/master/simplerisk-$release.tgz | tar xz -C /var/www && \\" >> "php$image/Dockerfile" || true
 echo "    echo $release > /tmp/version" >> "php$image/Dockerfile"
-[ $release == "testing" ] && echo "COPY ./simplerisk/ /var/www/simplerisk" >> "php$image/Dockerfile" || true
+if [ $release == "testing" ]; then
+    cat << EOF >> "php$image/Dockerfile"
+COPY ./simplerisk/ /var/www/simplerisk
+COPY common/simplerisk.sql /var/www/simplerisk/simplerisk.sql
+EOF
+fi
 
 cat << EOF >> "php$image/Dockerfile"
 
