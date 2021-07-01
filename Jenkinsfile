@@ -11,7 +11,7 @@ pipeline {
 				}
 			}
 		}
-		stage ('Build') {
+		stage ('Build simplerisk/simplerisk') {
 			parallel {
 				stage ('Build SimpleRisk Ubuntu 18.04') {
 					steps {
@@ -29,6 +29,18 @@ pipeline {
 						"""
 					}
 				}
+			}
+			post {
+				failure {
+					node("jenkins") {
+						terminateInstance("${instance_id}")
+					}
+					error("Stopping full build")
+				}
+			}
+		}
+		stage ('Build simplerisk/simplerisk-minimal') {
+			parallel {
 				stage ('Build SimpleRisk Minimal PHP 7.2') {
 					steps {
 						sh """
