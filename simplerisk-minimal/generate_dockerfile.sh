@@ -28,6 +28,7 @@ RUN apt-get update && \\
                        libcap2-bin \\
                        libcurl4-gnutls-dev \\
                        supervisor \\
+                       cron \\
 EOF
 [[ $image == "7.4" ]] && echo "                       libonig-dev \\" >> "php$image/Dockerfile"
 cat << EOF >> "php$image/Dockerfile"
@@ -43,6 +44,7 @@ RUN docker-php-ext-configure ldap --with-libdir=lib/x86_64-linux-gnu && \\
                            curl
 # Setting up setcap for port mapping without root and removing packages
 RUN setcap CAP_NET_BIND_SERVICE=+eip /usr/sbin/apache2 && \\
+    chmod gu+s /usr/sbin/cron && \\
     apt-get -y remove libcap2-bin && \\
     apt-get -y autoremove && \\
     apt-get -y purge
@@ -100,13 +102,18 @@ RUN chown -R simplerisk:www-data /var/www/simplerisk /etc/apache2 /var/run/ /var
     chmod -R 770 /var/www/simplerisk /etc/apache2 /var/run/ /var/log/apache2 && \\
     chmod 755 /entrypoint.sh /etc/apache2/foreground.sh
 
+# Setting up cronjob
+RUN echo "* * * * * /usr/local/bin/php -f /var/www/simplerisk/cron/cron.php > /dev/null 2>&1" >> /etc/cron.d/backup-cron && \\
+    chmod 0644 /etc/cron.d/backup-cron && \\
+    crontab /etc/cron.d/backup-cron
+
 # Data to save
 VOLUME /var/log/apache2
 VOLUME /etc/apache2/ssl
 VOLUME /var/www/simplerisk
 
-# Using simplerisk user from here 
-USER simplerisk 
+# Using simplerisk user from here
+USER simplerisk
 
 # Setting up entrypoint
 ENTRYPOINT [ "/entrypoint.sh" ]

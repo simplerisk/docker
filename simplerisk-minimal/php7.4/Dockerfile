@@ -14,6 +14,7 @@ RUN apt-get update && \
                        libcap2-bin \
                        libcurl4-gnutls-dev \
                        supervisor \
+                       cron \
                        libonig-dev \
                        mariadb-client && \
     rm -rf /var/lib/apt/lists/*
@@ -27,6 +28,7 @@ RUN docker-php-ext-configure ldap --with-libdir=lib/x86_64-linux-gnu && \
                            curl
 # Setting up setcap for port mapping without root and removing packages
 RUN setcap CAP_NET_BIND_SERVICE=+eip /usr/sbin/apache2 && \
+    chmod gu+s /usr/sbin/cron && \
     apt-get -y remove libcap2-bin && \
     apt-get -y autoremove && \
     apt-get -y purge
@@ -44,6 +46,9 @@ RUN service supervisor restart
 
 # Configure Apache
 RUN sed -i 's/upload_max_filesize = 2M/upload_max_filesize = 5M/g' /usr/local/etc/php/php.ini-production
+RUN echo 'memory_limit = 256M' >> /usr/local/etc/php/conf.d/docker-php-memlimit.ini
+RUN echo 'log_errors = On' >> /usr/local/etc/php/conf.d/docker-php-error_logging.ini
+RUN echo 'error_log = /dev/stderr' >> /usr/local/etc/php/conf.d/docker-php-error_logging.ini
 # Create SSL Certificates for Apache SSL
 RUN echo $(< /dev/urandom tr -dc _A-Z-a-z-0-9 | head -c${1:-32}) > /tmp/pass_openssl.txt
 RUN mkdir -p /etc/apache2/ssl/ssl.crt /etc/apache2/ssl/ssl.key
@@ -62,8 +67,8 @@ RUN sed -i 's/#ServerSignature On/ServerSignature Off/g' /etc/apache2/conf-enabl
 
 # Download and extract SimpleRisk, plus saving release version for database reference
 RUN rm -rf /var/www/html && \
-    curl -sL https://github.com/simplerisk/bundles/raw/master/simplerisk-20210305-001.tgz | tar xz -C /var/www && \
-    echo 20210305-001 > /tmp/version
+    curl -sL https://github.com/simplerisk/bundles/raw/master/simplerisk-20210630-001.tgz | tar xz -C /var/www && \
+    echo 20210630-001 > /tmp/version
 
 # Creating Simplerisk user on www-data group and setting up ownerships
 RUN useradd -G www-data simplerisk
@@ -71,13 +76,18 @@ RUN chown -R simplerisk:www-data /var/www/simplerisk /etc/apache2 /var/run/ /var
     chmod -R 770 /var/www/simplerisk /etc/apache2 /var/run/ /var/log/apache2 && \
     chmod 755 /entrypoint.sh /etc/apache2/foreground.sh
 
+# Setting up cronjob
+RUN echo "* * * * * /usr/local/bin/php -f /var/www/simplerisk/cron/cron.php > /dev/null 2>&1" >> /etc/cron.d/backup-cron && \
+    chmod 0644 /etc/cron.d/backup-cron && \
+    crontab /etc/cron.d/backup-cron
+
 # Data to save
 VOLUME /var/log/apache2
 VOLUME /etc/apache2/ssl
 VOLUME /var/www/simplerisk
 
-# Using simplerisk user from here 
-USER simplerisk 
+# Using simplerisk user from here
+USER simplerisk
 
 # Setting up entrypoint
 ENTRYPOINT [ "/entrypoint.sh" ]
