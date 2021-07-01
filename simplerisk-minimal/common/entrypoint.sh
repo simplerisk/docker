@@ -113,6 +113,7 @@ _main() {
     # shellcheck disable=SC2015
     [ -n "${FIRST_TIME_SETUP:-}" ] && db_setup || true
     unset_variables
+    service cron start
     exec "$@"
 }
 
