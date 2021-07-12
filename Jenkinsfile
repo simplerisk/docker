@@ -11,23 +11,15 @@ pipeline {
 				}
 			}
 		}
-		stage ('Build simplerisk/simplerisk') {
-			parallel {
-				stage ('Build SimpleRisk Ubuntu 18.04') {
-					steps {
-						sh """
-							sudo docker build -t simplerisk/simplerisk -f simplerisk/bionic/Dockerfile simplerisk/
-							sudo docker build -t simplerisk/simplerisk:$current_version -f simplerisk/bionic/Dockerfile simplerisk/
-							sudo docker build -t simplerisk/simplerisk:$current_version-bionic -f simplerisk/bionic/Dockerfile simplerisk/
-						"""
-					}
-				}
-				stage ('Build SimpleRisk Ubuntu 20.04') {
-					steps {
-						sh """
-							sudo docker build -t simplerisk/simplerisk:$current_version-focal -f simplerisk/focal/Dockerfile simplerisk/
-						"""
-					}
+		stage ('Log into Docker Hub') {
+			steps {
+				withCredentials([usernamePassword(credentialsId: 'cb153fa6-2299-4bdb-9ef0-9c3e6382c87a', passwordVariable: 'docker_pass', usernameVariable: 'docker_user')]) {
+					sh '''
+						set +x
+						echo $docker_pass >> /tmp/password.txt
+						cat /tmp/password.txt | sudo docker login --username $docker_user --password-stdin
+						rm /tmp/password.txt
+					'''
 				}
 			}
 			post {
@@ -39,53 +31,35 @@ pipeline {
 				}
 			}
 		}
-		stage ('Build simplerisk/simplerisk-minimal') {
-			parallel {
-				stage ('Build SimpleRisk Minimal PHP 7.2') {
-					steps {
-						sh """
-							sudo docker build -t simplerisk/simplerisk-minimal -f simplerisk-minimal/php7.2/Dockerfile simplerisk-minimal/
-							sudo docker build -t simplerisk/simplerisk-minimal:$current_version -f simplerisk-minimal/php7.2/Dockerfile simplerisk-minimal/
-							sudo docker build -t simplerisk/simplerisk-minimal:$current_version-php72 -f simplerisk-minimal/php7.2/Dockerfile simplerisk-minimal/
-						"""
-					}
-				}
-				stage ('Build SimpleRisk Minimal PHP 7.4') {
-					steps {
-						sh """
-							sudo docker build -t simplerisk/simplerisk-minimal:$current_version-php74 -f simplerisk-minimal/php7.4/Dockerfile simplerisk-minimal/
-						"""
-					}
-				}
-			}
-			post {
-				failure {
-					node("jenkins") {
-						terminateInstance("${instance_id}")
-					}
-					error("Stopping full build")
-				}
-			}
-		}
-		stage ('Docker Hub Images Update') {
-			when {
-				expression {
-					env.BRANCH_NAME == "master"
-				}
-			}
+		stage ('simplerisk/simplerisk') {
 			stages {
-				stage ('Log into Docker Hub') {
-					steps {
-						withCredentials([usernamePassword(credentialsId: 'cb153fa6-2299-4bdb-9ef0-9c3e6382c87a', passwordVariable: 'docker_pass', usernameVariable: 'docker_user')]) {
-							sh '''
-								set +x
-								echo $docker_pass >> /tmp/password.txt
-								cat /tmp/password.txt | sudo docker login --username $docker_user --password-stdin
-								rm /tmp/password.txt
-							'''
+				stage ('Build') {
+					parallel {
+						stage ('SimpleRisk Ubuntu 18.04') {
+							steps {
+								sh """
+									sudo docker build -t simplerisk/simplerisk -f simplerisk/bionic/Dockerfile simplerisk/
+									sudo docker build -t simplerisk/simplerisk:$current_version -f simplerisk/bionic/Dockerfile simplerisk/
+									sudo docker build -t simplerisk/simplerisk:$current_version-bionic -f simplerisk/bionic/Dockerfile simplerisk/
+								"""
+							}
+						}
+						stage ('SimpleRisk Ubuntu 20.04') {
+							steps {
+								sh """
+									sudo docker build -t simplerisk/simplerisk:$current_version-focal -f simplerisk/focal/Dockerfile simplerisk/
+								"""
+							}
 						}
 					}
 					post {
+						success {
+							if (env.BRANCH_NAME != 'master') {
+								node("jenkins") {
+									terminateInstance("${instance_id}")
+								}
+							}
+						}
 						failure {
 							node("jenkins") {
 								terminateInstance("${instance_id}")
@@ -94,7 +68,12 @@ pipeline {
 						}
 					}
 				}
-				stage ('Push images to Docker Hub') {
+				stage ('Push') {
+					when {
+						expression {
+							env.BRANCH_NAME == "master"
+						}
+					}
 					parallel {
 						stage ('Push SimpleRisk latest') {
 							steps {
@@ -116,6 +95,65 @@ pipeline {
 								sh "sudo docker push simplerisk/simplerisk:$current_version-focal"
 							}
 						}
+
+					}
+					post {
+						always {
+							node("jenkins") {
+								terminateInstance("${instance_id}")
+							}
+						}
+						failure {
+							error("Stopping full build")
+						}
+					}
+				}
+			}
+		}
+		stage ('simplerisk/simplerisk-minimal') {
+			stages {
+				stage ('Build') {
+					parallel {
+						stage ('Build SimpleRisk Minimal PHP 7.2') {
+							steps {
+								sh """
+									sudo docker build -t simplerisk/simplerisk-minimal -f simplerisk-minimal/php7.2/Dockerfile simplerisk-minimal/
+									sudo docker build -t simplerisk/simplerisk-minimal:$current_version -f simplerisk-minimal/php7.2/Dockerfile simplerisk-minimal/
+									sudo docker build -t simplerisk/simplerisk-minimal:$current_version-php72 -f simplerisk-minimal/php7.2/Dockerfile simplerisk-minimal/
+								"""
+							}
+						}
+						stage ('Build SimpleRisk Minimal PHP 7.4') {
+							steps {
+								sh """
+									sudo docker build -t simplerisk/simplerisk-minimal:$current_version-php74 -f simplerisk-minimal/php7.4/Dockerfile simplerisk-minimal/
+								"""
+							}
+						}
+					}
+					post {
+						success {
+							if (env.BRANCH_NAME != 'master') {
+								node("jenkins") {
+									terminateInstance("${instance_id}")
+								}
+							}
+						}
+						failure {
+							node("jenkins") {
+								terminateInstance("${instance_id}")
+							}
+							error("Stopping full build")
+						}
+					}
+				}
+				stage ('Push') {
+					when {
+						expression {
+							env.BRANCH_NAME == "master"
+						}
+					}
+					parallel {
 						stage ('Push SimpleRisk Minimal latest') {
 							steps {
 								sh "sudo docker push simplerisk/simplerisk-minimal"
@@ -148,7 +186,6 @@ pipeline {
 						}
 					}
 				}
-
 			}
 		}
 	}
@@ -160,6 +197,20 @@ def getEC2Metadata(String attribute){
 
 def getOfficialVersion(String updatesDomain="updates-test") {
 	return sh(script: "echo \$(curl -sL https://$updatesDomain\\.simplerisk.com/Current_Version.xml | grep -oP '<appversion>(.*)</appversion>' | cut -d '>' -f 2 | cut -d '<' -f 1)", returnStdout: true).trim()
+}
+
+void sendEmail(String message) {
+	mail from: 'jenkins@simplerisk.com', to: "$env.GIT_AUTHOR_EMAIL", bcc: '',  cc: 'pedro@simplerisk.com', replyTo: '',
+             subject: """${env.JOB_NAME} (Branch ${env.BRANCH_NAME}) - Build # ${env.BUILD_NUMBER} - ${currentBuild.currentResult}""",
+             body: """Check console output at ${env.BUILD_URL} to view the results (The Blue Ocean option will provide the detailed flow of execution)."""
+}
+
+void sendErrorEmail() {
+	sendEmail("""Build failed at stage \"${env.STAGE_NAME}\". Check console output at ${env.BUILD_URL} to view the results (The Blue Ocean option will provide the detailed execution flow).""")
+}
+
+void sendSuccessEmail() {
+	sendEmail("""Check console output at ${env.BUILD_URL} to view the results (The Blue Ocean option will provide the detailed execution flow).""")
 }
 
 void terminateInstance(String instanceId, String region="us-east-1") {
