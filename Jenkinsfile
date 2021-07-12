@@ -27,7 +27,7 @@ pipeline {
 					node("jenkins") {
 						terminateInstance("${instance_id}")
 					}
-					error("Stopping full build")
+					sendErrorEmail()
 				}
 			}
 		}
@@ -64,7 +64,7 @@ pipeline {
 							node("jenkins") {
 								terminateInstance("${instance_id}")
 							}
-							error("Stopping full build")
+							sendErrorEmail()
 						}
 					}
 				}
@@ -104,7 +104,7 @@ pipeline {
 							}
 						}
 						failure {
-							error("Stopping full build")
+							sendErrorEmail()
 						}
 					}
 				}
@@ -143,7 +143,7 @@ pipeline {
 							node("jenkins") {
 								terminateInstance("${instance_id}")
 							}
-							error("Stopping full build")
+							sendErrorEmail()
 						}
 					}
 				}
@@ -182,11 +182,16 @@ pipeline {
 							}
 						}
 						failure {
-							error("Stopping full build")
+							sendErrorEmail()
 						}
 					}
 				}
 			}
+		}
+	}
+	post {
+		success {
+			sendSuccessEmail()
 		}
 	}
 }
