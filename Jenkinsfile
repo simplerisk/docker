@@ -37,8 +37,7 @@ pipeline {
 							script {
 								if (env.BRANCH_NAME != 'master') {
 									node("jenkins") {
-										terminateInstance("${instance_id}")
-										sleep 20
+										deleteImages("simplerisk")
 									}
 								}
 							}
@@ -74,7 +73,7 @@ pipeline {
 									node("jenkins") {
 										terminateinstance("${instance_id}")
 									}
-									senderroremail()
+									sendErrorEmail()
 								}
 							}
 						}
@@ -102,23 +101,18 @@ pipeline {
 								}
 							}
 							post {
+								always {
+									node("jenkins") {
+										deleteImages("simplerisk")
+									}
+								}
 								failure {
 									node("jenkins") {
 										terminateinstance("${instance_id}")
 									}
-									senderroremail()
+									sendErrorEmail()
 								}
 							}
-						}
-					}
-					post {
-						always {
-							node("jenkins") {
-								terminateInstance("${instance_id}")
-							}
-						}
-						failure {
-							sendErrorEmail()
 						}
 					}
 				}
@@ -150,8 +144,7 @@ pipeline {
 							script {
 								if (env.BRANCH_NAME != 'master') {
 									node("jenkins") {
-										terminateInstance("${instance_id}")
-										sleep 20
+										deleteImages("simplerisk-minimal")
 									}
 								}
 							}
@@ -215,25 +208,10 @@ pipeline {
 								}
 							}
 							post {
-								always {
-									node("jenkins") {
-										terminateInstance("${instance_id}")
-									}
-								}
 								failure {
 									sendErrorEmail()
 								}
 							}
-						}
-					}
-					post {
-						always {
-							node("jenkins") {
-								terminateInstance("${instance_id}")
-							}
-						}
-						failure {
-							sendErrorEmail()
 						}
 					}
 				}
@@ -255,6 +233,15 @@ def getOfficialVersion(String updatesDomain="updates-test") {
 	return sh(script: "echo \$(curl -sL https://$updatesDomain\\.simplerisk.com/Current_Version.xml | grep -oP '<appversion>(.*)</appversion>' | cut -d '>' -f 2 | cut -d '<' -f 1)", returnStdout: true).trim()
 }
 
+void deleteImages(String images){
+	official_version = getOfficialVersion("updates")
+	if (images == "simplerisk") {
+		sh "sudo docker rmi simplerisk/simplerisk simplerisk/simplerisk:$official_version simplerisk/simplerisk:$official_version-bionic simplerisk/simplerisk:$official_version-focal -f"
+	} else {
+		sh "sudo docker rmi simplerisk/simplerisk-minimal simplerisk/simplerisk-minimal:$official_version simplerisk/simplerisk-minimal:$official_version-php72 simplerisk/simplerisk-minimal:$official_version-php74 -f"
+	}
+}
+
 void sendEmail(String message) {
 	mail from: 'jenkins@simplerisk.com', to: "$env.GIT_AUTHOR_EMAIL", bcc: '',  cc: 'pedro@simplerisk.com', replyTo: '',
              subject: """${env.JOB_NAME} (Branch ${env.BRANCH_NAME}) - Build # ${env.BUILD_NUMBER} - ${currentBuild.currentResult}""",
@@ -262,7 +249,7 @@ void sendEmail(String message) {
 }
 
 void sendErrorEmail() {
-	sendEmail("""Build failed at stage \"${env.STAGE_NAME}\". Check console output at ${env.BUILD_URL} to view the results (The Blue Ocean option will provide the detailed execution flow).""")
+	sendEmail("""Job failed at stage \"${env.STAGE_NAME}\". Check console output at ${env.BUILD_URL} to view the results (The Blue Ocean option will provide the detailed execution flow).""")
 }
 
 void sendSuccessEmail() {
