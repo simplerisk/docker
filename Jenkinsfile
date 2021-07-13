@@ -11,26 +11,6 @@ pipeline {
 				}
 			}
 		}
-		stage ('Log into Docker Hub') {
-			steps {
-				withCredentials([usernamePassword(credentialsId: 'cb153fa6-2299-4bdb-9ef0-9c3e6382c87a', passwordVariable: 'docker_pass', usernameVariable: 'docker_user')]) {
-					sh '''
-						set +x
-						echo $docker_pass >> /tmp/password.txt
-						cat /tmp/password.txt | sudo docker login --username $docker_user --password-stdin
-						rm /tmp/password.txt
-					'''
-				}
-			}
-			post {
-				failure {
-					node("jenkins") {
-						terminateInstance("${instance_id}")
-					}
-					sendErrorEmail()
-				}
-			}
-		}
 		stage ('simplerisk/simplerisk') {
 			stages {
 				stage ('Build') {
@@ -71,34 +51,65 @@ pipeline {
 						}
 					}
 				}
-				stage ('Push') {
+				stage ('Push to Docker Hub') {
 					when {
 						expression {
 							env.BRANCH_NAME == "master"
 						}
 					}
-					parallel {
-						stage ('Push SimpleRisk latest') {
+					stages {
+						stage ('Log into Docker Hub') {
 							steps {
-								sh "sudo docker push simplerisk/simplerisk"
+								withcredentials([usernamepassword(credentialsid: 'cb153fa6-2299-4bdb-9ef0-9c3e6382c87a', passwordvariable: 'docker_pass', usernamevariable: 'docker_user')]) {
+									sh '''
+										set +x
+										echo $docker_pass >> /tmp/password.txt
+										cat /tmp/password.txt | sudo docker login --username $docker_user --password-stdin
+										rm /tmp/password.txt
+									'''
+								}
+							}
+							post {
+								failure {
+									node("jenkins") {
+										terminateinstance("${instance_id}")
+									}
+									senderroremail()
+								}
 							}
 						}
-						stage ('Push SimpleRisk current version') {
-							steps {
-								sh "sudo docker push simplerisk/simplerisk:$current_version"
+						stage ('Push') {
+							parallel {
+								stage ('Push SimpleRisk latest') {
+									steps {
+										sh "sudo docker push simplerisk/simplerisk"
+									}
+								}
+								stage ('Push SimpleRisk current version') {
+									steps {
+										sh "sudo docker push simplerisk/simplerisk:$current_version"
+									}
+								}
+								stage ('Push SimpleRisk current version for Bionic') {
+									steps {
+										sh "sudo docker push simplerisk/simplerisk:$current_version-bionic"
+									}
+								}
+								stage ('Push SimpleRisk current version for Focal') {
+									steps {
+										sh "sudo docker push simplerisk/simplerisk:$current_version-focal"
+									}
+								}
+							}
+							post {
+								failure {
+									node("jenkins") {
+										terminateinstance("${instance_id}")
+									}
+									senderroremail()
+								}
 							}
 						}
-						stage ('Push SimpleRisk current version for Bionic') {
-							steps {
-								sh "sudo docker push simplerisk/simplerisk:$current_version-bionic"
-							}
-						}
-						stage ('Push SimpleRisk current version for Focal') {
-							steps {
-								sh "sudo docker push simplerisk/simplerisk:$current_version-focal"
-							}
-						}
-
 					}
 					post {
 						always {
@@ -153,31 +164,65 @@ pipeline {
 						}
 					}
 				}
-				stage ('Push') {
+				stage ('Push to Docker Hub') {
 					when {
 						expression {
 							env.BRANCH_NAME == "master"
 						}
 					}
-					parallel {
-						stage ('Push SimpleRisk Minimal latest') {
+					stages {
+						stage ('Log into Docker Hub') {
 							steps {
-								sh "sudo docker push simplerisk/simplerisk-minimal"
+								withcredentials([usernamepassword(credentialsid: 'cb153fa6-2299-4bdb-9ef0-9c3e6382c87a', passwordvariable: 'docker_pass', usernamevariable: 'docker_user')]) {
+									sh '''
+										set +x
+										echo $docker_pass >> /tmp/password.txt
+										cat /tmp/password.txt | sudo docker login --username $docker_user --password-stdin
+										rm /tmp/password.txt
+									'''
+								}
+							}
+							post {
+								failure {
+									node("jenkins") {
+										terminateinstance("${instance_id}")
+									}
+									sendErrorEmail()
+								}
 							}
 						}
-						stage ('Push SimpleRisk Minimal current version') {
-							steps {
-								sh "sudo docker push simplerisk/simplerisk-minimal:$current_version"
+						stage ('Push') {
+							parallel {
+								stage ('Push SimpleRisk Minimal latest') {
+									steps {
+										sh "sudo docker push simplerisk/simplerisk-minimal"
+									}
+								}
+								stage ('Push SimpleRisk Minimal current version') {
+									steps {
+										sh "sudo docker push simplerisk/simplerisk-minimal:$current_version"
+									}
+								}
+								stage ('Push SimpleRisk Minimal current version for PHP 7.2') {
+									steps {
+										sh "sudo docker push simplerisk/simplerisk-minimal:$current_version-php72"
+									}
+								}
+								stage ('Push SimpleRisk Minimal current version for PHP 7.4') {
+									steps {
+										sh "sudo docker push simplerisk/simplerisk-minimal:$current_version-php74"
+									}
+								}
 							}
-						}
-						stage ('Push SimpleRisk Minimal current version for PHP 7.2') {
-							steps {
-								sh "sudo docker push simplerisk/simplerisk-minimal:$current_version-php72"
-							}
-						}
-						stage ('Push SimpleRisk Minimal current version for PHP 7.4') {
-							steps {
-								sh "sudo docker push simplerisk/simplerisk-minimal:$current_version-php74"
+							post {
+								always {
+									node("jenkins") {
+										terminateInstance("${instance_id}")
+									}
+								}
+								failure {
+									sendErrorEmail()
+								}
 							}
 						}
 					}
