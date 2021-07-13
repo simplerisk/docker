@@ -58,6 +58,7 @@ pipeline {
 								if (env.BRANCH_NAME != 'master') {
 									node("jenkins") {
 										terminateInstance("${instance_id}")
+										sleep 20
 									}
 								}
 							}
@@ -139,6 +140,7 @@ pipeline {
 								if (env.BRANCH_NAME != 'master') {
 									node("jenkins") {
 										terminateInstance("${instance_id}")
+										sleep 20
 									}
 								}
 							}
@@ -211,7 +213,7 @@ def getOfficialVersion(String updatesDomain="updates-test") {
 void sendEmail(String message) {
 	mail from: 'jenkins@simplerisk.com', to: "$env.GIT_AUTHOR_EMAIL", bcc: '',  cc: 'pedro@simplerisk.com', replyTo: '',
              subject: """${env.JOB_NAME} (Branch ${env.BRANCH_NAME}) - Build # ${env.BUILD_NUMBER} - ${currentBuild.currentResult}""",
-             body: """Check console output at ${env.BUILD_URL} to view the results (The Blue Ocean option will provide the detailed flow of execution)."""
+             body: "$message"
 }
 
 void sendErrorEmail() {
