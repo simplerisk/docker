@@ -1,19 +1,29 @@
 pipeline {
 	agent none
 	stages {
-		stage ('Initializing Variables') {
+		stage ('Initializing Common Variables') {
 			agent {
-				label 'buildtestmed'
+				// Using ubuntu20 to avoid using master node
+				label 'ubuntu20'
 			}
 			steps {
 				script {
 					current_version = getOfficialVersion("updates")
-					instance_id = getEC2Metadata("instance-id")
 				}
 			}
 		}
 		stage ('simplerisk/simplerisk') {
 			stages {
+				stage ('Initialize Variables') {
+					agent {
+						label 'buildtestmed'
+					}
+					steps {
+						script {
+							instance_id = getEC2Metadata("instance-id")
+						}
+					}
+				}
 				stage ('Build') {
 					parallel {
 						stage ('SimpleRisk Ubuntu 18.04') {
@@ -139,6 +149,16 @@ pipeline {
 		}
 		stage ('simplerisk/simplerisk-minimal') {
 			stages {
+				stage ('Initialize Variables') {
+					agent {
+						label 'buildtestmed'
+					}
+					steps {
+						script {
+							instance_id = getEC2Metadata("instance-id")
+						}
+					}
+				}
 				stage ('Build') {
 					parallel {
 						stage ('Build SimpleRisk Minimal PHP 7.2') {
@@ -248,6 +268,11 @@ pipeline {
 								}
 							}
 							post {
+								always {
+									node("jenkins") {
+										terminateinstance("${instance_id}")
+									}
+								}
 								failure {
 									sendErrorEmail()
 								}
