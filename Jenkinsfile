@@ -1,9 +1,10 @@
 pipeline {
-	agent {
-		label 'buildtestmed'
-	}
+	agent none
 	stages {
 		stage ('Initializing Variables') {
+			agent {
+				label 'buildtestmed'
+			}
 			steps {
 				script {
 					current_version = getOfficialVersion("updates")
@@ -16,6 +17,9 @@ pipeline {
 				stage ('Build') {
 					parallel {
 						stage ('SimpleRisk Ubuntu 18.04') {
+							agent {
+								label 'buildtestmed'
+							}
 							steps {
 								sh """
 									sudo docker build -t simplerisk/simplerisk -f simplerisk/bionic/Dockerfile simplerisk/
@@ -25,6 +29,9 @@ pipeline {
 							}
 						}
 						stage ('SimpleRisk Ubuntu 20.04') {
+							agent {
+								label 'buildtestmed'
+							}
 							steps {
 								sh """
 									sudo docker build -t simplerisk/simplerisk:$current_version-focal -f simplerisk/focal/Dockerfile simplerisk/
@@ -37,7 +44,7 @@ pipeline {
 							script {
 								if (env.BRANCH_NAME != 'master') {
 									node("jenkins") {
-										deleteImages("simplerisk")
+										terminateInstance("${instance_id}")
 									}
 								}
 							}
@@ -58,6 +65,9 @@ pipeline {
 					}
 					stages {
 						stage ('Log into Docker Hub') {
+							agent {
+								label 'buildtestmed'
+							}
 							steps {
 								withcredentials([usernamepassword(credentialsid: 'cb153fa6-2299-4bdb-9ef0-9c3e6382c87a', passwordvariable: 'docker_pass', usernamevariable: 'docker_user')]) {
 									sh '''
@@ -80,21 +90,33 @@ pipeline {
 						stage ('Push') {
 							parallel {
 								stage ('Push SimpleRisk latest') {
+									agent {
+										label 'buildtestmed'
+									}
 									steps {
 										sh "sudo docker push simplerisk/simplerisk"
 									}
 								}
 								stage ('Push SimpleRisk current version') {
+									agent {
+										label 'buildtestmed'
+									}
 									steps {
 										sh "sudo docker push simplerisk/simplerisk:$current_version"
 									}
 								}
 								stage ('Push SimpleRisk current version for Bionic') {
+									agent {
+										label 'buildtestmed'
+									}
 									steps {
 										sh "sudo docker push simplerisk/simplerisk:$current_version-bionic"
 									}
 								}
 								stage ('Push SimpleRisk current version for Focal') {
+									agent {
+										label 'buildtestmed'
+									}
 									steps {
 										sh "sudo docker push simplerisk/simplerisk:$current_version-focal"
 									}
@@ -103,13 +125,10 @@ pipeline {
 							post {
 								always {
 									node("jenkins") {
-										deleteImages("simplerisk")
+										terminateinstance("${instance_id}")
 									}
 								}
 								failure {
-									node("jenkins") {
-										terminateinstance("${instance_id}")
-									}
 									sendErrorEmail()
 								}
 							}
@@ -123,6 +142,9 @@ pipeline {
 				stage ('Build') {
 					parallel {
 						stage ('Build SimpleRisk Minimal PHP 7.2') {
+							agent {
+								label 'buildtestmed'
+							}
 							steps {
 								sh """
 									sudo docker build -t simplerisk/simplerisk-minimal -f simplerisk-minimal/php7.2/Dockerfile simplerisk-minimal/
@@ -132,6 +154,9 @@ pipeline {
 							}
 						}
 						stage ('Build SimpleRisk Minimal PHP 7.4') {
+							agent {
+								label 'buildtestmed'
+							}
 							steps {
 								sh """
 									sudo docker build -t simplerisk/simplerisk-minimal:$current_version-php74 -f simplerisk-minimal/php7.4/Dockerfile simplerisk-minimal/
@@ -144,7 +169,7 @@ pipeline {
 							script {
 								if (env.BRANCH_NAME != 'master') {
 									node("jenkins") {
-										deleteImages("simplerisk-minimal")
+										terminateInstance("${instance_id}")
 									}
 								}
 							}
@@ -165,6 +190,9 @@ pipeline {
 					}
 					stages {
 						stage ('Log into Docker Hub') {
+							agent {
+								label 'buildtestmed'
+							}
 							steps {
 								withcredentials([usernamepassword(credentialsid: 'cb153fa6-2299-4bdb-9ef0-9c3e6382c87a', passwordvariable: 'docker_pass', usernamevariable: 'docker_user')]) {
 									sh '''
@@ -187,21 +215,33 @@ pipeline {
 						stage ('Push') {
 							parallel {
 								stage ('Push SimpleRisk Minimal latest') {
+									agent {
+										label 'buildtestmed'
+									}
 									steps {
 										sh "sudo docker push simplerisk/simplerisk-minimal"
 									}
 								}
 								stage ('Push SimpleRisk Minimal current version') {
+									agent {
+										label 'buildtestmed'
+									}
 									steps {
 										sh "sudo docker push simplerisk/simplerisk-minimal:$current_version"
 									}
 								}
 								stage ('Push SimpleRisk Minimal current version for PHP 7.2') {
+									agent {
+										label 'buildtestmed'
+									}
 									steps {
 										sh "sudo docker push simplerisk/simplerisk-minimal:$current_version-php72"
 									}
 								}
 								stage ('Push SimpleRisk Minimal current version for PHP 7.4') {
+									agent {
+										label 'buildtestmed'
+									}
 									steps {
 										sh "sudo docker push simplerisk/simplerisk-minimal:$current_version-php74"
 									}
@@ -231,15 +271,6 @@ def getEC2Metadata(String attribute){
 
 def getOfficialVersion(String updatesDomain="updates-test") {
 	return sh(script: "echo \$(curl -sL https://$updatesDomain\\.simplerisk.com/Current_Version.xml | grep -oP '<appversion>(.*)</appversion>' | cut -d '>' -f 2 | cut -d '<' -f 1)", returnStdout: true).trim()
-}
-
-void deleteImages(String images){
-	official_version = getOfficialVersion("updates")
-	if (images == "simplerisk") {
-		sh "sudo docker rmi simplerisk/simplerisk simplerisk/simplerisk:$official_version simplerisk/simplerisk:$official_version-bionic simplerisk/simplerisk:$official_version-focal -f"
-	} else {
-		sh "sudo docker rmi simplerisk/simplerisk-minimal simplerisk/simplerisk-minimal:$official_version simplerisk/simplerisk-minimal:$official_version-php72 simplerisk/simplerisk-minimal:$official_version-php74 -f"
-	}
 }
 
 void sendEmail(String message) {
