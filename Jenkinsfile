@@ -54,9 +54,11 @@ pipeline {
 					}
 					post {
 						success {
-							if (env.BRANCH_NAME != 'master') {
-								node("jenkins") {
-									terminateInstance("${instance_id}")
+							script {
+								if (env.BRANCH_NAME != 'master') {
+									node("jenkins") {
+										terminateInstance("${instance_id}")
+									}
 								}
 							}
 						}
@@ -133,9 +135,11 @@ pipeline {
 					}
 					post {
 						success {
-							if (env.BRANCH_NAME != 'master') {
-								node("jenkins") {
-									terminateInstance("${instance_id}")
+							script {
+								if (env.BRANCH_NAME != 'master') {
+									node("jenkins") {
+										terminateInstance("${instance_id}")
+									}
 								}
 							}
 						}
