@@ -338,7 +338,7 @@ def getOfficialVersion(String updatesDomain="updates-test") {
 }
 
 void sendEmail(String message) {
-	mail from: 'jenkins@simplerisk.com', to: "$env.GIT_AUTHOR_EMAIL", bcc: '',  cc: 'pedro@simplerisk.com', replyTo: '',
+	mail from: 'jenkins@simplerisk.com', to: """${env.GIT_COMITTER_EMAIL}""", bcc: '',  cc: 'pedro@simplerisk.com', replyTo: '',
              subject: """${env.JOB_NAME} (Branch ${env.BRANCH_NAME}) - Build # ${env.BUILD_NUMBER} - ${currentBuild.currentResult}""",
              body: "$message"
 }
