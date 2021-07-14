@@ -101,7 +101,7 @@ pipeline {
 							post {
 								failure {
 									node("jenkins") {
-										terminateinstance("${instance_id}")
+										terminateInstance("${instance_id}")
 									}
 									sendErrorEmail("${main_stage}/${env.STAGE_NAME}")
 								}
@@ -157,7 +157,7 @@ pipeline {
 							post {
 								always {
 									node("jenkins") {
-										terminateinstance("${instance_id}")
+										terminateInstance("${instance_id}")
 									}
 								}
 								failure {
@@ -253,7 +253,7 @@ pipeline {
 							post {
 								failure {
 									node("jenkins") {
-										terminateinstance("${instance_id}")
+										terminateInstance("${instance_id}")
 									}
 									sendErrorEmail("${main_stage}/${env.STAGE_NAME}")
 								}
@@ -309,7 +309,7 @@ pipeline {
 							post {
 								always {
 									node("jenkins") {
-										terminateinstance("${instance_id}")
+										terminateInstance("${instance_id}")
 									}
 								}
 								failure {
