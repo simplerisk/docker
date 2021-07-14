@@ -11,6 +11,11 @@ pipeline {
 					current_version = getOfficialVersion("updates")
 				}
 			}
+			post {
+				failure {
+					sendErrorEmail("${env.STAGE_NAME}")
+				}
+			}
 		}
 		stage ('simplerisk/simplerisk') {
 			stages {
@@ -21,16 +26,25 @@ pipeline {
 					steps {
 						script {
 							instance_id = getEC2Metadata("instance-id")
+							main_stage = "simplerisk"
+						}
+					}
+					post {
+						failure {
+							sendErrorEmail("${main_stage}/${env.STAGE_NAME}")
 						}
 					}
 				}
 				stage ('Build') {
 					parallel {
-						stage ('SimpleRisk Ubuntu 18.04') {
+						stage ('Ubuntu 18.04') {
 							agent {
 								label 'buildtestmed'
 							}
 							steps {
+								script {
+									image = env.STAGE_NAME
+								}
 								sh """
 									sudo docker build -t simplerisk/simplerisk -f simplerisk/bionic/Dockerfile simplerisk/
 									sudo docker build -t simplerisk/simplerisk:$current_version -f simplerisk/bionic/Dockerfile simplerisk/
@@ -38,11 +52,14 @@ pipeline {
 								"""
 							}
 						}
-						stage ('SimpleRisk Ubuntu 20.04') {
+						stage ('Ubuntu 20.04') {
 							agent {
 								label 'buildtestmed'
 							}
 							steps {
+								script {
+									image = env.STAGE_NAME
+								}
 								sh """
 									sudo docker build -t simplerisk/simplerisk:$current_version-focal -f simplerisk/focal/Dockerfile simplerisk/
 								"""
@@ -63,7 +80,7 @@ pipeline {
 							node("jenkins") {
 								terminateInstance("${instance_id}")
 							}
-							sendErrorEmail()
+							sendErrorEmail("${main_stage}/${env.STAGE_NAME}/${image}")
 						}
 					}
 				}
@@ -79,55 +96,60 @@ pipeline {
 								label 'buildtestmed'
 							}
 							steps {
-								withcredentials([usernamepassword(credentialsid: 'cb153fa6-2299-4bdb-9ef0-9c3e6382c87a', passwordvariable: 'docker_pass', usernamevariable: 'docker_user')]) {
-									sh '''
-										set +x
-										echo $docker_pass >> /tmp/password.txt
-										cat /tmp/password.txt | sudo docker login --username $docker_user --password-stdin
-										rm /tmp/password.txt
-									'''
-								}
+								setDockerCreds()
 							}
 							post {
 								failure {
 									node("jenkins") {
 										terminateinstance("${instance_id}")
 									}
-									sendErrorEmail()
+									sendErrorEmail("${main_stage}/${env.STAGE_NAME}")
 								}
 							}
 						}
 						stage ('Push') {
 							parallel {
-								stage ('Push SimpleRisk latest') {
+								stage ('latest') {
 									agent {
 										label 'buildtestmed'
 									}
 									steps {
+										script {
+											image = env.STAGE_NAME
+										}
 										sh "sudo docker push simplerisk/simplerisk"
 									}
 								}
-								stage ('Push SimpleRisk current version') {
+								stage ("Current Date") {
 									agent {
 										label 'buildtestmed'
 									}
 									steps {
+										script {
+											image = env.STAGE_NAME
+										}
 										sh "sudo docker push simplerisk/simplerisk:$current_version"
 									}
 								}
-								stage ('Push SimpleRisk current version for Bionic') {
+								stage ("Current Date - bionic") {
 									agent {
 										label 'buildtestmed'
 									}
 									steps {
+										script {
+											image = env.STAGE_NAME
+										}
 										sh "sudo docker push simplerisk/simplerisk:$current_version-bionic"
 									}
 								}
-								stage ('Push SimpleRisk current version for Focal') {
+								stage ("Current Date - focal") {
 									agent {
 										label 'buildtestmed'
 									}
 									steps {
+										script {
+											image = env.STAGE_NAME
+										}
 										sh "sudo docker push simplerisk/simplerisk:$current_version-focal"
 									}
 								}
@@ -139,7 +161,7 @@ pipeline {
 									}
 								}
 								failure {
-									sendErrorEmail()
+									sendErrorEmail("${main_stage}/${env.STAGE_NAME}/${image}")
 								}
 							}
 						}
@@ -156,16 +178,25 @@ pipeline {
 					steps {
 						script {
 							instance_id = getEC2Metadata("instance-id")
+							main_stage = "simplerisk-minimal"
+						}
+					}
+					post {
+						failure {
+							sendErrorEmail("${main_stage}/${env.STAGE_NAME}")
 						}
 					}
 				}
 				stage ('Build') {
 					parallel {
-						stage ('Build SimpleRisk Minimal PHP 7.2') {
+						stage ('PHP 7.2') {
 							agent {
 								label 'buildtestmed'
 							}
 							steps {
+								script {
+									image = env.STAGE_NAME
+								}
 								sh """
 									sudo docker build -t simplerisk/simplerisk-minimal -f simplerisk-minimal/php7.2/Dockerfile simplerisk-minimal/
 									sudo docker build -t simplerisk/simplerisk-minimal:$current_version -f simplerisk-minimal/php7.2/Dockerfile simplerisk-minimal/
@@ -173,11 +204,14 @@ pipeline {
 								"""
 							}
 						}
-						stage ('Build SimpleRisk Minimal PHP 7.4') {
+						stage ('PHP 7.4') {
 							agent {
 								label 'buildtestmed'
 							}
 							steps {
+								script {
+									image = env.STAGE_NAME
+								}
 								sh """
 									sudo docker build -t simplerisk/simplerisk-minimal:$current_version-php74 -f simplerisk-minimal/php7.4/Dockerfile simplerisk-minimal/
 								"""
@@ -198,7 +232,7 @@ pipeline {
 							node("jenkins") {
 								terminateInstance("${instance_id}")
 							}
-							sendErrorEmail()
+							sendErrorEmail("${main_stage}/${env.STAGE_NAME}/${image}")
 						}
 					}
 				}
@@ -214,55 +248,60 @@ pipeline {
 								label 'buildtestmed'
 							}
 							steps {
-								withcredentials([usernamepassword(credentialsid: 'cb153fa6-2299-4bdb-9ef0-9c3e6382c87a', passwordvariable: 'docker_pass', usernamevariable: 'docker_user')]) {
-									sh '''
-										set +x
-										echo $docker_pass >> /tmp/password.txt
-										cat /tmp/password.txt | sudo docker login --username $docker_user --password-stdin
-										rm /tmp/password.txt
-									'''
-								}
+								setDockerCreds()
 							}
 							post {
 								failure {
 									node("jenkins") {
 										terminateinstance("${instance_id}")
 									}
-									sendErrorEmail()
+									sendErrorEmail("${main_stage}/${env.STAGE_NAME}")
 								}
 							}
 						}
 						stage ('Push') {
 							parallel {
-								stage ('Push SimpleRisk Minimal latest') {
+								stage ('latest') {
 									agent {
 										label 'buildtestmed'
 									}
 									steps {
+										script {
+											image = env.STAGE_NAME
+										}
 										sh "sudo docker push simplerisk/simplerisk-minimal"
 									}
 								}
-								stage ('Push SimpleRisk Minimal current version') {
+								stage ("Current Date") {
 									agent {
 										label 'buildtestmed'
 									}
 									steps {
+										script {
+											image = env.STAGE_NAME
+										}
 										sh "sudo docker push simplerisk/simplerisk-minimal:$current_version"
 									}
 								}
-								stage ('Push SimpleRisk Minimal current version for PHP 7.2') {
+								stage ("Current Date - PHP 7.2") {
 									agent {
 										label 'buildtestmed'
 									}
 									steps {
+										script {
+											image = env.STAGE_NAME
+										}
 										sh "sudo docker push simplerisk/simplerisk-minimal:$current_version-php72"
 									}
 								}
-								stage ('Push SimpleRisk Minimal current version for PHP 7.4') {
+								stage ("Current Date - PHP 7.4") {
 									agent {
 										label 'buildtestmed'
 									}
 									steps {
+										script {
+											image = env.STAGE_NAME
+										}
 										sh "sudo docker push simplerisk/simplerisk-minimal:$current_version-php74"
 									}
 								}
@@ -274,7 +313,7 @@ pipeline {
 									}
 								}
 								failure {
-									sendErrorEmail()
+									sendErrorEmail("${main_stage}/${env.STAGE_NAME}/${image}")
 								}
 							}
 						}
@@ -304,12 +343,23 @@ void sendEmail(String message) {
              body: "$message"
 }
 
-void sendErrorEmail() {
-	sendEmail("""Job failed at stage \"${env.STAGE_NAME}\". Check console output at ${env.BUILD_URL} to view the results (The Blue Ocean option will provide the detailed execution flow).""")
+void sendErrorEmail(String stage_name) {
+	sendEmail("""Job failed at stage \"${stage_name}\". Check console output at ${env.BUILD_URL} to view the results (The Blue Ocean option will provide the detailed execution flow).""")
 }
 
 void sendSuccessEmail() {
 	sendEmail("""Check console output at ${env.BUILD_URL} to view the results (The Blue Ocean option will provide the detailed execution flow).""")
+}
+
+void setDockerCreds() {
+	withcredentials([usernamepassword(credentialsid: 'cb153fa6-2299-4bdb-9ef0-9c3e6382c87a', passwordvariable: 'docker_pass', usernamevariable: 'docker_user')]) {
+		sh '''
+			set +x
+			echo $docker_pass >> /tmp/password.txt
+			cat /tmp/password.txt | sudo docker login --username $docker_user --password-stdin
+			rm /tmp/password.txt
+		'''
+		}
 }
 
 void terminateInstance(String instanceId, String region="us-east-1") {
