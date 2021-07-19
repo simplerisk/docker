@@ -29,7 +29,7 @@ services:
     command: mysqld --sql_mode="NO_ENGINE_SUBSTITUTION"
     environment:
     - MYSQL_ROOT_PASSWORD=$pass
-    image: mariadb:10.5
+    image: mariadb:10.6
 
   smtp:
     image: namshi/smtp
