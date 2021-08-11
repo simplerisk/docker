@@ -2,10 +2,7 @@ pipeline {
 	agent none
 	stages {
 		stage ('Initializing Common Variables') {
-			agent {
-				// Using ubuntu20 to avoid using master node
-				label 'terminator'
-			}
+			agent { label 'terminator' }
 			steps {
 				script {
 					current_version = getOfficialVersion("updates")
@@ -20,9 +17,7 @@ pipeline {
 		stage ('simplerisk/simplerisk') {
 			stages {
 				stage ('Initialize Variables') {
-					agent {
-						label 'buildtestmed'
-					}
+					agent { label 'buildtestmed' }
 					steps {
 						script {
 							instance_id = getEC2Metadata("instance-id")
@@ -38,9 +33,7 @@ pipeline {
 				stage ('Build') {
 					parallel {
 						stage ('Ubuntu 18.04') {
-							agent {
-								label 'buildtestmed'
-							}
+							agent { label 'buildtestmed' }
 							steps {
 								script {
 									image = env.STAGE_NAME
@@ -53,9 +46,7 @@ pipeline {
 							}
 						}
 						stage ('Ubuntu 20.04') {
-							agent {
-								label 'buildtestmed'
-							}
+							agent { label 'buildtestmed' }
 							steps {
 								script {
 									image = env.STAGE_NAME
@@ -85,16 +76,10 @@ pipeline {
 					}
 				}
 				stage ('Push to Docker Hub') {
-					when {
-						expression {
-							env.BRANCH_NAME == "master"
-						}
-					}
+					when { branch 'master' }
 					stages {
 						stage ('Log into Docker Hub') {
-							agent {
-								label 'buildtestmed'
-							}
+							agent { label 'buildtestmed' }
 							steps {
 								setDockerCreds()
 							}
@@ -110,9 +95,7 @@ pipeline {
 						stage ('Push') {
 							parallel {
 								stage ('latest') {
-									agent {
-										label 'buildtestmed'
-									}
+									agent { label 'buildtestmed' }
 									steps {
 										script {
 											image = env.STAGE_NAME
@@ -121,9 +104,7 @@ pipeline {
 									}
 								}
 								stage ("Current Date") {
-									agent {
-										label 'buildtestmed'
-									}
+									agent { label 'buildtestmed' }
 									steps {
 										script {
 											image = env.STAGE_NAME
@@ -132,9 +113,7 @@ pipeline {
 									}
 								}
 								stage ("Current Date - bionic") {
-									agent {
-										label 'buildtestmed'
-									}
+									agent { label 'buildtestmed' }
 									steps {
 										script {
 											image = env.STAGE_NAME
@@ -143,9 +122,7 @@ pipeline {
 									}
 								}
 								stage ("Current Date - focal") {
-									agent {
-										label 'buildtestmed'
-									}
+									agent { label 'buildtestmed' }
 									steps {
 										script {
 											image = env.STAGE_NAME
@@ -172,9 +149,7 @@ pipeline {
 		stage ('simplerisk/simplerisk-minimal') {
 			stages {
 				stage ('Initialize Variables') {
-					agent {
-						label 'buildtestmed'
-					}
+					agent { label 'buildtestmed' }
 					steps {
 						script {
 							instance_id = getEC2Metadata("instance-id")
@@ -190,9 +165,7 @@ pipeline {
 				stage ('Build') {
 					parallel {
 						stage ('PHP 7.2') {
-							agent {
-								label 'buildtestmed'
-							}
+							agent { label 'buildtestmed' }
 							steps {
 								script {
 									image = env.STAGE_NAME
@@ -205,9 +178,7 @@ pipeline {
 							}
 						}
 						stage ('PHP 7.4') {
-							agent {
-								label 'buildtestmed'
-							}
+							agent { label 'buildtestmed' }
 							steps {
 								script {
 									image = env.STAGE_NAME
@@ -237,16 +208,10 @@ pipeline {
 					}
 				}
 				stage ('Push to Docker Hub') {
-					when {
-						expression {
-							env.BRANCH_NAME == "master"
-						}
-					}
+					when { branch 'master' }
 					stages {
 						stage ('Log into Docker Hub') {
-							agent {
-								label 'buildtestmed'
-							}
+							agent { label 'buildtestmed' }
 							steps {
 								setDockerCreds()
 							}
@@ -262,9 +227,7 @@ pipeline {
 						stage ('Push') {
 							parallel {
 								stage ('latest') {
-									agent {
-										label 'buildtestmed'
-									}
+									agent { label 'buildtestmed' }
 									steps {
 										script {
 											image = env.STAGE_NAME
@@ -273,9 +236,7 @@ pipeline {
 									}
 								}
 								stage ("Current Date") {
-									agent {
-										label 'buildtestmed'
-									}
+									agent { label 'buildtestmed' }
 									steps {
 										script {
 											image = env.STAGE_NAME
@@ -284,9 +245,7 @@ pipeline {
 									}
 								}
 								stage ("Current Date - PHP 7.2") {
-									agent {
-										label 'buildtestmed'
-									}
+									agent { label 'buildtestmed' }
 									steps {
 										script {
 											image = env.STAGE_NAME
@@ -295,9 +254,7 @@ pipeline {
 									}
 								}
 								stage ("Current Date - PHP 7.4") {
-									agent {
-										label 'buildtestmed'
-									}
+									agent { label 'buildtestmed' }
 									steps {
 										script {
 											image = env.STAGE_NAME
