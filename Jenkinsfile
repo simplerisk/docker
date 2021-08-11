@@ -352,7 +352,7 @@ void sendSuccessEmail() {
 }
 
 void setDockerCreds() {
-	withcredentials([usernamepassword(credentialsid: 'cb153fa6-2299-4bdb-9ef0-9c3e6382c87a', passwordvariable: 'docker_pass', usernamevariable: 'docker_user')]) {
+	withcredentials([usernamePassword(credentialsid: 'cb153fa6-2299-4bdb-9ef0-9c3e6382c87a', passwordvariable: 'docker_pass', usernamevariable: 'docker_user')]) {
 		sh '''
 			set +x
 			echo $docker_pass >> /tmp/password.txt
