@@ -4,7 +4,7 @@ pipeline {
 		stage ('Initializing Common Variables') {
 			agent {
 				// Using ubuntu20 to avoid using master node
-				label 'ubuntu20'
+				label 'terminator'
 			}
 			steps {
 				script {
@@ -70,14 +70,14 @@ pipeline {
 						success {
 							script {
 								if (env.BRANCH_NAME != 'master') {
-									node("jenkins") {
+									node("terminator") {
 										terminateInstance("${instance_id}")
 									}
 								}
 							}
 						}
 						failure {
-							node("jenkins") {
+							node("terminator") {
 								terminateInstance("${instance_id}")
 							}
 							sendErrorEmail("${main_stage}/${env.STAGE_NAME}/${image}")
@@ -100,7 +100,7 @@ pipeline {
 							}
 							post {
 								failure {
-									node("jenkins") {
+									node("terminator") {
 										terminateInstance("${instance_id}")
 									}
 									sendErrorEmail("${main_stage}/${env.STAGE_NAME}")
@@ -156,7 +156,7 @@ pipeline {
 							}
 							post {
 								always {
-									node("jenkins") {
+									node("terminator") {
 										terminateInstance("${instance_id}")
 									}
 								}
@@ -222,14 +222,14 @@ pipeline {
 						success {
 							script {
 								if (env.BRANCH_NAME != 'master') {
-									node("jenkins") {
+									node("terminator") {
 										terminateInstance("${instance_id}")
 									}
 								}
 							}
 						}
 						failure {
-							node("jenkins") {
+							node("terminator") {
 								terminateInstance("${instance_id}")
 							}
 							sendErrorEmail("${main_stage}/${env.STAGE_NAME}/${image}")
@@ -252,7 +252,7 @@ pipeline {
 							}
 							post {
 								failure {
-									node("jenkins") {
+									node("terminator") {
 										terminateInstance("${instance_id}")
 									}
 									sendErrorEmail("${main_stage}/${env.STAGE_NAME}")
@@ -308,7 +308,7 @@ pipeline {
 							}
 							post {
 								always {
-									node("jenkins") {
+									node("terminator") {
 										terminateInstance("${instance_id}")
 									}
 								}
