@@ -58,15 +58,6 @@ pipeline {
 						}
 					}
 					post {
-						success {
-							script {
-								if (env.BRANCH_NAME != 'master') {
-									node("terminator") {
-										terminateInstance("${instance_id}")
-									}
-								}
-							}
-						}
 						failure {
 							node("terminator") {
 								terminateInstance("${instance_id}")
@@ -97,6 +88,9 @@ pipeline {
 								stage ("Latest/Current Version/Current Version - bionic") {
 									agent { label 'buildtestmed' }
 									steps {
+										script {
+											image = env.STAGE_NAME
+										}
 										sh """
 											sudo docker push simplerisk/simplerisk
 											sudo docker push simplerisk/simplerisk:$current_version
@@ -107,21 +101,29 @@ pipeline {
 								stage ("Current Version - focal") {
 									agent { label 'buildtestmed' }
 									steps {
+										script {
+											image = env.STAGE_NAME
+										}
 										sh "sudo docker push simplerisk/simplerisk:$current_version-focal"
 									}
 								}
 							}
 							post {
-								always {
+								failure {
 									node("terminator") {
 										terminateInstance("${instance_id}")
 									}
-								}
-								failure {
-									sendErrorEmail("${main_stage}/${env.STAGE_NAME}")
+									sendErrorEmail("${main_stage}/${env.STAGE_NAME}/${image}")
 								}
 							}
 						}
+					}
+				}
+			}
+			post {
+				success {
+					node("terminator") {
+						terminateInstance("${instance_id}")
 					}
 				}
 			}
@@ -170,15 +172,6 @@ pipeline {
 						}
 					}
 					post {
-						success {
-							script {
-								if (env.BRANCH_NAME != 'master') {
-									node("terminator") {
-										terminateInstance("${instance_id}")
-									}
-								}
-							}
-						}
 						failure {
 							node("terminator") {
 								terminateInstance("${instance_id}")
@@ -209,6 +202,9 @@ pipeline {
 								stage ('Latest/Current Version/Current Version - PHP 7.2') {
 									agent { label 'buildtestmed' }
 									steps {
+										script {
+											image = env.STAGE_NAME
+										}
 										sh """
 											sudo docker push simplerisk/simplerisk-minimal
 											sudo docker push simplerisk/simplerisk-minimal:$current_version
@@ -219,21 +215,29 @@ pipeline {
 								stage ("Current Version - PHP 7.4") {
 									agent { label 'buildtestmed' }
 									steps {
+										script {
+											image = env.STAGE_NAME
+										}
 										sh "sudo docker push simplerisk/simplerisk-minimal:$current_version-php74"
 									}
 								}
 							}
 							post {
-								always {
+								failure {
 									node("terminator") {
 										terminateInstance("${instance_id}")
 									}
-								}
-								failure {
-									sendErrorEmail("${main_stage}/${env.STAGE_NAME}")
+									sendErrorEmail("${main_stage}/${env.STAGE_NAME}/${image}")
 								}
 							}
 						}
+					}
+				}
+			}
+			post {
+				success {
+					node("terminator") {
+						terminateInstance("${instance_id}")
 					}
 				}
 			}
