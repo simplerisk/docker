@@ -316,9 +316,10 @@ void setDockerCreds() {
 			cat /tmp/password.txt | sudo docker login --username $docker_user --password-stdin
 			rm /tmp/password.txt
 		'''
-		}
+	}
 }
 
 void terminateInstance(String instanceId, String region="us-east-1") {
 	sh "aws ec2 terminate-instances --instance-ids $instanceId --region $region"
+	sleep 60
 }
