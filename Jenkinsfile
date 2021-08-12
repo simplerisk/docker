@@ -94,39 +94,19 @@ pipeline {
 						}
 						stage ('Push') {
 							parallel {
-								stage ('latest') {
+								stage ("Latest/Current Version/Current Version - bionic") {
 									agent { label 'buildtestmed' }
 									steps {
-										script {
-											image = env.STAGE_NAME
-										}
-										sh "sudo docker push simplerisk/simplerisk"
+										sh """
+											sudo docker push simplerisk/simplerisk
+											sudo docker push simplerisk/simplerisk:$current_version
+											sudo docker push simplerisk/simplerisk:$current_version-bionic
+										"""
 									}
 								}
-								stage ("Current Date") {
+								stage ("Current Version - focal") {
 									agent { label 'buildtestmed' }
 									steps {
-										script {
-											image = env.STAGE_NAME
-										}
-										sh "sudo docker push simplerisk/simplerisk:$current_version"
-									}
-								}
-								stage ("Current Date - bionic") {
-									agent { label 'buildtestmed' }
-									steps {
-										script {
-											image = env.STAGE_NAME
-										}
-										sh "sudo docker push simplerisk/simplerisk:$current_version-bionic"
-									}
-								}
-								stage ("Current Date - focal") {
-									agent { label 'buildtestmed' }
-									steps {
-										script {
-											image = env.STAGE_NAME
-										}
 										sh "sudo docker push simplerisk/simplerisk:$current_version-focal"
 									}
 								}
@@ -138,7 +118,7 @@ pipeline {
 									}
 								}
 								failure {
-									sendErrorEmail("${main_stage}/${env.STAGE_NAME}/${image}")
+									sendErrorEmail("${main_stage}/${env.STAGE_NAME}")
 								}
 							}
 						}
@@ -226,39 +206,19 @@ pipeline {
 						}
 						stage ('Push') {
 							parallel {
-								stage ('latest') {
+								stage ('Latest/Current Version/Current Version - PHP 7.2') {
 									agent { label 'buildtestmed' }
 									steps {
-										script {
-											image = env.STAGE_NAME
-										}
-										sh "sudo docker push simplerisk/simplerisk-minimal"
+										sh """
+											sudo docker push simplerisk/simplerisk-minimal
+											sudo docker push simplerisk/simplerisk-minimal:$current_version
+											sudo docker push simplerisk/simplerisk-minimal:$current_version-php72
+										"""
 									}
 								}
-								stage ("Current Date") {
+								stage ("Current Version - PHP 7.4") {
 									agent { label 'buildtestmed' }
 									steps {
-										script {
-											image = env.STAGE_NAME
-										}
-										sh "sudo docker push simplerisk/simplerisk-minimal:$current_version"
-									}
-								}
-								stage ("Current Date - PHP 7.2") {
-									agent { label 'buildtestmed' }
-									steps {
-										script {
-											image = env.STAGE_NAME
-										}
-										sh "sudo docker push simplerisk/simplerisk-minimal:$current_version-php72"
-									}
-								}
-								stage ("Current Date - PHP 7.4") {
-									agent { label 'buildtestmed' }
-									steps {
-										script {
-											image = env.STAGE_NAME
-										}
 										sh "sudo docker push simplerisk/simplerisk-minimal:$current_version-php74"
 									}
 								}
@@ -270,7 +230,7 @@ pipeline {
 									}
 								}
 								failure {
-									sendErrorEmail("${main_stage}/${env.STAGE_NAME}/${image}")
+									sendErrorEmail("${main_stage}/${env.STAGE_NAME}")
 								}
 							}
 						}
