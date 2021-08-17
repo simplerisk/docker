@@ -9,6 +9,7 @@ pipeline {
 			steps {
 				script {
 					current_version = getOfficialVersion("updates")
+					committer_email = getCommitterEmail()
 				}
 			}
 			post {
@@ -31,7 +32,7 @@ pipeline {
 					}
 					post {
 						failure {
-							sendErrorEmail("${main_stage}/${env.STAGE_NAME}")
+							sendErrorEmail("${main_stage}/${env.STAGE_NAME}", "${committer_email}")
 						}
 					}
 				}
@@ -80,7 +81,7 @@ pipeline {
 							node("jenkins") {
 								terminateInstance("${instance_id}")
 							}
-							sendErrorEmail("${main_stage}/${env.STAGE_NAME}/${image}")
+							sendErrorEmail("${main_stage}/${env.STAGE_NAME}/${image}", "${committer_email}")
 						}
 					}
 				}
@@ -103,7 +104,7 @@ pipeline {
 									node("jenkins") {
 										terminateInstance("${instance_id}")
 									}
-									sendErrorEmail("${main_stage}/${env.STAGE_NAME}")
+									sendErrorEmail("${main_stage}/${env.STAGE_NAME}", "${committer_email}")
 								}
 							}
 						}
@@ -161,7 +162,7 @@ pipeline {
 									}
 								}
 								failure {
-									sendErrorEmail("${main_stage}/${env.STAGE_NAME}/${image}")
+									sendErrorEmail("${main_stage}/${env.STAGE_NAME}/${image}", "${committer_email}")
 								}
 							}
 						}
@@ -183,7 +184,7 @@ pipeline {
 					}
 					post {
 						failure {
-							sendErrorEmail("${main_stage}/${env.STAGE_NAME}")
+							sendErrorEmail("${main_stage}/${env.STAGE_NAME}", "${committer_email}")
 						}
 					}
 				}
@@ -232,7 +233,7 @@ pipeline {
 							node("jenkins") {
 								terminateInstance("${instance_id}")
 							}
-							sendErrorEmail("${main_stage}/${env.STAGE_NAME}/${image}")
+							sendErrorEmail("${main_stage}/${env.STAGE_NAME}/${image}", "${committer_email}")
 						}
 					}
 				}
@@ -255,7 +256,7 @@ pipeline {
 									node("jenkins") {
 										terminateInstance("${instance_id}")
 									}
-									sendErrorEmail("${main_stage}/${env.STAGE_NAME}")
+									sendErrorEmail("${main_stage}/${env.STAGE_NAME}", "${committer_email}")
 								}
 							}
 						}
@@ -313,7 +314,7 @@ pipeline {
 									}
 								}
 								failure {
-									sendErrorEmail("${main_stage}/${env.STAGE_NAME}/${image}")
+									sendErrorEmail("${main_stage}/${env.STAGE_NAME}/${image}", "${committer_email}")
 								}
 							}
 						}
@@ -324,9 +325,13 @@ pipeline {
 	}
 	post {
 		success {
-			sendSuccessEmail()
+			sendSuccessEmail("${committer_email}")
 		}
 	}
+}
+
+def getCommitterEmail() {
+	return sh(script: "git --no-pager show -s --format='%ae'", returnStdout: true).trim()
 }
 
 def getEC2Metadata(String attribute){
@@ -337,18 +342,18 @@ def getOfficialVersion(String updatesDomain="updates-test") {
 	return sh(script: "echo \$(curl -sL https://$updatesDomain\\.simplerisk.com/Current_Version.xml | grep -oP '<appversion>(.*)</appversion>' | cut -d '>' -f 2 | cut -d '<' -f 1)", returnStdout: true).trim()
 }
 
-void sendEmail(String message) {
-	mail from: 'jenkins@simplerisk.com', to: """${env.GIT_COMITTER_EMAIL}""", bcc: '',  cc: 'pedro@simplerisk.com', replyTo: '',
+void sendEmail(String message, String recipient) {
+	mail from: 'jenkins@simplerisk.com', to: """${recipient}""", bcc: '',  cc: 'pedro@simplerisk.com', replyTo: '',
              subject: """${env.JOB_NAME} (Branch ${env.BRANCH_NAME}) - Build # ${env.BUILD_NUMBER} - ${currentBuild.currentResult}""",
              body: "$message"
 }
 
-void sendErrorEmail(String stage_name) {
-	sendEmail("""Job failed at stage \"${stage_name}\". Check console output at ${env.BUILD_URL} to view the results (The Blue Ocean option will provide the detailed execution flow).""")
+void sendErrorEmail(String stage_name, String recipient) {
+	sendEmail("""Job failed at stage \"${stage_name}\". Check console output at ${env.BUILD_URL} to view the results (The Blue Ocean option will provide the detailed execution flow).""", "$recipient")
 }
 
-void sendSuccessEmail() {
-	sendEmail("""Check console output at ${env.BUILD_URL} to view the results (The Blue Ocean option will provide the detailed execution flow).""")
+void sendSuccessEmail(String recipient) {
+	sendEmail("""Check console output at ${env.BUILD_URL} to view the results (The Blue Ocean option will provide the detailed execution flow).""", "$recipient")
 }
 
 void setDockerCreds() {
