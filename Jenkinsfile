@@ -27,7 +27,11 @@ pipeline {
 					}
 					post {
 						failure {
+							terminateInstance("${instance_id}")
 							sendErrorEmail("${main_stage}/${env.STAGE_NAME}", "${committer_email}")
+						}
+						aborted {
+							terminateInstance("${instance_id}")
 						}
 					}
 				}
@@ -45,6 +49,22 @@ pipeline {
 									sudo docker build -t simplerisk/simplerisk:$current_version-bionic -f simplerisk/bionic/Dockerfile simplerisk/
 								"""
 							}
+							post {
+								success {
+									script {
+										if (env.CHANGE_ID) {
+											pullRequest.createStatus(status: "success", context: "build/simplerisk/ubuntu-1804", description: "Image built successfully", targetUrl: "$BUILD_URL")
+										}
+									}
+								}
+								failure {
+									terminateInstance("${instance_id}")
+									sendErrorEmail("${main_stage}/${env.STAGE_NAME}/${image}", "${committer_email}")
+								}
+								aborted {
+									terminateInstance("${instance_id}")
+								}
+							}
 						}
 						stage ('Ubuntu 20.04') {
 							agent { label 'buildtestmed' }
@@ -56,14 +76,22 @@ pipeline {
 									sudo docker build -t simplerisk/simplerisk:$current_version-focal -f simplerisk/focal/Dockerfile simplerisk/
 								"""
 							}
-						}
-					}
-					post {
-						failure {
-							node("terminator") {
-								terminateInstance("${instance_id}")
+							post {
+								success {
+									script {
+										if (env.CHANGE_ID) {
+											pullRequest.createStatus(status: "success", context: "build/simplerisk/ubuntu-2004", description: "Image built successfully", targetUrl: "$BUILD_URL")
+										}
+									}
+								}
+								failure {
+									terminateInstance("${instance_id}")
+									sendErrorEmail("${main_stage}/${env.STAGE_NAME}/${image}", "${committer_email}")
+								}
+								aborted {
+									terminateInstance("${instance_id}")
+								}
 							}
-							sendErrorEmail("${main_stage}/${env.STAGE_NAME}/${image}", "${committer_email}")
 						}
 					}
 				}
@@ -77,10 +105,11 @@ pipeline {
 							}
 							post {
 								failure {
-									node("terminator") {
-										terminateInstance("${instance_id}")
-									}
+									terminateInstance("${instance_id}")
 									sendErrorEmail("${main_stage}/${env.STAGE_NAME}", "${committer_email}")
+								}
+								aborted {
+									terminateInstance("${instance_id}")
 								}
 							}
 						}
@@ -111,10 +140,11 @@ pipeline {
 							}
 							post {
 								failure {
-									node("terminator") {
-										terminateInstance("${instance_id}")
-									}
+									terminateInstance("${instance_id}")
 									sendErrorEmail("${main_stage}/${env.STAGE_NAME}/${image}", "${committer_email}")
+								}
+								aborted {
+									terminateInstance("${instance_id}")
 								}
 							}
 						}
@@ -122,10 +152,9 @@ pipeline {
 				}
 			}
 			post {
-				success {
-					node("terminator") {
-						terminateInstance("${instance_id}")
-					}
+				cleanup {
+					terminateInstance("${instance_id}")
+					sleep 60
 				}
 			}
 		}
@@ -141,7 +170,11 @@ pipeline {
 					}
 					post {
 						failure {
+							terminateInstance("${instance_id}")
 							sendErrorEmail("${main_stage}/${env.STAGE_NAME}", "${committer_email}")
+						}
+						aborted {
+							terminateInstance("${instance_id}")
 						}
 					}
 				}
@@ -159,6 +192,22 @@ pipeline {
 									sudo docker build -t simplerisk/simplerisk-minimal:$current_version-php72 -f simplerisk-minimal/php7.2/Dockerfile simplerisk-minimal/
 								"""
 							}
+							post {
+								success {
+									script {
+										if (env.CHANGE_ID) {
+											pullRequest.createStatus(status: "success", context: "build/simplerisk-minimal/php-72", description: "Image built successfully", targetUrl: "$BUILD_URL")
+										}
+									}
+								}
+								failure {
+									terminateInstance("${instance_id}")
+									sendErrorEmail("${main_stage}/${env.STAGE_NAME}/${image}", "${committer_email}")
+								}
+								aborted {
+									terminateInstance("${instance_id}")
+								}
+							}
 						}
 						stage ('PHP 7.4') {
 							agent { label 'buildtestmed' }
@@ -170,14 +219,22 @@ pipeline {
 									sudo docker build -t simplerisk/simplerisk-minimal:$current_version-php74 -f simplerisk-minimal/php7.4/Dockerfile simplerisk-minimal/
 								"""
 							}
-						}
-					}
-					post {
-						failure {
-							node("terminator") {
-								terminateInstance("${instance_id}")
+							post {
+								success {
+									script {
+										if (env.CHANGE_ID) {
+											pullRequest.createStatus(status: "success", context: "build/simplerisk-minimal/php-74", description: "Image built successfully", targetUrl: "$BUILD_URL")
+										}
+									}
+								}
+								failure {
+									terminateInstance("${instance_id}")
+									sendErrorEmail("${main_stage}/${env.STAGE_NAME}/${image}", "${committer_email}")
+								}
+								aborted {
+									terminateInstance("${instance_id}")
+								}
 							}
-							sendErrorEmail("${main_stage}/${env.STAGE_NAME}/${image}", "${committer_email}")
 						}
 					}
 				}
@@ -191,10 +248,11 @@ pipeline {
 							}
 							post {
 								failure {
-									node("terminator") {
-										terminateInstance("${instance_id}")
-									}
+									terminateInstance("${instance_id}")
 									sendErrorEmail("${main_stage}/${env.STAGE_NAME}", "${committer_email}")
+								}
+								aborted {
+									terminateInstance("${instance_id}")
 								}
 							}
 						}
@@ -225,10 +283,11 @@ pipeline {
 							}
 							post {
 								failure {
-									node("terminator") {
-										terminateInstance("${instance_id}")
-									}
+									terminateInstance("${instance_id}")
 									sendErrorEmail("${main_stage}/${env.STAGE_NAME}/${image}")
+								}
+								aborted {
+									terminateInstance("${instance_id}")
 								}
 							}
 						}
@@ -236,10 +295,9 @@ pipeline {
 				}
 			}
 			post {
-				success {
-					node("terminator") {
-						terminateInstance("${instance_id}")
-					}
+				cleanup {
+					terminateInstance("${instance_id}")
+					sleep 60
 				}
 			}
 		}
@@ -289,6 +347,7 @@ void setDockerCreds() {
 }
 
 void terminateInstance(String instanceId, String region="us-east-1") {
-	sh "aws ec2 terminate-instances --instance-ids $instanceId --region $region"
-	sleep 60
+	node ("terminator") {
+		sh "aws ec2 terminate-instances --instance-ids $instanceId --region $region"
+	}
 }
