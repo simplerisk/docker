@@ -66,8 +66,8 @@ RUN sed -i 's/#ServerSignature On/ServerSignature Off/g' /etc/apache2/conf-enabl
 
 # Download and extract SimpleRisk, plus saving release version for database reference
 RUN rm -rf /var/www/html && \
-    curl -sL https://github.com/simplerisk/bundles/raw/master/simplerisk-20210802-001.tgz | tar xz -C /var/www && \
-    echo 20210802-001 > /tmp/version
+    curl -sL https://github.com/simplerisk/bundles/raw/master/simplerisk-20210930-001.tgz | tar xz -C /var/www && \
+    echo 20210930-001 > /tmp/version
 
 # Creating Simplerisk user on www-data group and setting up ownerships
 RUN useradd -G www-data simplerisk
