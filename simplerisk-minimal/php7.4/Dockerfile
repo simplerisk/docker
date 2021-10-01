@@ -25,7 +25,9 @@ RUN docker-php-ext-configure ldap --with-libdir=lib/x86_64-linux-gnu && \
                            json \
                            mysqli \
                            pdo_mysql \
-                           curl
+                           curl \
+                           zip \
+                           gd
 # Setting up setcap for port mapping without root and removing packages
 RUN setcap CAP_NET_BIND_SERVICE=+eip /usr/sbin/apache2 && \
     chmod gu+s /usr/sbin/cron && \
@@ -47,6 +49,7 @@ RUN service supervisor restart
 # Configure Apache
 RUN echo 'upload_max_filesize = 5M' >> /usr/local/etc/php/conf.d/docker-php-uploadfilesize.ini
 RUN echo 'memory_limit = 256M' >> /usr/local/etc/php/conf.d/docker-php-memlimit.ini
+RUN echo 'max_input_vars = 3000' >> /usr/local/etc/php/conf.d/docker-php-maxinputvars.ini
 RUN echo 'log_errors = On' >> /usr/local/etc/php/conf.d/docker-php-error_logging.ini
 RUN echo 'error_log = /dev/stderr' >> /usr/local/etc/php/conf.d/docker-php-error_logging.ini
 # Create SSL Certificates for Apache SSL
