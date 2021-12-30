@@ -27,6 +27,8 @@ RUN apt-get update && \\
     apt-get -y install libldap2-dev \\
                        libcap2-bin \\
                        libcurl4-gnutls-dev \\
+                       libpng-dev \\
+                       libzip-dev \\
                        supervisor \\
                        cron \\
 EOF
