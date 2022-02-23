@@ -44,8 +44,6 @@ pipeline {
 									image = env.STAGE_NAME
 								}
 								sh """
-									sudo docker build -t simplerisk/simplerisk -f simplerisk/bionic/Dockerfile simplerisk/
-									sudo docker build -t simplerisk/simplerisk:$current_version -f simplerisk/bionic/Dockerfile simplerisk/
 									sudo docker build -t simplerisk/simplerisk:$current_version-bionic -f simplerisk/bionic/Dockerfile simplerisk/
 								"""
 							}
@@ -73,6 +71,8 @@ pipeline {
 									image = env.STAGE_NAME
 								}
 								sh """
+									sudo docker build -t simplerisk/simplerisk -f simplerisk/focal/Dockerfile simplerisk/
+									sudo docker build -t simplerisk/simplerisk:$current_version -f simplerisk/focal/Dockerfile simplerisk/
 									sudo docker build -t simplerisk/simplerisk:$current_version-focal -f simplerisk/focal/Dockerfile simplerisk/
 								"""
 							}
@@ -115,7 +115,18 @@ pipeline {
 						}
 						stage ('Push') {
 							parallel {
-								stage ("Latest/Current Version/Current Version - bionic") {
+								stage ("Current Version - bionic") {
+									agent { label 'buildtestmed' }
+									steps {
+										script {
+											image = env.STAGE_NAME
+										}
+										sh """
+											sudo docker push simplerisk/simplerisk:$current_version-bionic
+										"""
+									}
+								}
+								stage ("Latest/Current Version/Current Version - focal") {
 									agent { label 'buildtestmed' }
 									steps {
 										script {
@@ -124,17 +135,8 @@ pipeline {
 										sh """
 											sudo docker push simplerisk/simplerisk
 											sudo docker push simplerisk/simplerisk:$current_version
-											sudo docker push simplerisk/simplerisk:$current_version-bionic
+											sudo docker push simplerisk/simplerisk:$current_version-focal
 										"""
-									}
-								}
-								stage ("Current Version - focal") {
-									agent { label 'buildtestmed' }
-									steps {
-										script {
-											image = env.STAGE_NAME
-										}
-										sh "sudo docker push simplerisk/simplerisk:$current_version-focal"
 									}
 								}
 							}
@@ -187,8 +189,6 @@ pipeline {
 									image = env.STAGE_NAME
 								}
 								sh """
-									sudo docker build -t simplerisk/simplerisk-minimal -f simplerisk-minimal/php7.2/Dockerfile simplerisk-minimal/
-									sudo docker build -t simplerisk/simplerisk-minimal:$current_version -f simplerisk-minimal/php7.2/Dockerfile simplerisk-minimal/
 									sudo docker build -t simplerisk/simplerisk-minimal:$current_version-php72 -f simplerisk-minimal/php7.2/Dockerfile simplerisk-minimal/
 								"""
 							}
@@ -216,6 +216,8 @@ pipeline {
 									image = env.STAGE_NAME
 								}
 								sh """
+									sudo docker build -t simplerisk/simplerisk-minimal -f simplerisk-minimal/php7.4/Dockerfile simplerisk-minimal/
+									sudo docker build -t simplerisk/simplerisk-minimal:$current_version -f simplerisk-minimal/php7.4/Dockerfile simplerisk-minimal/
 									sudo docker build -t simplerisk/simplerisk-minimal:$current_version-php74 -f simplerisk-minimal/php7.4/Dockerfile simplerisk-minimal/
 								"""
 							}
@@ -258,7 +260,18 @@ pipeline {
 						}
 						stage ('Push') {
 							parallel {
-								stage ('Latest/Current Version/Current Version - PHP 7.2') {
+								stage ('Current Version - PHP 7.2') {
+									agent { label 'buildtestmed' }
+									steps {
+										script {
+											image = env.STAGE_NAME
+										}
+										sh """
+											sudo docker push simplerisk/simplerisk-minimal:$current_version-php72
+										"""
+									}
+								}
+								stage ("Latest/Current Version/Current Version - PHP 7.4") {
 									agent { label 'buildtestmed' }
 									steps {
 										script {
@@ -267,17 +280,8 @@ pipeline {
 										sh """
 											sudo docker push simplerisk/simplerisk-minimal
 											sudo docker push simplerisk/simplerisk-minimal:$current_version
-											sudo docker push simplerisk/simplerisk-minimal:$current_version-php72
+											sudo docker push simplerisk/simplerisk-minimal:$current_version-php74
 										"""
-									}
-								}
-								stage ("Current Version - PHP 7.4") {
-									agent { label 'buildtestmed' }
-									steps {
-										script {
-											image = env.STAGE_NAME
-										}
-										sh "sudo docker push simplerisk/simplerisk-minimal:$current_version-php74"
 									}
 								}
 							}
