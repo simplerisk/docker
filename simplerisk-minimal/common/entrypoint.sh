@@ -53,6 +53,9 @@ set_config(){
     # shellcheck disable=SC2015
     [ -n "${SIMPLERISK_DB_SSL_CERT_PATH:-}" ] && sed -i "s/\('DB_SSL_CERTIFICATE_PATH', '\).*\(');\)/\1$SIMPLERISK_DB_SSL_CERT_PATH\2/g" $CONFIG_PATH || true
 
+    # Update the SIMPLERISK_INSTALLED value
+    exec_cmd "sed -i \"s/\('SIMPLERISK_INSTALLED', 'false'\)/'SIMPLERISK_INSTALLED', 'true'/g\" $CONFIG_PATH"
+
     # shellcheck disable=SC2015
     [ "$(cat /tmp/version)" == "testing" ] && exec_cmd "sed -i \"s|//\(define('.*_URL\)|\1|g\" $CONFIG_PATH" || true
 }
