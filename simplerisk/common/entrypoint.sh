@@ -28,6 +28,10 @@ set_config(){
 		SIMPLERISK_DB_USERNAME=simplerisk && sed -i "s/\('DB_USERNAME', '\).*\(');\)/\1$SIMPLERISK_DB_USERNAME\2/g" $CONFIG_PATH
 		set_db_password
 		SIMPLERISK_DB_DATABASE=simplerisk && sed -i "s/\('DB_DATABASE', '\).*\(');\)/\1$SIMPLERISK_DB_DATABASE\2/g" $CONFIG_PATH
+		
+		# Update the SIMPLERISK_INSTALLED value
+		sed -i "s/\('SIMPLERISK_INSTALLED', 'false'\)/\('SIMPLERISK_INSTALLED', 'true'\)/g" $CONFIG_PATH
+
 		# shellcheck disable=SC2015
 		[ "$(cat /tmp/version)" == "testing" ] && sed -i "s|//\(define('.*_URL\)|\1|g" $CONFIG_PATH || true
 	
