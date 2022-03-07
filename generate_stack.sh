@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 
 set -euo pipefail
 
@@ -29,7 +29,7 @@ services:
     command: mysqld --sql_mode="NO_ENGINE_SUBSTITUTION"
     environment:
     - MYSQL_ROOT_PASSWORD=$pass
-    image: mariadb:10.6
+    image: mariadb:10.7
 
   smtp:
     image: namshi/smtp
