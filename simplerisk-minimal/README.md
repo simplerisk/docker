@@ -31,12 +31,21 @@ docker run --name simplerisk -e SIMPLERISK_DB_HOST=db-server.example.com -p 80:8
 
 ### Set up database (Optional)
 
-If this is the first time running the application, the MySQL/MariaDB database needs to be set up with the SimpleRisk schema. For this, please provide the environment variable `FIRST_TIME_SETUP` and optionally provide any of the variables that start with `FIRST_TIME_SETUP_*` to customize the set up.
+If this is the first time running the application, the MySQL/MariaDB database needs to be set up with the SimpleRisk schema. You have two options to set it up:
+
+#### New Installer (GUI)
+
+Since the `20220306-001` release, SimpleRisk now offers a graphical installation method. Just run the SimpleRisk container without any environment variables (remember to specify the 80/443 ports), then access it. From there, you can specify the location of the database, create and customize the database settings and create a new administrator user.
+
+#### Docker Setup (CLI)
+
+You must provide the environment variable `FIRST_TIME_SETUP` and optionally provide any of the variables from the **Environment variables** section that start with `FIRST_TIME_SETUP_*` to customize the setup.
 
 To only set up the database and discard the container afterwards, use the `FIRST_TIME_SETUP_ONLY` variable. This might be helpful in a situation where you only want to configure the database (like a initContainer on Kubernetes) and, if the process ran successfully, execute a new container with SimpleRisk running normally.
 
 Another detail to consider is that if the database set up is being executed and the `SIMPLERISK_DB_PASSWORD` variable is not provided, the application will generate a random password and show it on the container logs.
 
+The default user created is `admin/admin`.
 
 ## Environment variables
 
