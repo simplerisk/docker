@@ -151,8 +151,7 @@ pipeline {
 			}
 			post {
 				cleanup {
-					script { awsOps.terminateInstance("${instance_id}") }
-					sleep 60
+					script { awsOps.terminateInstance("${instance_id}", true) }
 				}
 			}
 		}
@@ -289,7 +288,6 @@ pipeline {
 			post {
 				cleanup {
 					script { awsOps.terminateInstance("${instance_id}") }
-					sleep 60
 				}
 			}
 		}
