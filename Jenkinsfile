@@ -1,4 +1,4 @@
-@Library('simplerisk@STABLE') _
+@Library('simplerisk') _
 
 pipeline {
 	agent none
@@ -31,7 +31,7 @@ pipeline {
 						failure {
 							script {
 								awsOps.terminateInstance("${instance_id}")
-							    emailOps.sendErrorEmail("${main_stage}/${env.STAGE_NAME}", "${committer_email}")
+								emailOps.sendErrorEmail("${main_stage}/${env.STAGE_NAME}", "${committer_email}")
 							}
 						}
 						aborted {
@@ -95,56 +95,35 @@ pipeline {
 				}
 				stage ('Push to Docker Hub') {
 					when { branch 'master' }
-					stages {
-						stage ('Log into Docker Hub') {
+					parallel {
+						stage ("Current Version - bionic") {
 							agent { label 'buildtestmed' }
 							steps {
-								script { dockerOps.setDockerCreds('cb153fa6-2299-4bdb-9ef0-9c3e6382c87a') }
-							}
-							post {
-								failure {
-									script {
-										awsOps.terminateInstance("${instance_id}")
-										emailOps.sendErrorEmail("${main_stage}/${env.STAGE_NAME}", "${committer_email}")
-									}
-								}
-								aborted {
-									script { awsOps.terminateInstance("${instance_id}") }
+								script {
+									image = env.STAGE_NAME
+									dockerOps.pushSingleDockerImage(docker_image:"${main_stage}", version:"${current_version}", os_type:"bionic")
 								}
 							}
 						}
-						stage ('Push') {
-							parallel {
-								stage ("Current Version - bionic") {
-									agent { label 'buildtestmed' }
-									steps {
-										script {
-											image = env.STAGE_NAME
-											dockerOps.pushSingleDockerImage(docker_image:"${main_stage}", version:"${current_version}", os_type:"bionic")
-										}
-									}
-								}
-								stage ("Latest/Current Version/Current Version - focal") {
-									agent { label 'buildtestmed' }
-									steps {
-										script {
-											image = env.STAGE_NAME
-											dockerOps.pushFullSetOfDockerImages("${main_stage}", "${current_version}", "focal")
-										}
-									}
+						stage ("Latest/Current Version/Current Version - focal") {
+							agent { label 'buildtestmed' }
+							steps {
+								script {
+									image = env.STAGE_NAME
+									dockerOps.pushFullSetOfDockerImages("${main_stage}", "${current_version}", "focal")
 								}
 							}
-							post {
-								failure {
-									script {
-										awsOps.terminateInstance("${instance_id}")
-										emailOps.sendErrorEmail("${main_stage}/${env.STAGE_NAME}/${image}", "${committer_email}")
-									}
-								}
-								aborted {
-									script { awsOps.terminateInstance("${instance_id}") }
-								}
+						}
+					}
+					post {
+						failure {
+							script {
+								awsOps.terminateInstance("${instance_id}")
+								emailOps.sendErrorEmail("${main_stage}/${env.STAGE_NAME}/${image}", "${committer_email}")
 							}
+						}
+						aborted {
+							script { awsOps.terminateInstance("${instance_id}") }
 						}
 					}
 				}
@@ -231,56 +210,35 @@ pipeline {
 				}
 				stage ('Push to Docker Hub') {
 					when { branch 'master' }
-					stages {
-						stage ('Log into Docker Hub') {
+					parallel {
+						stage ('Current Version - PHP 7.2') {
 							agent { label 'buildtestmed' }
 							steps {
-								script { dockerOps.setDockerCreds('cb153fa6-2299-4bdb-9ef0-9c3e6382c87a') }
-							}
-							post {
-								failure {
-									script {
-										awsOps.terminateInstance("${instance_id}")
-										emailOps.sendErrorEmail("${main_stage}/${env.STAGE_NAME}", "${committer_email}")
-									}
-								}
-								aborted {
-									script { awsOps.terminateInstance("${instance_id}") }
+								script {
+									image = env.STAGE_NAME
+									dockerOps.pushSingleDockerImage(docker_image:"${main_stage}", version:"${current_version}", os_type:"php72")
 								}
 							}
 						}
-						stage ('Push') {
-							parallel {
-								stage ('Current Version - PHP 7.2') {
-									agent { label 'buildtestmed' }
-									steps {
-										script {
-											image = env.STAGE_NAME
-											dockerOps.pushSingleDockerImage(docker_image:"${main_stage}", version:"${current_version}", os_type:"php72")
-										}
-									}
-								}
-								stage ("Latest/Current Version/Current Version - PHP 7.4") {
-									agent { label 'buildtestmed' }
-									steps {
-										script {
-											image = env.STAGE_NAME
-											dockerOps.pushFullSetOfDockerImages("${main_stage}", "${current_version}", "php74")
-										}
-									}
+						stage ("Latest/Current Version/Current Version - PHP 7.4") {
+							agent { label 'buildtestmed' }
+							steps {
+								script {
+									image = env.STAGE_NAME
+									dockerOps.pushFullSetOfDockerImages("${main_stage}", "${current_version}", "php74")
 								}
 							}
-							post {
-								failure {
-									script {
-										awsOps.terminateInstance("${instance_id}")
-										emailOps.sendErrorEmail("${main_stage}/${env.STAGE_NAME}/${image}")
-									}
-								}
-								aborted {
-									script { awsOps.terminateInstance("${instance_id}") }
-								}
+						}
+					}
+					post {
+						failure {
+							script {
+								awsOps.terminateInstance("${instance_id}")
+								emailOps.sendErrorEmail("${main_stage}/${env.STAGE_NAME}/${image}")
 							}
+						}
+						aborted {
+							script { awsOps.terminateInstance("${instance_id}") }
 						}
 					}
 				}
