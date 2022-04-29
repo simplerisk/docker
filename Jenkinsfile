@@ -18,6 +18,7 @@ pipeline {
 			}
 		}
 		stage ('simplerisk/simplerisk') {
+			agent { label 'buildtestmed' }
 			stages {
 				stage ('Initialize Variables') {
 					agent { label 'buildtestmed' }
@@ -29,13 +30,7 @@ pipeline {
 					}
 					post {
 						failure {
-							script {
-								awsOps.terminateInstance("${instance_id}")
-								emailOps.sendErrorEmail("${main_stage}/${env.STAGE_NAME}", "${committer_email}")
-							}
-						}
-						aborted {
-							script { awsOps.terminateInstance("${instance_id}") }
+							script { emailOps.sendErrorEmail("${main_stage}/${env.STAGE_NAME}", "${committer_email}") }
 						}
 					}
 				}
@@ -51,18 +46,10 @@ pipeline {
 							}
 							post {
 								success {
-									script {
-										if (env.CHANGE_ID) { pullRequest.createStatus(status: "success", context: "build/simplerisk/ubuntu-1804", description: "Image built successfully", targetUrl: "$BUILD_URL") }
-									}
+									script { if (env.CHANGE_ID) { pullRequest.createStatus(status: "success", context: "build/simplerisk/ubuntu-1804", description: "Image built successfully", targetUrl: "$BUILD_URL") } }
 								}
 								failure {
-									script {
-										awsOps.terminateInstance("${instance_id}")
-										emailOps.sendErrorEmail("${main_stage}/${env.STAGE_NAME}/${image}", "${committer_email}")
-									}
-								}
-								aborted {
-									script { awsOps.terminateInstance("${instance_id}") }
+									script { emailOps.sendErrorEmail("${main_stage}/${env.STAGE_NAME}/${image}", "${committer_email}") }
 								}
 							}
 						}
@@ -76,18 +63,10 @@ pipeline {
 							}
 							post {
 								success {
-									script {
-										if (env.CHANGE_ID) { pullRequest.createStatus(status: "success", context: "build/simplerisk/ubuntu-2004", description: "Image built successfully", targetUrl: "$BUILD_URL") }
-									}
+									script { if (env.CHANGE_ID) { pullRequest.createStatus(status: "success", context: "build/simplerisk/ubuntu-2004", description: "Image built successfully", targetUrl: "$BUILD_URL") } }
 								}
 								failure {
-									script {
-										awsOps.terminateInstance("${instance_id}")
-										emailOps.sendErrorEmail("${main_stage}/${env.STAGE_NAME}/${image}", "${committer_email}")
-									}
-								}
-								aborted {
-									script { awsOps.terminateInstance("${instance_id}") }
+									script { emailOps.sendErrorEmail("${main_stage}/${env.STAGE_NAME}/${image}", "${committer_email}") }
 								}
 							}
 						}
@@ -117,24 +96,19 @@ pipeline {
 					}
 					post {
 						failure {
-							script {
-								awsOps.terminateInstance("${instance_id}")
-								emailOps.sendErrorEmail("${main_stage}/${env.STAGE_NAME}/${image}", "${committer_email}")
-							}
-						}
-						aborted {
-							script { awsOps.terminateInstance("${instance_id}") }
+							script { emailOps.sendErrorEmail("${main_stage}/${env.STAGE_NAME}/${image}", "${committer_email}") }
 						}
 					}
 				}
 			}
 			post {
 				cleanup {
-					script { awsOps.terminateInstance("${instance_id}", true) }
+					script { dockerOps.deleteAllImages() }
 				}
 			}
 		}
 		stage ('simplerisk/simplerisk-minimal') {
+			agent { label 'buildtestmed' }
 			stages {
 				stage ('Initialize Variables') {
 					agent { label 'buildtestmed' }
@@ -245,7 +219,7 @@ pipeline {
 			}
 			post {
 				cleanup {
-					script { awsOps.terminateInstance("${instance_id}") }
+					script { dockerOps.deleteAllImages() }
 				}
 			}
 		}
