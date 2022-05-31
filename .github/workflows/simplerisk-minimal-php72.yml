@@ -15,11 +15,11 @@ jobs:
 
       - name: Build an image from Dockerfile
         run: |
-          docker build -t simplerisk/simplerisk-minimal:php7.2 -f simplerisk-minimal/php7.2/Dockerfile simplerisk-minimal
+          docker build -t simplerisk/simplerisk-minimal:php72 -f simplerisk-minimal/php72/Dockerfile simplerisk-minimal
           
       - name: Run Dockle 
         uses: hands-lab/dockle-action@v1
         with:
-          image: "simplerisk/simplerisk-minimal:php7.2"
+          image: "simplerisk/simplerisk-minimal:php72"
           exit-code: '1'
           exit-level: FATAL
