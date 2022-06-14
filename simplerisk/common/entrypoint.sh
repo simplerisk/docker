@@ -19,10 +19,10 @@ set_db_password(){
 }
 
 set_config(){
+	CONFIG_PATH='/var/www/simplerisk/includes/config.php'
+
 	# If the config.php hasn't already been configured
 	if [ ! -f /configurations/simplerisk-config-configured ]; then
-		CONFIG_PATH='/var/www/simplerisk/includes/config.php'
-
 		# TEMP: localhost as hostname is not working on Ubuntu 20.04
 		OS_VERSION="$(grep VERSION_ID /etc/os-release | cut -d '"' -f 2)"
 		[ "$OS_VERSION" == "20.04" ] && SIMPLERISK_DB_HOSTNAME='127.0.0.1' || SIMPLERISK_DB_HOSTNAME='localhost'
