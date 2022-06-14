@@ -63,12 +63,13 @@ configure_db() {
 		run_sql_command "${password}" "GRANT SELECT, INSERT, UPDATE, DELETE, CREATE, DROP, REFERENCES, INDEX, ALTER ON simplerisk.* TO 'simplerisk'@'${SIMPLERISK_DB_HOSTNAME}'"
 		run_sql_command "${password}" "UPDATE mysql.db SET References_priv='Y',Index_priv='Y' WHERE db='simplerisk';"
 
+		# Update the SIMPLERISK_INSTALLED value because of the DB installation
+		sed -i "s/\('SIMPLERISK_INSTALLED', 'false'\)/'SIMPLERISK_INSTALLED', 'true'/g" $CONFIG_PATH
+
 		# Create a file so this doesn't run again
 		touch /configurations/mysql-configured
 	fi
 
-	# Update the SIMPLERISK_INSTALLED value
-	sed -i "s/\('SIMPLERISK_INSTALLED', 'false'\)/'SIMPLERISK_INSTALLED', 'true'/g" $CONFIG_PATH
 }
 
 unset_variables() {
