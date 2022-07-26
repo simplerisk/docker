@@ -7,7 +7,13 @@ FROM ubuntu:bionic
 LABEL maintainer="Simplerisk <support@simplerisk.com>"
 
 # Make necessary directories
-RUN mkdir -p /configurations /etc/apache2/ssl /passwords /var/{log,lib/mysql,www/simplerisk}
+RUN mkdir -p /configurations \
+	     /etc/apache2/ssl \
+	     /passwords \
+	     /var/log/supervisor \
+	     /var/lib/mysql \
+	     /var/run/supervisor \
+	     /var/www/simplerisk
                                                                     
 # Installing apt dependencies     
 RUN dpkg-divert --local --rename /usr/bin/ischroot && \
@@ -40,42 +46,37 @@ RUN dpkg-divert --local --rename /usr/bin/ischroot && \
 RUN < /dev/urandom tr -dc _A-Z-a-z-0-9 | head -c21 > /passwords/pass_openssl.txt
 
 # Install and configure supervisor
-COPY common/supervisord.conf /etc/supervisord.conf
-#RUN mkdir /var/log/supervisor/
-RUN service supervisor restart
+COPY common/supervisord.conf /etc/supervisor/supervisord.conf
 
 # Configure MySQL
 RUN sed -i 's/\[mysqld\]/\[mysqld\]\nsql-mode="NO_ENGINE_SUBSTITUTION"/g' /etc/mysql/mysql.conf.d/mysqld.cnf
 
 # Configure Apache
 COPY common/foreground.sh /etc/apache2/foreground.sh
-RUN chmod 755 /etc/apache2/foreground.sh
 COPY common/envvars /etc/apache2/envvars
 COPY common/000-default.conf /etc/apache2/sites-enabled/000-default.conf
 COPY common/default-ssl.conf /etc/apache2/sites-enabled/default-ssl.conf
-RUN sed -i 's/upload_max_filesize = 2M/upload_max_filesize = 5M/g' /etc/php/7.2/apache2/php.ini
-RUN sed -i 's/\(upload_max_filesize =\) .*\(M\)/\1 5\2/g' /etc/php/7.2/apache2/php.ini
-RUN sed -i 's/\(memory_limit =\) .*\(M\)/\1 256\2/g' /etc/php/7.2/apache2/php.ini
-RUN sed -i '/max_input_vars = 1000/a max_input_vars = 3000' /etc/php/7.2/apache2/php.ini
+RUN sed -i 's/\(upload_max_filesize =\) .*\(M\)/\1 5\2/g' /etc/php/7.2/apache2/php.ini && \
+	sed -i 's/\(memory_limit =\) .*\(M\)/\1 256\2/g' /etc/php/7.2/apache2/php.ini && \
+	sed -i 's/;\(max_input_vars =\) .*/\1 3000/g' /etc/php/7.2/apache2/php.ini
 
 # Create SSL Certificates for Apache SSL
-RUN mkdir -p /etc/apache2/ssl/ssl.crt
-RUN mkdir -p /etc/apache2/ssl/ssl.key
-RUN openssl genrsa -des3 -passout pass:/passwords/pass_openssl.txt -out /etc/apache2/ssl/ssl.key/simplerisk.pass.key
-RUN openssl rsa -passin pass:/passwords/pass_openssl.txt -in /etc/apache2/ssl/ssl.key/simplerisk.pass.key -out /etc/apache2/ssl/ssl.key/simplerisk.key
-RUN rm /etc/apache2/ssl/ssl.key/simplerisk.pass.key
-RUN openssl req -new -key /etc/apache2/ssl/ssl.key/simplerisk.key -out  /etc/apache2/ssl/ssl.crt/simplerisk.csr -subj "/CN=simplerisk"
-RUN openssl x509 -req -days 365 -in /etc/apache2/ssl/ssl.crt/simplerisk.csr -signkey /etc/apache2/ssl/ssl.key/simplerisk.key -out /etc/apache2/ssl/ssl.crt/simplerisk.crt
+RUN mkdir -p /etc/apache2/ssl/ssl.crt /etc/apache2/ssl/ssl.key && \
+	openssl genrsa -des3 -passout pass:/passwords/pass_openssl.txt -out /etc/apache2/ssl/ssl.key/simplerisk.pass.key && \
+	openssl rsa -passin pass:/passwords/pass_openssl.txt -in /etc/apache2/ssl/ssl.key/simplerisk.pass.key -out /etc/apache2/ssl/ssl.key/simplerisk.key && \
+	rm /etc/apache2/ssl/ssl.key/simplerisk.pass.key && \
+	openssl req -new -key /etc/apache2/ssl/ssl.key/simplerisk.key -out  /etc/apache2/ssl/ssl.crt/simplerisk.csr -subj "/CN=simplerisk" && \
+	openssl x509 -req -days 365 -in /etc/apache2/ssl/ssl.crt/simplerisk.csr -signkey /etc/apache2/ssl/ssl.key/simplerisk.key -out /etc/apache2/ssl/ssl.crt/simplerisk.crt
 
 # Activate Apache modules
-RUN phpenmod ldap
-RUN a2enmod rewrite
-RUN a2enmod ssl
-RUN a2enconf security
-RUN sed -i 's/SSLProtocol all -SSLv3/SSLProtocol TLSv1.2/g' /etc/apache2/mods-enabled/ssl.conf
-RUN sed -i 's/#SSLHonorCipherOrder on/SSLHonorCipherOrder on/g' /etc/apache2/mods-enabled/ssl.conf
-RUN sed -i 's/ServerTokens OS/ServerTokens Prod/g' /etc/apache2/conf-enabled/security.conf
-RUN sed -i 's/ServerSignature On/ServerSignature Off/g' /etc/apache2/conf-enabled/security.conf
+RUN phpenmod ldap && \
+	a2enmod rewrite && \
+	a2enmod ssl && \
+	a2enconf security && \
+	sed -i 's/\(SSLProtocol\) all -SSLv3/\1 TLSv1.2/g' /etc/apache2/mods-enabled/ssl.conf && \
+	sed -i 's/#\(SSLHonorCipherOrder on\)/\1/g' /etc/apache2/mods-enabled/ssl.conf && \
+	sed -i 's/\(ServerTokens\) OS/\1 Prod/g' /etc/apache2/conf-enabled/security.conf && \
+	sed -i 's/\(ServerSignature\) On/\1 Off/g' /etc/apache2/conf-enabled/security.conf
 
 RUN echo %sudo  ALL=NOPASSWD: ALL >> /etc/sudoers && \
     echo "20220701-001" > /tmp/version
@@ -98,18 +99,13 @@ EXPOSE 443
 
 # Create the start script and set permissions
 COPY common/entrypoint.sh /entrypoint.sh
-RUN chmod 755 /entrypoint.sh
+RUN chmod 755 /entrypoint.sh /etc/apache2/foreground.sh
 
 # Data to save
-VOLUME /passwords
-VOLUME /configurations
-VOLUME /var/log
-VOLUME /var/lib/mysql
-VOLUME /etc/apache2/ssl
-VOLUME /var/www/simplerisk
+VOLUME [ "/passwords", "/configurations", "/var/log", "/var/lib/mysql", "/etc/apache2/ssl", "/var/www/simplerisk" ]
 
 # Setting up entrypoint
 ENTRYPOINT [ "/entrypoint.sh" ]
 
 # Start Apache and MySQL
-CMD ["/usr/sbin/apache2ctl", "-D", "FOREGROUND"]
+CMD ["/usr/bin/supervisord", "-n", "-c", "/etc/supervisor/supervisord.conf"]

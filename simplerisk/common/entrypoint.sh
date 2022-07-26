@@ -50,12 +50,11 @@ set_config(){
 }
 
 configure_db() {
-	# Start MySQL and wait 10 seconds
-	/etc/init.d/mysql start && sleep 10s
-
 	# If MySQL hasn't already been configured
 	if [ ! -f /configurations/mysql-configured ]; then
+		# Start MySQL and wait 10 seconds for the startup
 		print_log "initial_setup:mysql" "Setting up MySQL"
+		service mysql start && sleep 10s
 
 		local password
 		password="$(cat /passwords/pass_mysql_root.txt)"
@@ -80,8 +79,9 @@ configure_db() {
 		touch /configurations/mysql-configured
 
 		print_log "initial_setup:mysql" "MySQL set properly"
+		service mysql stop
+		service mysql status || true
 	fi
-
 }
 
 unset_variables() {
