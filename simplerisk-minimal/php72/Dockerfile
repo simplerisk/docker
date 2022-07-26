@@ -36,37 +36,33 @@ RUN setcap CAP_NET_BIND_SERVICE=+eip /usr/sbin/apache2 && \
     apt-get -y purge
 
 # Copying all files
-COPY common/supervisord.conf /etc/supervisord.conf
 COPY common/foreground.sh /etc/apache2/foreground.sh
 COPY common/envvars /etc/apache2/envvars
 COPY common/000-default.conf /etc/apache2/sites-enabled/000-default.conf
 COPY common/default-ssl.conf /etc/apache2/sites-enabled/default-ssl.conf
 COPY common/entrypoint.sh /entrypoint.sh
 
-# Start supervisor 
-RUN service supervisor restart
-
 # Configure Apache
-RUN echo 'upload_max_filesize = 5M' >> /usr/local/etc/php/conf.d/docker-php-uploadfilesize.ini
-RUN echo 'memory_limit = 256M' >> /usr/local/etc/php/conf.d/docker-php-memlimit.ini
-RUN echo 'max_input_vars = 3000' >> /usr/local/etc/php/conf.d/docker-php-maxinputvars.ini
-RUN echo 'log_errors = On' >> /usr/local/etc/php/conf.d/docker-php-error_logging.ini
-RUN echo 'error_log = /dev/stderr' >> /usr/local/etc/php/conf.d/docker-php-error_logging.ini
+RUN echo 'upload_max_filesize = 5M' >> /usr/local/etc/php/conf.d/docker-php-uploadfilesize.ini && \
+	echo 'memory_limit = 256M' >> /usr/local/etc/php/conf.d/docker-php-memlimit.ini && \
+	echo 'max_input_vars = 3000' >> /usr/local/etc/php/conf.d/docker-php-maxinputvars.ini && \
+	echo 'log_errors = On' >> /usr/local/etc/php/conf.d/docker-php-error_logging.ini && \
+	echo 'error_log = /dev/stderr' >> /usr/local/etc/php/conf.d/docker-php-error_logging.ini && \
 # Create SSL Certificates for Apache SSL
-RUN echo $(< /dev/urandom tr -dc _A-Z-a-z-0-9 | head -c${1:-32}) > /tmp/pass_openssl.txt
-RUN mkdir -p /etc/apache2/ssl/ssl.crt /etc/apache2/ssl/ssl.key
-RUN openssl genrsa -des3 -passout pass:/tmp/pass_openssl.txt -out /etc/apache2/ssl/ssl.key/simplerisk.pass.key
-RUN openssl rsa -passin pass:/tmp/pass_openssl.txt -in /etc/apache2/ssl/ssl.key/simplerisk.pass.key -out /etc/apache2/ssl/ssl.key/simplerisk.key
-RUN rm /etc/apache2/ssl/ssl.key/simplerisk.pass.key /tmp/pass_openssl.txt
-RUN openssl req -new -key /etc/apache2/ssl/ssl.key/simplerisk.key -out  /etc/apache2/ssl/ssl.crt/simplerisk.csr -subj "/CN=simplerisk"
-RUN openssl x509 -req -days 365 -in /etc/apache2/ssl/ssl.crt/simplerisk.csr -signkey /etc/apache2/ssl/ssl.key/simplerisk.key -out /etc/apache2/ssl/ssl.crt/simplerisk.crt
+	echo $(< /dev/urandom tr -dc _A-Z-a-z-0-9 | head -c${1:-32}) > /tmp/pass_openssl.txt && \
+	mkdir -p /etc/apache2/ssl/ssl.crt /etc/apache2/ssl/ssl.key && \
+	openssl genrsa -des3 -passout pass:/tmp/pass_openssl.txt -out /etc/apache2/ssl/ssl.key/simplerisk.pass.key && \
+	openssl rsa -passin pass:/tmp/pass_openssl.txt -in /etc/apache2/ssl/ssl.key/simplerisk.pass.key -out /etc/apache2/ssl/ssl.key/simplerisk.key && \
+	rm /etc/apache2/ssl/ssl.key/simplerisk.pass.key /tmp/pass_openssl.txt && \
+	openssl req -new -key /etc/apache2/ssl/ssl.key/simplerisk.key -out  /etc/apache2/ssl/ssl.crt/simplerisk.csr -subj "/CN=simplerisk" && \
+	openssl x509 -req -days 365 -in /etc/apache2/ssl/ssl.crt/simplerisk.csr -signkey /etc/apache2/ssl/ssl.key/simplerisk.key -out /etc/apache2/ssl/ssl.crt/simplerisk.crt && \
 # Activate Apache modules
-RUN a2enmod rewrite ssl
-RUN a2enconf security
-RUN sed -i 's/SSLProtocol all -SSLv3/SSLProtocol TLSv1.2/g' /etc/apache2/mods-enabled/ssl.conf
-RUN sed -i 's/#SSLHonorCipherOrder on/SSLHonorCipherOrder on/g' /etc/apache2/mods-enabled/ssl.conf
-RUN sed -i 's/ServerTokens OS/ServerTokens Prod/g' /etc/apache2/conf-enabled/security.conf
-RUN sed -i 's/#ServerSignature On/ServerSignature Off/g' /etc/apache2/conf-enabled/security.conf
+	a2enmod rewrite ssl && \
+	a2enconf security && \
+	sed -i 's/\(SSLProtocol\) all -SSLv3/\1 TLSv1.2/g' /etc/apache2/mods-enabled/ssl.conf && \
+	sed -i 's/#\(SSLHonorCipherOrder on\)/\1/g' /etc/apache2/mods-enabled/ssl.conf && \
+	sed -i 's/\(ServerTokens\) OS/\1 Prod/g' /etc/apache2/conf-enabled/security.conf && \
+	sed -i 's/#\(ServerSignature\) On/\1 Off/g' /etc/apache2/conf-enabled/security.conf
 
 # Download and extract SimpleRisk, plus saving release version for database reference
 RUN rm -rf /var/www/html && \
@@ -74,20 +70,17 @@ RUN rm -rf /var/www/html && \
     echo 20220701-001 > /tmp/version
 
 # Creating Simplerisk user on www-data group and setting up ownerships
-RUN useradd -G www-data simplerisk
-RUN chown -R simplerisk:www-data /var/www/simplerisk /etc/apache2 /var/run/ /var/log/apache2 && \
-    chmod -R 770 /var/www/simplerisk /etc/apache2 /var/run/ /var/log/apache2 && \
-    chmod 755 /entrypoint.sh /etc/apache2/foreground.sh
-
+RUN useradd -G www-data simplerisk && \
+	chown -R simplerisk:www-data /var/www/simplerisk /etc/apache2 /var/run/ /var/log/apache2 && \
+	chmod -R 770 /var/www/simplerisk /etc/apache2 /var/run/ /var/log/apache2 && \
+	chmod 755 /entrypoint.sh /etc/apache2/foreground.sh && \
 # Setting up cronjob
-RUN echo "* * * * * /usr/local/bin/php -f /var/www/simplerisk/cron/cron.php > /dev/null 2>&1" >> /etc/cron.d/backup-cron && \
-    chmod 0644 /etc/cron.d/backup-cron && \
-    crontab /etc/cron.d/backup-cron
+	echo "* * * * * /usr/local/bin/php -f /var/www/simplerisk/cron/cron.php > /dev/null 2>&1" >> /etc/cron.d/backup-cron && \
+	chmod 0644 /etc/cron.d/backup-cron && \
+	crontab /etc/cron.d/backup-cron
 
 # Data to save
-VOLUME /var/log/apache2
-VOLUME /etc/apache2/ssl
-VOLUME /var/www/simplerisk
+VOLUME [ "/var/log/apache2", "/etc/apache2/ssl", "/var/www/simplerisk" ]
 
 # Using simplerisk user from here
 USER simplerisk
