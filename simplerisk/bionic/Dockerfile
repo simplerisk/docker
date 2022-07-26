@@ -58,7 +58,7 @@ COPY common/000-default.conf /etc/apache2/sites-enabled/000-default.conf
 COPY common/default-ssl.conf /etc/apache2/sites-enabled/default-ssl.conf
 RUN sed -i 's/\(upload_max_filesize =\) .*\(M\)/\1 5\2/g' /etc/php/7.2/apache2/php.ini && \
 	sed -i 's/\(memory_limit =\) .*\(M\)/\1 256\2/g' /etc/php/7.2/apache2/php.ini && \
-	sed -i 's/;\(max_input_vars =\) .*/\1 3000/g' /etc/php/7.2/apache2/php.ini
+	sed -i 's/;.*\(max_input_vars =\) .*/\1 3000/g' /etc/php/7.2/apache2/php.ini
 
 # Create SSL Certificates for Apache SSL
 RUN mkdir -p /etc/apache2/ssl/ssl.crt /etc/apache2/ssl/ssl.key && \
