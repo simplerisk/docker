@@ -80,7 +80,6 @@ configure_db() {
 
 		print_log "initial_setup:mysql" "MySQL set properly"
 		service mysql stop
-		service mysql status || true
 	fi
 }
 
