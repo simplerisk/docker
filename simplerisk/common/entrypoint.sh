@@ -2,6 +2,10 @@
 
 set -eo pipefail
 
+print_log(){
+    echo "$(date -u +"[%a %b %e %X.%6N %Y]") [$1] $2"
+}
+
 generate_random_password() {
 	echo "$(< /dev/urandom tr -dc A-Za-z0-9 | head -c21)"
 }
@@ -21,6 +25,8 @@ set_db_password(){
 set_config(){
 	# If the config.php hasn't already been configured
 	if [ ! -f /configurations/simplerisk-config-configured ]; then
+		print_log "initial_setup:config" "Setting up SimpleRisk's configuration"
+
 		CONFIG_PATH='/var/www/simplerisk/includes/config.php'
 
 		# TEMP: localhost as hostname is not working on Ubuntu 20.04
@@ -38,15 +44,18 @@ set_config(){
 	
 		# Create a file so this doesn't run again
 		touch /configurations/simplerisk-config-configured
+
+		print_log "initial_setup:config" "SimpleRisk's configuration file set properly"
 	fi
 }
 
 configure_db() {
-	# Start MySQL and wait 10 seconds
-	/etc/init.d/mysql start && sleep 10s
-
 	# If MySQL hasn't already been configured
 	if [ ! -f /configurations/mysql-configured ]; then
+		# Start MySQL and wait 10 seconds for the startup
+		print_log "initial_setup:mysql" "Setting up MySQL"
+		service mysql start && sleep 10s
+
 		local password
 		password="$(cat /passwords/pass_mysql_root.txt)"
 		# Set the MySQL root password
@@ -68,8 +77,10 @@ configure_db() {
 
 		# Create a file so this doesn't run again
 		touch /configurations/mysql-configured
-	fi
 
+		print_log "initial_setup:mysql" "MySQL set properly"
+		service mysql stop
+	fi
 }
 
 unset_variables() {
@@ -80,10 +91,14 @@ unset_variables() {
 }
 
 _main() {
+	print_log "startup:general" "Starting SimpleRisk container..."
+
 	set_config
 	configure_db
 	unset_variables
 	service cron start
+
+	print_log "startup:general" "Container startup is finished"
 	exec "$@"
 }
 
