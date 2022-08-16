@@ -15,6 +15,7 @@ exec_cmd_nobail() {
 }
 
 generate_random_password() {
+    # shellcheck disable=SC2005
     echo "$(< /dev/urandom tr -dc _A-Z-a-z-0-9 | head -c21)"
 }
 
@@ -53,11 +54,16 @@ set_config(){
     # shellcheck disable=SC2015
     [ -n "${SIMPLERISK_DB_SSL_CERT_PATH:-}" ] && sed -i "s/\('DB_SSL_CERTIFICATE_PATH', '\).*\(');\)/\1$SIMPLERISK_DB_SSL_CERT_PATH\2/g" $CONFIG_PATH || true
 
-    # If testing is enabled, update the SIMPLERISK_INSTALLED value
-    [ "$(cat /tmp/version)" == "testing" ] && exec_cmd "sed -i \"s/\('SIMPLERISK_INSTALLED', \)'true'/\1'false'/g\" $CONFIG_PATH" || true
-
+    # If FIRST_TIME_SETUP is disabled, update the SIMPLERISK_INSTALLED value to true
     # shellcheck disable=SC2015
-    [ "$(cat /tmp/version)" == "testing" ] && exec_cmd "sed -i \"s|//\(define('.*_URL\)|\1|g\" $CONFIG_PATH" || true
+    [ -z "${FIRST_TIME_SETUP:-}" ] && exec_cmd "sed -i \"s/\('SIMPLERISK_INSTALLED', \)'false'/\1'true'/g\" $CONFIG_PATH" || true
+
+    # Testing related operations
+    if [ "$(cat /tmp/version)" = "testing" ]; then
+      exec_cmd "sed -i \"s/\('SIMPLERISK_INSTALLED', \)'true'/\1'false'/g\" $CONFIG_PATH"
+      exec_cmd "sed -i \"s|//\(define('.*_URL\)|\1|g\" $CONFIG_PATH"
+    fi
+
 }
 
 db_setup(){
