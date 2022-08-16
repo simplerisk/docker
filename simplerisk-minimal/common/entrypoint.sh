@@ -59,7 +59,7 @@ set_config(){
     [ -z "${FIRST_TIME_SETUP:-}" ] && exec_cmd "sed -i \"s/\('SIMPLERISK_INSTALLED', \)'false'/\1'true'/g\" $CONFIG_PATH" || true
 
     # Testing related operations
-    if [[ "$(cat /tmp/version)" == "testing" ]]; then
+    if [ "$(cat /tmp/version)" = "testing" ]; then
       exec_cmd "sed -i \"s/\('SIMPLERISK_INSTALLED', \)'true'/\1'false'/g\" $CONFIG_PATH"
       exec_cmd "sed -i \"s|//\(define('.*_URL\)|\1|g\" $CONFIG_PATH"
     fi
