@@ -1,8 +1,8 @@
 # SimpleRisk Minimal Image
 
-This image is intended to run SimpleRisk in a 'microservices' approach (database is not included). **It is not intended to run standalone, unless a database is configured with the SimpleRisk schema and the connection is properly set up**.
+This image is intended to run SimpleRisk in a 'microservices' approach (database is not included). It uses PHP 7.X with Apache as a base image. Also has the capability of setting properties of the `config.php` file through environment variables.
 
-It uses PHP 7.X with Apache as a base image. Also has the capability of setting properties of the `config.php` file through environment variables. 
+For any of the executions, it is recommended to map the 80 and 443 ports to be able to access the application.
 
 ## Build
 
@@ -17,45 +17,49 @@ docker build -f php$VERSION/Dockerfile -t simplerisk/simplerisk-minimal:$VERSION
 
 ## Run 
 
-There are two ways to run the application:
+There are two ways to run this container:
 
-### Normal execution
-
-If the database is already set up for SimpleRisk to use it, run the container without the `FIRST_TIME_SETUP` variables.
-
-For example, if the database is located at `db-server.example.com`, the command to run the container would be:
-
-```
-docker run --name simplerisk -e SIMPLERISK_DB_HOST=db-server.example.com -p 80:80 -p 443:443 simplerisk-minimal
-```
-
-### Set up database (Optional)
+### Database Setup (Optional)
 
 If this is the first time running the application, the MySQL/MariaDB database needs to be set up with the SimpleRisk schema. You have two options to set it up:
 
 #### New Installer (GUI)
 
-Since the `20220306-001` release, SimpleRisk now offers a graphical installation method. Just run the SimpleRisk container without any environment variables (remember to specify the 80/443 ports), then access it. From there, you can specify the location of the database, create and customize the database settings and create a new administrator user.
+Since the `20220306-001` release, SimpleRisk offers a graphical installation method. You will need to run the container the following way:
+```
+docker run -d --name simplerisk -e DB_SETUP=manual -p 80:80 -p 443:443 simplerisk/simplerisk-minimal
+```
 
 #### Docker Setup (CLI)
 
-You must provide the environment variable `FIRST_TIME_SETUP` and optionally provide any of the variables from the **Environment variables** section that start with `FIRST_TIME_SETUP_*` to customize the setup.
-
-To only set up the database and discard the container afterwards, use the `FIRST_TIME_SETUP_ONLY` variable. This might be helpful in a situation where you only want to configure the database (like a initContainer on Kubernetes) and, if the process ran successfully, execute a new container with SimpleRisk running normally.
+You must provide the environment variable `DB_SETUP=automatic|automatic-only` and optionally provide any of the variables from the **Environment variables** section that start with `AUTO_DB_SETUP_*` to customize the setup. The only difference between the `DB_SETUP` values shown before is that `automatic` will configure the database and leave the container running until it stops, while `automatic-stop` will stop the container after configuring the database. The latter might be helpful in a situation where you only want to configure the database.
 
 Another detail to consider is that if the database set up is being executed and the `SIMPLERISK_DB_PASSWORD` variable is not provided, the application will generate a random password and show it on the container logs.
 
-The default user created is `admin/admin`.
+The way to run the container on this mode are the following:
+```
+# Automatic setup (set database and keep running)
+docker run -d --name simplerisk -e DB_SETUP=automatic -e AUTO_DB_SETUP_PASS=test -e SIMPLERISK_DB_HOSTNAME=172.17.0.2 -p 80:80 -p 443:443 simplerisk/simplerisk-minimal
+
+# Automatic-only setup (set database and stop container)
+docker run -d --name simplerisk -e DB_SETUP=automatic-only -e AUTO_DB_SETUP_PASS=test -e SIMPLERISK_DB_HOSTNAME=172.17.0.2 -p 80:80 -p 443:443 simplerisk/simplerisk-minimal
+```
+
+### Normal execution
+
+If the database is already set up for SimpleRisk to use it, run the container by just providing the `SIMPLERISK_DB_*` options. For example, if the database is located at `db-server.example.com` on port 45329, the command to run the container would be:
+```
+docker run -d --name simplerisk -e SIMPLERISK_DB_PASSWORD=pass -e SIMPLERISK_DB_HOSTNAME=db-server.example.com -e SIMPLERISK_DB_PORT=45329 -p 80:80 -p 443:443 simplerisk/simplerisk-minimal
+```
 
 ## Environment variables
 
 | Variable Name | Default Value | Purpose |
 |:-------------:|:-------------:|:--------|
-| `FIRST_TIME_SETUP` | `null` (Accepts any value) | Enables the database setup feature |
-| `FIRST_TIME_SETUP_ONLY` | `null` (Accepts any value) | If enabled, it will discard the container after finishing the database setup |
-| `FIRST_TIME_SETUP_USER` | `root` | User name of database privileged user to install SimpleRisk schema and other components |
-| `FIRST_TIME_SETUP_PASS` | `root` | Password for database privileged user to install SimpleRisk schema and other components |
-| `FIRST_TIME_SETUP_WAIT` | 20 | Time, in seconds, the application is going to wait to set up the database. Useful if you are deploying the database and SimpleRisk at the same time |
+| `DB_SETUP` | `null` (Accepts any value) | The container will start as if the database has not been set up. The valid options here are `automatic` (in case you want the container to configure the database), `automatic-only` (the same as `automatic`, but stops the container after finishing the setup) or `manual` (allows the user to run the manual setup) |
+| `AUTO_DB_SETUP_USER` | `root` | Used when `DB_SETUP=automatic|automatic-only`. User name of database privileged user to install SimpleRisk schema and other components |
+| `AUTO_DB_SETUP_PASS` | `root` | Used when `DB_SETUP=automatic|automatic-only`. Password for database privileged user to install SimpleRisk schema and other components |
+| `AUTO_DB_SETUP_WAIT` | 20 | Used when `DB_SETUP=automatic|automatic-only`. Time, in seconds, the application is going to wait to set up the database. Useful if you are deploying the database and SimpleRisk at the same time |
 | `SIMPLERISK_DB_HOSTNAME` | `localhost` | Hostname of the database server |
 | `SIMPLERISK_DB_PORT` | 3306 | Port to contact the database |
 | `SIMPLERISK_DB_USERNAME` |`simplerisk` | User name to be used to access the SimpleRisk database |

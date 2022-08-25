@@ -37,15 +37,15 @@ set_db_password(){
 validate_db_setup(){
     case "${DB_SETUP:-}" in
         automatic)
-            echo "Setting database through the automatic process";;
+            print_log "initial_info:setup" "Setting database through the automatic process";;
         automatic-only)
-            echo "Setting database through the automatic process and removing container";;
+            print_log "initial_info:setup" "Setting database through the automatic process and removing container";;
         manual)
-            echo "Database will be set manually";;
+            print_log "initial_info:setup" "Database will be set manually";;
         "")
             echo "Database is already set";;
         *)
-            fatal_error "The provided option for DB_SETUP is invalid. It must be automatic, automatic-only, manual or empty (\"\")";;
+            fatal_error "The provided option for DB_SETUP is invalid. It must be automatic, automatic-only or manual.";;
     esac
 }
 
