@@ -43,7 +43,7 @@ validate_db_setup(){
         manual)
             print_log "initial_info:setup" "Database will be set manually";;
         "")
-            echo "Database is already set";;
+            print_log "initial_info:setup" "Database is already set";;
         *)
             fatal_error "The provided option for DB_SETUP is invalid. It must be automatic, automatic-only or manual.";;
     esac
@@ -59,7 +59,6 @@ set_config(){
 
     SIMPLERISK_DB_USERNAME=${SIMPLERISK_DB_USERNAME:-simplerisk} && exec_cmd "sed -i \"s/\('DB_USERNAME', '\).*\(');\)/\1$SIMPLERISK_DB_USERNAME\2/g\" $CONFIG_PATH"
 
-    # shellcheck disable=SC2015
     set_db_password
 
     SIMPLERISK_DB_DATABASE=${SIMPLERISK_DB_DATABASE:-simplerisk} && exec_cmd "sed -i \"s/\('DB_DATABASE', '\).*\(');\)/\1$SIMPLERISK_DB_DATABASE\2/g\" $CONFIG_PATH"
