@@ -25,13 +25,28 @@ fatal_error(){
 }
 
 set_db_password(){
-    if [ -n "${FIRST_TIME_SETUP:-}" ]; then
+    if [[ "${DB_SETUP:-}" = automatic* ]]; then
         # shellcheck disable=SC2015
         [ -z "${SIMPLERISK_DB_PASSWORD:-}" ] && SIMPLERISK_DB_PASSWORD=$(generate_random_password) && print_log "initial_setup:warn" "As no password was provided and this is a first time setup, a random password has been generated ($SIMPLERISK_DB_PASSWORD)"
     else
         SIMPLERISK_DB_PASSWORD=${SIMPLERISK_DB_PASSWORD:-simplerisk}
     fi
     exec_cmd "sed -i \"s/\('DB_PASSWORD', '\).*\(');\)/\1$SIMPLERISK_DB_PASSWORD\2/g\" $CONFIG_PATH"
+}
+
+validate_db_setup(){
+    case "${DB_SETUP:-}" in
+        automatic)
+            print_log "initial_info:setup" "Setting database through the automatic process";;
+        automatic-only)
+            print_log "initial_info:setup" "Setting database through the automatic process and removing container";;
+        manual)
+            print_log "initial_info:setup" "Database will be set manually";;
+        "")
+            print_log "initial_info:setup" "Database is already set";;
+        *)
+            fatal_error "The provided option for DB_SETUP is invalid. It must be automatic, automatic-only or manual.";;
+    esac
 }
 
 set_config(){
@@ -54,9 +69,9 @@ set_config(){
     # shellcheck disable=SC2015
     [ -n "${SIMPLERISK_DB_SSL_CERT_PATH:-}" ] && sed -i "s/\('DB_SSL_CERTIFICATE_PATH', '\).*\(');\)/\1$SIMPLERISK_DB_SSL_CERT_PATH\2/g" $CONFIG_PATH || true
 
-    # If FIRST_TIME_SETUP is disabled, update the SIMPLERISK_INSTALLED value to true
+    # If DB_SETUP is not set, update the SIMPLERISK_INSTALLED value to true
     # shellcheck disable=SC2015
-    [ -z "${FIRST_TIME_SETUP:-}" ] && exec_cmd "sed -i \"s/\('SIMPLERISK_INSTALLED', \)'false'/\1'true'/g\" $CONFIG_PATH" || true
+    [ -z "${DB_SETUP:-}" ] && exec_cmd "sed -i \"s/\('SIMPLERISK_INSTALLED', \)'false'/\1'true'/g\" $CONFIG_PATH" || true
 
     # Testing related operations
     if [ "$(cat /tmp/version)" = "testing" ]; then
@@ -68,7 +83,7 @@ set_config(){
 
 db_setup(){
     print_log "initial_setup:info" "First time setup. Will wait..."
-    exec_cmd "sleep ${FIRST_TIME_SETUP_WAIT:-20}s > /dev/null 2>&1" "FIRST_TIME_SETUP_WAIT variable is set incorrectly. Exiting."
+    exec_cmd "sleep ${AUTO_DB_SETUP_WAIT:-20}s > /dev/null 2>&1" "AUTO_DB_SETUP_WAIT variable is set incorrectly. Exiting."
 
     print_log "initial_setup:info" "Starting database set up"
 
@@ -82,11 +97,11 @@ db_setup(){
         exec_cmd "curl -sL https://github.com/simplerisk/database/raw/master/simplerisk-en-$(cat /tmp/version).sql > $SCHEMA_FILE" "Could not download schema from Github. Exiting."
     fi
 
-    FIRST_TIME_SETUP_USER="${FIRST_TIME_SETUP_USER:-root}"
-    FIRST_TIME_SETUP_PASS="${FIRST_TIME_SETUP_PASS:-root}"
+    AUTO_DB_SETUP_USER="${AUTO_DB_SETUP_USER:-root}"
+    AUTO_DB_SETUP_PASS="${AUTO_DB_SETUP_PASS:-root}"
 
     print_log "initial_setup:info" "Applying changes to MySQL database... (MySQL error will be printed to console as guidance)"
-    exec_cmd "mysql --protocol=socket -u $FIRST_TIME_SETUP_USER -p$FIRST_TIME_SETUP_PASS -h$SIMPLERISK_DB_HOSTNAME -P$SIMPLERISK_DB_PORT <<EOSQL
+    exec_cmd "mysql --protocol=socket -u $AUTO_DB_SETUP_USER -p$AUTO_DB_SETUP_PASS -h$SIMPLERISK_DB_HOSTNAME -P$SIMPLERISK_DB_PORT <<EOSQL
     CREATE DATABASE ${SIMPLERISK_DB_DATABASE};
     USE ${SIMPLERISK_DB_DATABASE};
     \. ${SCHEMA_FILE}
@@ -102,15 +117,14 @@ EOSQL" "Was not able to apply settings on database. Check error above. Exiting."
     exec_cmd "sed -i \"s/\('SIMPLERISK_INSTALLED', \)'false'/\1'true'/g\" $CONFIG_PATH"
 
     # shellcheck disable=SC2015
-    [ -n "${FIRST_TIME_SETUP_ONLY:-}" ] && print_log "initial_setup:info" "Running on setup only. Container will be discarded." && exit 0 || true
+    [ "${DB_SETUP:-}" = "automatic-only" ] && print_log "initial_setup:info" "Running setup only (automatic-only). Container will be discarded." && exit 0 || true
 }
 
 unset_variables() {
-    unset FIRST_TIME_SETUP
-    unset FIRST_TIME_SETUP_ONLY
-    unset FIRST_TIME_SETUP_USER
-    unset FIRST_TIME_SETUP_PASS
-    unset FIRST_TIME_SETUP_WAIT
+    unset DB_SETUP
+    unset AUTO_DB_SETUP_USER
+    unset AUTO_DB_SETUP_PASS
+    unset AUTO_DB_SETUP_WAIT
     unset SIMPLERISK_DB_HOSTNAME
     unset SIMPLERISK_DB_PORT
     unset SIMPLERISK_DB_USERNAME
@@ -121,9 +135,10 @@ unset_variables() {
 }
 
 _main() {
+    validate_db_setup
     set_config
     # shellcheck disable=SC2015
-    [ -n "${FIRST_TIME_SETUP:-}" ] && db_setup || true
+    [[ "${DB_SETUP:-}" = automatic* ]] && db_setup || true
     unset_variables
     service cron start
     exec "$@"
