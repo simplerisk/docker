@@ -31,7 +31,7 @@ set_config(){
 
 		# TEMP: localhost as hostname is not working on Ubuntu 20.04
 		OS_VERSION="$(grep VERSION_ID /etc/os-release | cut -d '"' -f 2)"
-		[ "$OS_VERSION" == "20.04" ] && SIMPLERISK_DB_HOSTNAME='127.0.0.1' || SIMPLERISK_DB_HOSTNAME='localhost'
+		[ "$OS_VERSION" == "18.04" ] && SIMPLERISK_DB_HOSTNAME='localhost' || SIMPLERISK_DB_HOSTNAME='127.0.0.1'
 
 		sed -i "s/\('DB_HOSTNAME', '\).*\(');\)/\1$SIMPLERISK_DB_HOSTNAME\2/g" $CONFIG_PATH
 		SIMPLERISK_DB_PORT=3306 && sed -i "s/\('DB_PORT', '\).*\(');\)/\1$SIMPLERISK_DB_PORT\2/g" $CONFIG_PATH
