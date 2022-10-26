@@ -21,7 +21,6 @@ RUN apt-get update && \
 # Configure all PHP extensions
 RUN docker-php-ext-configure ldap --with-libdir=lib/x86_64-linux-gnu && \
     docker-php-ext-install ldap \
-                           #mbstring \
                            mysqli \
                            pdo_mysql \
                            curl \
