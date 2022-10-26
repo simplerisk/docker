@@ -4,7 +4,7 @@ set -euo pipefail
 
 if [ $# -eq 1 ]; then
   release=$1
-  [ "$release" == "testing" ] && images=('jammy') || images=('bionic' 'focal' 'jammy')
+  [ "$release" == "testing" ] && images=('jammy') || images=('jammy')
 else
   echo "No release version provided. Aborting." && exit 1
 fi
@@ -12,8 +12,6 @@ fi
 for image in ${images[*]}
 do
 case "$image" in
-	'bionic') php_version='7.2';;
-	'focal') php_version='7.4';;
 	'jammy') php_version='8.1';;
 esac
 
@@ -34,7 +32,7 @@ RUN mkdir -p /configurations \\
 	     /var/lib/mysql \\
 	     /var/run/supervisor \\
 	     /var/www/simplerisk
-                                                                    
+
 # Installing apt dependencies     
 RUN dpkg-divert --local --rename /usr/bin/ischroot && \\
     ln -sf /bin/true /usr/bin/ischroot && \\
@@ -43,24 +41,14 @@ RUN dpkg-divert --local --rename /usr/bin/ischroot && \\
                                                       php \\
                                                       php-mysql \\
                                                       php-json \\
-                                                      mysql-client \\
-                                                      mysql-server \\
                                                       php-dev \\
                                                       php-ldap \\
-EOF
-if [ "$image" == "jammy" ]; then
-cat << EOF >> "$image/Dockerfile"
                                                       php-mbstring \\
-EOF
-else
-cat << EOF >> "$image/Dockerfile"
-                                                      php$php_version-mbstring \\
-EOF
-fi
-cat << EOF >> "$image/Dockerfile"
                                                       php-curl \\
                                                       php-zip \\
                                                       php-gd \\
+                                                      mysql-client \\
+                                                      mysql-server \\
                                                       nfs-common \\
                                                       chrony \\
                                                       cron \\

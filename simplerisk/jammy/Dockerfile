@@ -14,7 +14,7 @@ RUN mkdir -p /configurations \
 	     /var/lib/mysql \
 	     /var/run/supervisor \
 	     /var/www/simplerisk
-                                                                    
+
 # Installing apt dependencies     
 RUN dpkg-divert --local --rename /usr/bin/ischroot && \
     ln -sf /bin/true /usr/bin/ischroot && \
@@ -23,14 +23,14 @@ RUN dpkg-divert --local --rename /usr/bin/ischroot && \
                                                       php \
                                                       php-mysql \
                                                       php-json \
-                                                      mysql-client \
-                                                      mysql-server \
                                                       php-dev \
                                                       php-ldap \
                                                       php-mbstring \
                                                       php-curl \
                                                       php-zip \
                                                       php-gd \
+                                                      mysql-client \
+                                                      mysql-server \
                                                       nfs-common \
                                                       chrony \
                                                       cron \
