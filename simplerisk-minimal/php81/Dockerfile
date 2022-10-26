@@ -16,13 +16,12 @@ RUN apt-get update && \
                        libzip-dev \
                        supervisor \
                        cron \
-                       libonig-dev \
                        mariadb-client && \
     rm -rf /var/lib/apt/lists/*
 # Configure all PHP extensions
 RUN docker-php-ext-configure ldap --with-libdir=lib/x86_64-linux-gnu && \
     docker-php-ext-install ldap \
-                           mbstring \
+                           #mbstring \
                            mysqli \
                            pdo_mysql \
                            curl \
@@ -66,8 +65,9 @@ RUN echo 'upload_max_filesize = 5M' >> /usr/local/etc/php/conf.d/docker-php-uplo
 
 # Download and extract SimpleRisk, plus saving release version for database reference
 RUN rm -rf /var/www/html && \
-    curl -sL https://github.com/simplerisk/bundles/raw/master/simplerisk-20221013-001.tgz | tar xz -C /var/www && \
-    echo 20221013-001 > /tmp/version
+    echo testing > /tmp/version
+COPY ./simplerisk/ /var/www/simplerisk
+COPY common/simplerisk.sql /var/www/simplerisk/simplerisk.sql
 
 # Creating Simplerisk user on www-data group and setting up ownerships
 RUN useradd -G www-data simplerisk && \

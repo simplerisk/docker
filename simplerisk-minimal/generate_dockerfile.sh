@@ -4,7 +4,8 @@ set -euo pipefail
 
 if [ $# -eq 1 ]; then
   release=$1
-  [ $release == "testing" ] && images=('8.1') || images=('7.2' '7.4' '8.1')
+  #TODO: Keep only most recent version on testing
+  [ $release == "testing" ] && images=('8.0' '8.1') || images=('8.0' '8.1')
 else
   echo "No release version provided. Aborting." && exit 1
 fi
@@ -31,22 +32,12 @@ RUN apt-get update && \\
                        libzip-dev \\
                        supervisor \\
                        cron \\
-EOF
-[[ $image != "7.2" ]] && echo "                       libonig-dev \\" >> "php$image_dir/Dockerfile"
-cat << EOF >> "php$image_dir/Dockerfile"
                        mariadb-client && \\
     rm -rf /var/lib/apt/lists/*
 # Configure all PHP extensions
 RUN docker-php-ext-configure ldap --with-libdir=lib/x86_64-linux-gnu && \\
     docker-php-ext-install ldap \\
-                           mbstring \\
-EOF
-if [[ "$image" != "8.1" ]]; then
-cat << EOF >> "php$image_dir/Dockerfile"
-                           json \\
-EOF
-fi
-cat << EOF >> "php$image_dir/Dockerfile"
+                           #mbstring \\
                            mysqli \\
                            pdo_mysql \\
                            curl \\
