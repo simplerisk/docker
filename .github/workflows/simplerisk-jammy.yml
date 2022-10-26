@@ -1,4 +1,4 @@
-name: Development Checkup for SimpleRisk Minimal (PHP 7.4) 
+name: Development Checkup for SimpleRisk (Ubuntu 22.04-Jammy) 
 
 on:
   pull_request:
@@ -15,11 +15,11 @@ jobs:
 
       - name: Build an image from Dockerfile
         run: |
-          docker build -t simplerisk/simplerisk-minimal:php74 -f simplerisk-minimal/php74/Dockerfile simplerisk-minimal
+          docker build -t simplerisk/simplerisk:jammy -f simplerisk/jammy/Dockerfile simplerisk
           
       - name: Run Dockle 
         uses: hands-lab/dockle-action@v1
         with:
-          image: "simplerisk/simplerisk-minimal:php74"
+          image: "simplerisk/simplerisk:jammy"
           exit-code: '1'
           exit-level: FATAL

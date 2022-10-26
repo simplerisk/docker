@@ -1,4 +1,4 @@
-name: Development Checkup for SimpleRisk (Ubuntu 18.04-Bionic) 
+name: Development Checkup for SimpleRisk Minimal (PHP 8.1) 
 
 on:
   pull_request:
@@ -15,11 +15,11 @@ jobs:
 
       - name: Build an image from Dockerfile
         run: |
-          docker build -t simplerisk/simplerisk:bionic -f simplerisk/bionic/Dockerfile simplerisk
+          docker build -t simplerisk/simplerisk-minimal:php81 -f simplerisk-minimal/php81/Dockerfile simplerisk-minimal
           
       - name: Run Dockle 
         uses: hands-lab/dockle-action@v1
         with:
-          image: "simplerisk/simplerisk:bionic"
+          image: "simplerisk/simplerisk-minimal:php81"
           exit-code: '1'
           exit-level: FATAL
