@@ -65,9 +65,8 @@ RUN echo 'upload_max_filesize = 5M' >> /usr/local/etc/php/conf.d/docker-php-uplo
 
 # Download and extract SimpleRisk, plus saving release version for database reference
 RUN rm -rf /var/www/html && \
-    echo testing > /tmp/version
-COPY ./simplerisk/ /var/www/simplerisk
-COPY common/simplerisk.sql /var/www/simplerisk/simplerisk.sql
+    curl -sL https://github.com/simplerisk/bundles/raw/master/simplerisk-20221013-001.tgz | tar xz -C /var/www && \
+    echo 20221013-001 > /tmp/version
 
 # Creating Simplerisk user on www-data group and setting up ownerships
 RUN useradd -G www-data simplerisk && \
