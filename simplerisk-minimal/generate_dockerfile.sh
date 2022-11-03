@@ -4,8 +4,7 @@ set -euo pipefail
 
 if [ $# -eq 1 ]; then
   release=$1
-  #TODO: Keep only most recent version on testing
-  [ $release == "testing" ] && images=('8.0' '8.1') || images=('8.0' '8.1')
+  [ $release == "testing" ] && images=('8.1') || images=('8.0' '8.1')
 else
   echo "No release version provided. Aborting." && exit 1
 fi
