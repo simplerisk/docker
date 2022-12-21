@@ -29,6 +29,7 @@ RUN dpkg-divert --local --rename /usr/bin/ischroot && \
                                                       php-curl \
                                                       php-zip \
                                                       php-gd \
+                                                      php-intl \
                                                       mysql-client \
                                                       mysql-server \
                                                       nfs-common \

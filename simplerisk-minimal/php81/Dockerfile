@@ -10,6 +10,7 @@ WORKDIR /var/www
 # Installing apt dependencies     
 RUN apt-get update && \
     apt-get -y install libldap2-dev \
+                       libicu-dev \
                        libcap2-bin \
                        libcurl4-gnutls-dev \
                        libpng-dev \
@@ -25,7 +26,8 @@ RUN docker-php-ext-configure ldap --with-libdir=lib/x86_64-linux-gnu && \
                            pdo_mysql \
                            curl \
                            zip \
-                           gd
+                           gd \
+                           intl
 # Setting up setcap for port mapping without root and removing packages
 RUN setcap CAP_NET_BIND_SERVICE=+eip /usr/sbin/apache2 && \
     chmod gu+s /usr/sbin/cron && \
