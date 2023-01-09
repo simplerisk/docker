@@ -4,7 +4,7 @@ set -euo pipefail
 
 if [ $# -eq 1 ]; then
   release=$1
-  [ $release == "testing" ] && images=('7.4') || images=('7.2' '7.4')
+  [ $release == "testing" ] && images=('8.1') || images=('8.1')
 else
   echo "No release version provided. Aborting." && exit 1
 fi
@@ -25,27 +25,24 @@ WORKDIR /var/www
 # Installing apt dependencies     
 RUN apt-get update && \\
     apt-get -y install libldap2-dev \\
+                       libicu-dev \\
                        libcap2-bin \\
                        libcurl4-gnutls-dev \\
                        libpng-dev \\
                        libzip-dev \\
                        supervisor \\
                        cron \\
-EOF
-[[ $image == "7.4" ]] && echo "                       libonig-dev \\" >> "php$image_dir/Dockerfile"
-cat << EOF >> "php$image_dir/Dockerfile"
                        mariadb-client && \\
     rm -rf /var/lib/apt/lists/*
 # Configure all PHP extensions
 RUN docker-php-ext-configure ldap --with-libdir=lib/x86_64-linux-gnu && \\
     docker-php-ext-install ldap \\
-                           mbstring \\
-                           json \\
                            mysqli \\
                            pdo_mysql \\
                            curl \\
                            zip \\
-                           gd
+                           gd \\
+                           intl
 # Setting up setcap for port mapping without root and removing packages
 RUN setcap CAP_NET_BIND_SERVICE=+eip /usr/sbin/apache2 && \\
     chmod gu+s /usr/sbin/cron && \\

@@ -25,7 +25,7 @@ To build this image, run the following commands:
 ```
 # From the root directory of the repository
 cd simplerisk
-VERSION=ubuntu-version # Can be bionic or focal
+VERSION=ubuntu-version # Can be jammy
 docker build -t simplerisk/simplerisk -f $VERSION/Dockerfile . 
 ```
 

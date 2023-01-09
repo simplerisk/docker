@@ -75,7 +75,6 @@ set_config(){
 
     # Testing related operations
     if [ "$(cat /tmp/version)" = "testing" ]; then
-      exec_cmd "sed -i \"s/\('SIMPLERISK_INSTALLED', \)'true'/\1'false'/g\" $CONFIG_PATH"
       exec_cmd "sed -i \"s|//\(define('.*_URL\)|\1|g\" $CONFIG_PATH"
     fi
 

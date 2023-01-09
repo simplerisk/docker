@@ -1,6 +1,6 @@
 # SimpleRisk Minimal Image
 
-This image is intended to run SimpleRisk in a 'microservices' approach (database is not included). It uses PHP 7.X with Apache as a base image. Also has the capability of setting properties of the `config.php` file through environment variables.
+This image is intended to run SimpleRisk in a 'microservices' approach (database is not included). It uses PHP 8.X with Apache as a base image. Also has the capability of setting properties of the `config.php` file through environment variables.
 
 For any of the executions, it is recommended to map the 80 and 443 ports to be able to access the application.
 
@@ -11,7 +11,7 @@ To build this image, run the following commands:
 ```
 # From the root directory of the repository
 cd simplerisk-minimal
-VERSION=7.X
+VERSION=8.X
 docker build -f php$VERSION/Dockerfile -t simplerisk/simplerisk-minimal:$VERSION .
 ```
 
