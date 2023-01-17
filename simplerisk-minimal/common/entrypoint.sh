@@ -105,7 +105,7 @@ db_setup(){
     USE ${SIMPLERISK_DB_DATABASE};
     \. ${SCHEMA_FILE}
     CREATE USER '${SIMPLERISK_DB_USERNAME}'@'%' IDENTIFIED BY '${SIMPLERISK_DB_PASSWORD}';
-    GRANT SELECT, INSERT, UPDATE, DELETE, CREATE, DROP, REFERENCES, INDEX, ALTER ON `${SIMPLERISK_DB_DATABASE}`.* TO '${SIMPLERISK_DB_USERNAME}'@'%';
+    GRANT SELECT, INSERT, UPDATE, DELETE, CREATE, DROP, REFERENCES, INDEX, ALTER ON ${SIMPLERISK_DB_DATABASE}.* TO '${SIMPLERISK_DB_USERNAME}'@'%';
 EOSQL" "Was not able to apply settings on database. Check error above. Exiting."
 
     print_log "initial_setup:info" "Setup has been applied successfully!"
