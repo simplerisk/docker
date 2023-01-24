@@ -42,6 +42,8 @@ validate_db_setup(){
 			print_log "initial_info:setup" "Setting database through the automatic process and removing container";;
 		manual)
 			print_log "initial_info:setup" "Database will be set manually";;
+		delete)
+			print_log "initial_info:setup" "Perform deletion of database";;
 		"")
 			print_log "initial_info:setup" "Database is already set";;
 		*)
@@ -79,9 +81,26 @@ set_config(){
 	fi
 }
 
+delete_db(){
+	print_log "db_deletion: prepare" "Performing database deletion"
+
+	# Needed to separate the GRANT statement from the rest because it was providing a syntax error
+	exec_cmd "mysql --protocol=socket -u $DB_SETUP_USER -p$DB_SETUP_PASS -h$SIMPLERISK_DB_HOSTNAME -P$SIMPLERISK_DB_PORT <<EOSQL
+	SET sql_mode = 'ANSI_QUOTES';
+	DROP DATABASE \"${SIMPLERISK_DB_DATABASE}\";
+	USE mysql;
+	DELETE FROM user WHERE User='${SIMPLERISK_DB_USERNAME}';
+	DELETE FROM db WHERE User='${SIMPLERISK_DB_USERNAME}';
+	FLUSH PRIVILEGES;
+EOSQL" "Was not able to apply settings on database. Check error above. Exiting."
+
+	print_log "db_deletion: done" "Database deletion performed. Exiting."
+	exit 0
+}
+
 db_setup(){
 	print_log "initial_setup:info" "First time setup. Will wait..."
-	exec_cmd "sleep ${AUTO_DB_SETUP_WAIT:-20}s > /dev/null 2>&1" "AUTO_DB_SETUP_WAIT variable is set incorrectly. Exiting."
+	exec_cmd "sleep ${DB_SETUP_WAIT:-20}s > /dev/null 2>&1" "DB_SETUP_WAIT variable is set incorrectly. Exiting."
 
 	print_log "initial_setup:info" "Starting database set up"
 
@@ -95,12 +114,9 @@ db_setup(){
 		exec_cmd "curl -sL https://github.com/simplerisk/database/raw/master/simplerisk-en-$(cat /tmp/version).sql > $SCHEMA_FILE" "Could not download schema from Github. Exiting."
 	fi
 
-	AUTO_DB_SETUP_USER="${AUTO_DB_SETUP_USER:-root}"
-	AUTO_DB_SETUP_PASS="${AUTO_DB_SETUP_PASS:-root}"
-
 	print_log "initial_setup:info" "Applying changes to MySQL database... (MySQL error will be printed to console as guidance)"
 	# Using sql_mode = ANSI_QUOTES to avoid using backticks
-	exec_cmd "mysql --protocol=socket -u $AUTO_DB_SETUP_USER -p$AUTO_DB_SETUP_PASS -h$SIMPLERISK_DB_HOSTNAME -P$SIMPLERISK_DB_PORT <<EOSQL
+	exec_cmd "mysql --protocol=socket -u $DB_SETUP_USER -p$DB_SETUP_PASS -h$SIMPLERISK_DB_HOSTNAME -P$SIMPLERISK_DB_PORT <<EOSQL
 	SET sql_mode = 'ANSI_QUOTES';
 	CREATE DATABASE \"${SIMPLERISK_DB_DATABASE}\";
 	USE \"${SIMPLERISK_DB_DATABASE}\";
@@ -108,7 +124,7 @@ db_setup(){
 	CREATE USER \"${SIMPLERISK_DB_USERNAME}\"@\"%\" IDENTIFIED BY \"${SIMPLERISK_DB_PASSWORD}\";
 EOSQL" "Was not able to apply settings on database. Check error above. Exiting."
 	# Needed to separate the GRANT statement from the rest because it was providing a syntax error
-	exec_cmd "mysql --protocol=socket -u $AUTO_DB_SETUP_USER -p$AUTO_DB_SETUP_PASS -h$SIMPLERISK_DB_HOSTNAME -P$SIMPLERISK_DB_PORT <<EOSQL
+	exec_cmd "mysql --protocol=socket -u $DB_SETUP_USER -p$DB_SETUP_PASS -h$SIMPLERISK_DB_HOSTNAME -P$SIMPLERISK_DB_PORT <<EOSQL
 	SET sql_mode = 'ANSI_QUOTES';
 	GRANT SELECT, INSERT, UPDATE, DELETE, CREATE, DROP, REFERENCES, INDEX, ALTER ON \"${SIMPLERISK_DB_DATABASE}\".* TO \"${SIMPLERISK_DB_USERNAME}\"@\"%\";
 EOSQL" "Was not able to apply settings on database. Check error above. Exiting."
@@ -126,9 +142,9 @@ EOSQL" "Was not able to apply settings on database. Check error above. Exiting."
 
 unset_variables() {
 	unset DB_SETUP
-	unset AUTO_DB_SETUP_USER
-	unset AUTO_DB_SETUP_PASS
-	unset AUTO_DB_SETUP_WAIT
+	unset DB_SETUP_USER
+	unset DB_SETUP_PASS
+	unset DB_SETUP_WAIT
 	unset SIMPLERISK_DB_HOSTNAME
 	unset SIMPLERISK_DB_PORT
 	unset SIMPLERISK_DB_USERNAME
@@ -141,6 +157,12 @@ unset_variables() {
 _main() {
 	validate_db_setup
 	set_config
+	if [[ -n ${DB_SETUP:-} ]]; then
+	  DB_SETUP_USER="${DB_SETUP_USER:-root}"
+	  DB_SETUP_PASS="${DB_SETUP_PASS:-root}"
+	fi
+	# shellcheck disable=SC2015
+	[[ "${DB_SETUP:-}" == "delete" ]] && delete_db || true
 	# shellcheck disable=SC2015
 	[[ "${DB_SETUP:-}" = automatic* ]] && db_setup || true
 	unset_variables
