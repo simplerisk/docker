@@ -56,10 +56,10 @@ docker run -d --name simplerisk -e SIMPLERISK_DB_PASSWORD=pass -e SIMPLERISK_DB_
 
 | Variable Name | Default Value | Purpose |
 |:-------------:|:-------------:|:--------|
-| `DB_SETUP` | `null` (Accepts any value) | The container will start as if the database has not been set up. The valid options here are `automatic` (in case you want the container to configure the database), `automatic-only` (the same as `automatic`, but stops the container after finishing the setup) or `manual` (allows the user to run the manual setup) |
-| `AUTO_DB_SETUP_USER` | `root` | Used when `DB_SETUP=automatic\|automatic-only`. User name of database privileged user to install SimpleRisk schema and other components |
-| `AUTO_DB_SETUP_PASS` | `root` | Used when `DB_SETUP=automatic\|automatic-only`. Password for database privileged user to install SimpleRisk schema and other components |
-| `AUTO_DB_SETUP_WAIT` | 20 | Used when `DB_SETUP=automatic\|automatic-only`. Time, in seconds, the application is going to wait to set up the database. Useful if you are deploying the database and SimpleRisk at the same time |
+| `DB_SETUP` | `null` (Accepts any value) | The container will start as if the database has not been set up. The valid options here are `automatic` (in case you want the container to configure the database), `automatic-only` (the same as `automatic`, but stops the container after finishing the setup), `delete` (removes the SimpleRisk database and user from MySQL) or `manual` (allows the user to run the manual setup) |
+| `DB_SETUP_USER` | `root` | Used when `DB_SETUP=automatic\|automatic-only\|delete`. User name of database privileged user to install SimpleRisk schema and other components |
+| `DB_SETUP_PASS` | `root` | Used when `DB_SETUP=automatic\|automatic-only\|delete`. Password for database privileged user to install SimpleRisk schema and other components |
+| `DB_SETUP_WAIT` | 20 | Used when `DB_SETUP=automatic\|automatic-only`. Time, in seconds, the application is going to wait to set up the database. Useful if you are deploying the database and SimpleRisk at the same time |
 | `SIMPLERISK_DB_HOSTNAME` | `localhost` | Hostname of the database server |
 | `SIMPLERISK_DB_PORT` | 3306 | Port to contact the database |
 | `SIMPLERISK_DB_USERNAME` |`simplerisk` | User name to be used to access the SimpleRisk database |
