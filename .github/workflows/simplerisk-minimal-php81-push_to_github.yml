@@ -14,9 +14,8 @@ on:
 env:
   # Use docker.io for Docker Hub if empty
   REGISTRY: ghcr.io
-  # github.repository as <account>/<repo>
-  IMAGE_NAME: "simplerisk/simplerisk"
-  VERSION: "20220110-001"
+  IMAGE_NAME: "${{ github.repository_owner }}/simplerisk-minimal"
+  VERSION: "20230106-001"
 
 
 jobs:
@@ -70,10 +69,9 @@ jobs:
         id: build-and-push
         uses: docker/build-push-action@ac9327eae2b366085ac7f6a2d02df8aa8ead720a
         with:
-          context: "{{defaultContext}}:simplerisk-minimal"
-          file: "{context}/php81/Dockerfile"
+          context: "simplerisk-minimal"
+          file: "simplerisk-minimal/php81/Dockerfile"
           push: ${{ github.event_name != 'pull_request' }}
-          #tags: ${{ steps.meta.outputs.tags }}
           tags: |
             ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
             ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ env.VERSION }}
