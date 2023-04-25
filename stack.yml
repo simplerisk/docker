@@ -13,11 +13,11 @@ services:
     - "80:80"
     - "443:443"
 
-  mariadb:
+  mysql:
     command: mysqld --sql_mode="NO_ENGINE_SUBSTITUTION"
     environment:
-    - MYSQL_ROOT_PASSWORD=FewY7hr3LHp4CRL9v2jg6
-    image: mariadb:10.7
+    - MYSQL_ROOT_PASSWORD=aef5-IX1D0zIV7w4NEp3U
+    image: mysql:8.0
 
   smtp:
     image: namshi/smtp

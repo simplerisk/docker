@@ -2,7 +2,7 @@
   description = "Docker repository";
 
   inputs = {
-    nixpkgs.url = "github:nixos/nixpkgs/nixpkgs-unstable";
+    nixpkgs.url = "github:nixos/nixpkgs/release-22.11";
     utils.url = "github:numtide/flake-utils";
   };
 
