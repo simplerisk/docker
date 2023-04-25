@@ -5,10 +5,10 @@ version: '3.6'
 services:
   simplerisk:
     environment:
-    - DB_SETUP=automatic
-    - DB_SETUP_PASS=aef5-IX1D0zIV7w4NEp3U
-    - SIMPLERISK_DB_HOSTNAME=mysql
-    image: simplerisk/simplerisk-minimal:20230106-001
+    - FIRST_TIME_SETUP=1
+    - FIRST_TIME_SETUP_PASS=FewY7hr3LHp4CRL9v2jg6
+    - SIMPLERISK_DB_HOSTNAME=mariadb
+    image: simplerisk/simplerisk-minimal:20230331-001
     ports:
     - "80:80"
     - "443:443"
