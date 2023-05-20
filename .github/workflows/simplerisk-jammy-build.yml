@@ -1,4 +1,4 @@
-name: Development Checkup for SimpleRisk (Ubuntu 22.04-Jammy) 
+name: Development Checkup for SimpleRisk (Ubuntu 22.04-Jammy)
 
 on:
   pull_request:
@@ -7,8 +7,8 @@ on:
 
 jobs:
   oci-check:
-    name: 'OCI Check' 
-    runs-on: ubuntu-18.04
+    name: 'OCI Check'
+    runs-on: ubuntu-latest
     steps:
       - name: Checkout code
         uses: actions/checkout@v2
@@ -16,8 +16,8 @@ jobs:
       - name: Build an image from Dockerfile
         run: |
           docker build -t simplerisk/simplerisk:jammy -f simplerisk/jammy/Dockerfile simplerisk
-          
-      - name: Run Dockle 
+
+      - name: Run Dockle
         uses: hands-lab/dockle-action@v1
         with:
           image: "simplerisk/simplerisk:jammy"

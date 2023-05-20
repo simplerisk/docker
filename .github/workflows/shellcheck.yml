@@ -10,9 +10,9 @@ jobs:
     name: ShellCheck
     runs-on: ubuntu-latest
     steps:
-    - name: Checkout code 
+    - name: Checkout code
       uses: actions/checkout@v2
     - name: Run ShellCheck
       uses: ludeeus/action-shellcheck@master
       with:
-          severity: error 
+          severity: error
