@@ -2,15 +2,21 @@
   description = "Docker repository";
 
   inputs = {
-    nixpkgs.url = "github:nixos/nixpkgs/release-22.11";
+    devshell.url = "github:numtide/devshell";
     utils.url = "github:numtide/flake-utils";
   };
 
-  outputs = { self, nixpkgs, utils }:
+  outputs = { self, devshell, utils, nixpkgs }:
     utils.lib.eachDefaultSystem (system:
       let
-        pkgs = import nixpkgs { inherit system; };
-        inherit (pkgs) mkShell writeShellScript docker-compose dockle;
+        pkgs = import nixpkgs {
+          inherit system;
+          overlays = [ devshell.overlays.default ];
+        };
+
+        inherit (builtins) readFile;
+        inherit (pkgs) writeShellScript docker-compose dockle;
+        inherit (pkgs.devshell) mkShell importTOML;
 
       in {
         apps = {
@@ -24,18 +30,18 @@
           };
           "generate-stack" = {
             type = "app";
-            program = toString (writeShellScript "generate_stack.sh" (builtins.readFile ./generate_stack.sh));
+            program = toString (writeShellScript "generate_stack.sh" (readFile ./generate_stack.sh));
           };
           "generate-simplerisk-dockerfile" = {
             type = "app";
-            program = toString (writeShellScript "generate_dockerfile.sh" (builtins.readFile ./simplerisk/generate_dockerfile.sh));
+            program = toString (writeShellScript "generate_dockerfile.sh" (readFile ./simplerisk/generate_dockerfile.sh));
           };
           "generate-simplerisk-minimal-dockerfile" = {
             type = "app";
-            program = toString (writeShellScript "generate_dockerfile.sh" (builtins.readFile ./simplerisk-minimal/generate_dockerfile.sh));
+            program = toString (writeShellScript "generate_dockerfile.sh" (readFile ./simplerisk-minimal/generate_dockerfile.sh));
           };
         };
-        devShells.default = mkShell { buildInputs = [ docker-compose dockle ]; };
+        devShells.default = mkShell { imports = [ (importTOML ./devshell.toml) ]; };
       }
     );
 }

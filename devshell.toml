@@ -1,0 +1,7 @@
+# https://numtide.github.io/devshell
+[devshell]
+name = "docker"
+packages = [
+  "docker-compose",
+  "dockle"
+]
