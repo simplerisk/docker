@@ -6,8 +6,8 @@ FROM php:8.1-apache
 LABEL maintainer="Simplerisk <support@simplerisk.com>"
 
 WORKDIR /var/www
-                                                                    
-# Installing apt dependencies     
+
+# Installing apt dependencies
 RUN apt-get update && \
     apt-get -y install libldap2-dev \
                        libicu-dev \
@@ -49,7 +49,6 @@ RUN echo 'upload_max_filesize = 5M' >> /usr/local/etc/php/conf.d/docker-php-uplo
 	echo 'log_errors = On' >> /usr/local/etc/php/conf.d/docker-php-error_logging.ini && \
 	echo 'error_log = /dev/stderr' >> /usr/local/etc/php/conf.d/docker-php-error_logging.ini && \
 	echo 'display_errors = Off' >> /usr/local/etc/php/conf.d/docker-php-error_logging.ini && \
-	
 # Create SSL Certificates for Apache SSL
 	echo $(< /dev/urandom tr -dc _A-Z-a-z-0-9 | head -c${1:-32}) > /tmp/pass_openssl.txt && \
 	mkdir -p /etc/apache2/ssl/ssl.crt /etc/apache2/ssl/ssl.key && \
@@ -94,5 +93,5 @@ ENTRYPOINT [ "/entrypoint.sh" ]
 EXPOSE 80
 EXPOSE 443
 
-# Start Apache 
+# Start Apache
 CMD ["/usr/sbin/apache2ctl", "-D", "FOREGROUND"]
