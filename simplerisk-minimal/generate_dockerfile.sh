@@ -21,8 +21,8 @@ FROM php:$image-apache
 LABEL maintainer="Simplerisk <support@simplerisk.com>"
 
 WORKDIR /var/www
-                                                                    
-# Installing apt dependencies     
+
+# Installing apt dependencies
 RUN apt-get update && \\
     apt-get -y install libldap2-dev \\
                        libicu-dev \\
@@ -117,7 +117,7 @@ ENTRYPOINT [ "/entrypoint.sh" ]
 EXPOSE 80
 EXPOSE 443
 
-# Start Apache 
+# Start Apache
 CMD ["/usr/sbin/apache2ctl", "-D", "FOREGROUND"]
 EOF
 done

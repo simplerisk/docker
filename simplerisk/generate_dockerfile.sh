@@ -33,7 +33,7 @@ RUN mkdir -p /configurations \\
 	     /var/run/supervisor \\
 	     /var/www/simplerisk
 
-# Installing apt dependencies     
+# Installing apt dependencies
 RUN dpkg-divert --local --rename /usr/bin/ischroot && \\
     ln -sf /bin/true /usr/bin/ischroot && \\
     apt-get update && \\
