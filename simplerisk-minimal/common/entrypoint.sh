@@ -154,6 +154,25 @@ unset_variables() {
 	unset SIMPLERISK_DB_SSL_CERT_PATH
 }
 
+load_scripts() {
+	if [[ -d /tmp/scripts ]]; then
+		for script in /tmp/scripts/*; do
+			case "$script" in
+				*.sh)
+					if [ -x "$script" ]; then
+						echo "Running $script"
+						"$script"
+					else
+						echo "Sourcing $script"
+						# shellcheck source=/dev/null
+						. "$script"
+					fi ;;
+				*) echo "Ignoring $script" ;;
+			esac
+		done
+	fi
+}
+
 _main() {
 	validate_db_setup
 	set_config
@@ -166,6 +185,7 @@ _main() {
 	# shellcheck disable=SC2015
 	[[ "${DB_SETUP:-}" = automatic* ]] && db_setup || true
 	unset_variables
+	load_scripts
 	service cron start
 	exec "$@"
 }
