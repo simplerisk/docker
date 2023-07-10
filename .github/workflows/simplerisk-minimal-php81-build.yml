@@ -1,4 +1,4 @@
-name: Development Checkup for SimpleRisk Minimal (PHP 8.1) 
+name: Development Checkup for SimpleRisk Minimal (PHP 8.1)
 
 on:
   pull_request:
@@ -7,8 +7,8 @@ on:
 
 jobs:
   oci-check:
-    name: 'OCI Check' 
-    runs-on: ubuntu-18.04
+    name: 'OCI Check'
+    runs-on: ubuntu-latest
     steps:
       - name: Checkout code
         uses: actions/checkout@v2
@@ -16,8 +16,8 @@ jobs:
       - name: Build an image from Dockerfile
         run: |
           docker build -t simplerisk/simplerisk-minimal:php81 -f simplerisk-minimal/php81/Dockerfile simplerisk-minimal
-          
-      - name: Run Dockle 
+
+      - name: Run Dockle
         uses: hands-lab/dockle-action@v1
         with:
           image: "simplerisk/simplerisk-minimal:php81"
