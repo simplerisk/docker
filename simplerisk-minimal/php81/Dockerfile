@@ -48,6 +48,8 @@ RUN echo 'upload_max_filesize = 5M' >> /usr/local/etc/php/conf.d/docker-php-uplo
 	echo 'max_input_vars = 3000' >> /usr/local/etc/php/conf.d/docker-php-maxinputvars.ini && \
 	echo 'log_errors = On' >> /usr/local/etc/php/conf.d/docker-php-error_logging.ini && \
 	echo 'error_log = /dev/stderr' >> /usr/local/etc/php/conf.d/docker-php-error_logging.ini && \
+	echo 'display_errors = Off' >> /usr/local/etc/php/conf.d/docker-php-error_logging.ini && \
+	
 # Create SSL Certificates for Apache SSL
 	echo $(< /dev/urandom tr -dc _A-Z-a-z-0-9 | head -c${1:-32}) > /tmp/pass_openssl.txt && \
 	mkdir -p /etc/apache2/ssl/ssl.crt /etc/apache2/ssl/ssl.key && \
@@ -66,8 +68,8 @@ RUN echo 'upload_max_filesize = 5M' >> /usr/local/etc/php/conf.d/docker-php-uplo
 
 # Download and extract SimpleRisk, plus saving release version for database reference
 RUN rm -rf /var/www/html && \
-    curl -sL https://github.com/simplerisk/bundles/raw/master/simplerisk-20230106-001.tgz | tar xz -C /var/www && \
-    echo 20230106-001 > /tmp/version
+    curl -sL https://github.com/simplerisk/bundles/raw/master/simplerisk-20230331-001.tgz | tar xz -C /var/www && \
+    echo 20230331-001 > /tmp/version
 
 # Creating Simplerisk user on www-data group and setting up ownerships
 RUN useradd -G www-data simplerisk && \

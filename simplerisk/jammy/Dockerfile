@@ -59,7 +59,8 @@ COPY common/000-default.conf /etc/apache2/sites-enabled/000-default.conf
 COPY common/default-ssl.conf /etc/apache2/sites-enabled/default-ssl.conf
 RUN sed -i 's/\(upload_max_filesize =\) .*\(M\)/\1 5\2/g' /etc/php/8.1/apache2/php.ini && \
 	sed -i 's/\(memory_limit =\) .*\(M\)/\1 256\2/g' /etc/php/8.1/apache2/php.ini && \
-	sed -i 's/;.*\(max_input_vars =\) .*/\1 3000/g' /etc/php/8.1/apache2/php.ini
+	sed -i 's/;.*\(max_input_vars =\) .*/\1 3000/g' /etc/php/8.1/apache2/php.ini && \
+	sed -i 's/;.*\(display_errors =\) .*/\1 Off/g' /etc/php/8.1/apache2/php.ini
 
 # Create SSL Certificates for Apache SSL
 RUN mkdir -p /etc/apache2/ssl/ssl.crt /etc/apache2/ssl/ssl.key && \
@@ -80,12 +81,12 @@ RUN phpenmod ldap && \
 	sed -i 's/\(ServerSignature\) On/\1 Off/g' /etc/apache2/conf-enabled/security.conf
 
 RUN echo %sudo  ALL=NOPASSWD: ALL >> /etc/sudoers && \
-    echo "20230106-001" > /tmp/version
+    echo "20230331-001" > /tmp/version
 
 # Download SimpleRisk
 RUN rm -rf /var/www/html && \
-    curl -sL https://github.com/simplerisk/database/raw/master/simplerisk-en-20230106-001.sql > /simplerisk.sql && \
-    curl -sL https://github.com/simplerisk/bundles/raw/master/simplerisk-20230106-001.tgz | tar xz -C /var/www
+    curl -sL https://github.com/simplerisk/database/raw/master/simplerisk-en-20230331-001.sql > /simplerisk.sql && \
+    curl -sL https://github.com/simplerisk/bundles/raw/master/simplerisk-20230331-001.tgz | tar xz -C /var/www
 
 # Permissions
 RUN chown -R www-data: /var/www/simplerisk
