@@ -1,25 +1,37 @@
-name: Development Checkup for SimpleRisk (Ubuntu 22.04-Jammy) 
+name: Full checkup for SimpleRisk Docker images
 
 on:
   pull_request:
-    branches:
-      - 'master'
+    branches: [ master ]
+
+env:
+  IMAGE_TAG: "simplerisk/simplerisk:testing"
+  CONTEXT_PATH: "simplerisk/"
+  DOCKERFILE_PATH: "simplerisk/jammy/Dockerfile"
+  DOCKLE_HOST: "unix:///var/run/docker.sock"
 
 jobs:
-  oci-check:
-    name: 'OCI Check' 
-    runs-on: ubuntu-18.04
+  simplerisk-minimal-php81:
+    name: 'Verify simplerisk/simplerisk image based on Ubuntu 22.04 (Jammy)'
+    runs-on: ubuntu-latest
     steps:
       - name: Checkout code
-        uses: actions/checkout@v2
-
-      - name: Build an image from Dockerfile
-        run: |
-          docker build -t simplerisk/simplerisk:jammy -f simplerisk/jammy/Dockerfile simplerisk
-          
-      - name: Run Dockle 
-        uses: hands-lab/dockle-action@v1
+        uses: actions/checkout@v4.1.0
+      - name: Build Docker container
+        uses: docker/build-push-action@v5
         with:
-          image: "simplerisk/simplerisk:jammy"
-          exit-code: '1'
-          exit-level: FATAL
+          context: ${{ env.CONTEXT_PATH }}
+          file: ${{ env.DOCKERFILE_PATH }}
+          tags: ${{ env.IMAGE_TAG }}
+      - name: Run linter with Dockle
+        uses: erzz/dockle-action@v1.4.0
+        with:
+          image: ${{ env.IMAGE_TAG }}
+          failure-threshold: FATAL
+          dockle-host: "unix:///var/run/docker.sock"
+      - name: Scan vulnerabilities with Grype
+        uses: anchore/scan-action@v3.3.6
+        with:
+          image: ${{ env.IMAGE_TAG }}
+          only-fixed: true
+          severity-cutoff: critical
