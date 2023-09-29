@@ -1,0 +1,27 @@
+name: "Build and Verify Image"
+description: Common action to build and verify SimpleRisk Docker images
+
+inputs:
+  image_tag:
+    description: "Tag used to build the image"
+  context_path:
+    description: "Path to context"
+  dockerfile_path:
+    description: "Path to Dockerfile"
+
+runs:
+  using: "composite"
+  steps:
+  - uses: docker/setup-buildx-action@v3
+  - name: Build Docker container
+    uses: docker/build-push-action@v5
+    with:
+      context: ${{inputs.context_path}}
+      file: ${{inputs.dockerfile_path}}
+      tags: ${{inputs.image_tag}}
+  - name: Scan vulnerabilities with Grype
+    uses: anchore/scan-action@v3.3.6
+    with:
+      image: ${{inputs.image_tag}}
+      only-fixed: true
+      severity-cutoff: critical
