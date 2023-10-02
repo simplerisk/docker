@@ -119,6 +119,9 @@ ENTRYPOINT [ "/entrypoint.sh" ]
 EXPOSE 80
 EXPOSE 443
 
+HEALTHCHECK --interval=1m \\
+	CMD curl --fail http://localhost || exit 1
+
 # Start Apache 
 CMD ["/usr/sbin/apache2ctl", "-D", "FOREGROUND"]
 EOF

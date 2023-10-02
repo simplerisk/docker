@@ -109,5 +109,8 @@ VOLUME [ "/passwords", "/configurations", "/var/log", "/var/lib/mysql", "/etc/ap
 # Setting up entrypoint
 ENTRYPOINT [ "/entrypoint.sh" ]
 
+HEALTHCHECK --interval=1m \
+	CMD curl --fail http://localhost || exit 1
+
 # Start Apache and MySQL
 CMD ["/usr/bin/supervisord", "-n", "-c", "/etc/supervisor/supervisord.conf"]
