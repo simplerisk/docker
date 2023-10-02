@@ -10,7 +10,7 @@ These images are available on [DockerHub](https://hub.docker.com/u/simplerisk).
 
 A `stack.yml` file is provided for a stack deployment of the application through Docker Compose or Docker Swarm. It will deploy the application with the following components:
 - [SimpleRisk Application](https://hub.docker.com/r/simplerisk/simplerisk-minimal) (`simplerisk-minimal`)
-- [MariaDB Database](https://hub.docker.com/_/mariadb) (version 10.6)
+- [MySQL Database](https://hub.docker.com/_/mysql) (version 8.0.X, as it uses the 8.0 tag)
 - [SMTP Server](https://hub.docker.com/r/namshi/smtp)
 
 Change its settings according to your needs.
