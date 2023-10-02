@@ -29,8 +29,6 @@ set_config(){
 
 		CONFIG_PATH='/var/www/simplerisk/includes/config.php'
 
-		# TEMP: localhost as hostname is not working on Ubuntu 20.04
-		OS_VERSION="$(grep VERSION_ID /etc/os-release | cut -d '"' -f 2)"
 		SIMPLERISK_DB_HOSTNAME='127.0.0.1'
 
 		sed -i "s/\('DB_HOSTNAME', '\).*\(');\)/\1$SIMPLERISK_DB_HOSTNAME\2/g" $CONFIG_PATH
