@@ -1,41 +1,26 @@
 {
-  description = "Docker repository";
+  description = "virtual environments";
 
-  inputs = {
-    nixpkgs.url = "github:nixos/nixpkgs/nixpkgs-unstable";
-    utils.url = "github:numtide/flake-utils";
+  inputs.devshell.url = "github:numtide/devshell";
+  inputs.flake-utils.url = "github:numtide/flake-utils";
+
+  inputs.flake-compat = {
+    url = "github:edolstra/flake-compat";
+    flake = false;
   };
 
-  outputs = { self, nixpkgs, utils }:
-    utils.lib.eachDefaultSystem (system:
-      let
-        pkgs = import nixpkgs { inherit system; };
-        inherit (pkgs) mkShell writeShellScript docker-compose dockle;
+  outputs = { self, flake-utils, devshell, nixpkgs, ... }:
+    flake-utils.lib.eachDefaultSystem (system: {
+      devShell =
+        let
+          pkgs = import nixpkgs {
+            inherit system;
 
-      in {
-        apps = {
-          "lint" = {
-            type = "app";
-            program = "${dockle}/bin/dockle";
+            overlays = [ devshell.overlays.default ];
           };
-          "docker-compose" = {
-            type = "app";
-            program = "${docker-compose}/bin/docker-compose";
-          };
-          "generate-stack" = {
-            type = "app";
-            program = toString (writeShellScript "generate_stack.sh" (builtins.readFile ./generate_stack.sh));
-          };
-          "generate-simplerisk-dockerfile" = {
-            type = "app";
-            program = toString (writeShellScript "generate_dockerfile.sh" (builtins.readFile ./simplerisk/generate_dockerfile.sh));
-          };
-          "generate-simplerisk-minimal-dockerfile" = {
-            type = "app";
-            program = toString (writeShellScript "generate_dockerfile.sh" (builtins.readFile ./simplerisk-minimal/generate_dockerfile.sh));
-          };
+        in
+        pkgs.devshell.mkShell {
+          imports = [ (pkgs.devshell.importTOML ./devshell.toml) ];
         };
-        devShells.default = mkShell { buildInputs = [ docker-compose dockle ]; };
-      }
-    );
+    });
 }
