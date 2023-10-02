@@ -49,7 +49,7 @@ RUN echo 'upload_max_filesize = 5M' >> /usr/local/etc/php/conf.d/docker-php-uplo
 	echo 'log_errors = On' >> /usr/local/etc/php/conf.d/docker-php-error_logging.ini && \
 	echo 'error_log = /dev/stderr' >> /usr/local/etc/php/conf.d/docker-php-error_logging.ini && \
 	echo 'display_errors = Off' >> /usr/local/etc/php/conf.d/docker-php-error_logging.ini && \
-	
+
 # Create SSL Certificates for Apache SSL
 	echo $(< /dev/urandom tr -dc _A-Z-a-z-0-9 | head -c${1:-32}) > /tmp/pass_openssl.txt && \
 	mkdir -p /etc/apache2/ssl/ssl.crt /etc/apache2/ssl/ssl.key && \
@@ -93,6 +93,9 @@ ENTRYPOINT [ "/entrypoint.sh" ]
 # Ports to expose
 EXPOSE 80
 EXPOSE 443
+
+HEALTHCHECK --interval=1m \
+	CMD curl --fail http://localhost || exit 1
 
 # Start Apache 
 CMD ["/usr/sbin/apache2ctl", "-D", "FOREGROUND"]

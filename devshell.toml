@@ -1,0 +1,25 @@
+# https://numtide.github.io/devshell
+[devshell]
+name = "SimpleRisk Docker images"
+packages = [
+  "docker-compose",
+  "dockle",
+  "grype"
+]
+
+[[commands]]
+help = "Runs a stack of containers"
+package = "docker-compose"
+category = "deployment"
+
+[[commands]]
+help = "Verify if Dockerfile follows best practices (needs the container to be built)"
+package = "dockle"
+command = "dockle image_tag"
+category = "scanners"
+
+[[commands]]
+help = "Verify if container has any security vulnerabilities"
+package = "grype"
+command = "grype image_tag"
+category = "scanners"
