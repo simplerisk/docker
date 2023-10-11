@@ -81,6 +81,13 @@ set_config(){
 	fi
 }
 
+set_csrf_secret(){
+	CSRF_SECRET_PATH='/var/www/simplerisk/vendor/simplerisk/csrf-magic/csrf-secret.php'
+
+	# If a SIMPLERISK_CSRF_SECRET value was specified create the csrf-secret.php file with that value
+	[ -n "${SIMPLERISK_CSRF_SECRET:-}" ] && echo "<?php \$secret = \"${SIMPLERISK_CSRF_SECRET}\"; ?>" > "$CSRF_SECRET_PATH";
+}
+
 delete_db(){
 	print_log "db_deletion: prepare" "Performing database deletion"
 
@@ -152,6 +159,7 @@ unset_variables() {
 	unset SIMPLERISK_DB_DATABASE
 	unset SIMPLERISK_DB_FOR_SESSIONS
 	unset SIMPLERISK_DB_SSL_CERT_PATH
+	unset SIMPLERISK_CSRF_SECRET
 }
 
 _main() {
@@ -160,6 +168,9 @@ _main() {
 	if [[ -n ${DB_SETUP:-} ]]; then
 	  DB_SETUP_USER="${DB_SETUP_USER:-root}"
 	  DB_SETUP_PASS="${DB_SETUP_PASS:-root}"
+	fi
+	if [[ -n ${SIMPLERISK_CSRF_SECRET:-} ]]; then
+	  set_csrf_secret
 	fi
 	# shellcheck disable=SC2015
 	[[ "${DB_SETUP:-}" == "delete" ]] && delete_db || true
