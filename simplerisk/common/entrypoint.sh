@@ -17,8 +17,8 @@ run_sql_command() {
 }
 
 set_db_password(){
-	echo "$(generate_random_password)" >> /passwords/pass_mysql_root.txt
-	echo "$(generate_random_password)" >> /passwords/pass_simplerisk.txt
+	echo "$(generate_random_password)" > /passwords/pass_mysql_root.txt
+	echo "$(generate_random_password)" > /passwords/pass_simplerisk.txt
 	sed -i "s/\('DB_PASSWORD', '\).*\(');\)/\1$(cat /passwords/pass_simplerisk.txt)\2/g" "$CONFIG_PATH"
 }
 
@@ -29,8 +29,6 @@ set_config(){
 
 		CONFIG_PATH='/var/www/simplerisk/includes/config.php'
 
-		# TEMP: localhost as hostname is not working on Ubuntu 20.04
-		OS_VERSION="$(grep VERSION_ID /etc/os-release | cut -d '"' -f 2)"
 		SIMPLERISK_DB_HOSTNAME='127.0.0.1'
 
 		sed -i "s/\('DB_HOSTNAME', '\).*\(');\)/\1$SIMPLERISK_DB_HOSTNAME\2/g" $CONFIG_PATH

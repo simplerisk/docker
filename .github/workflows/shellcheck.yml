@@ -2,8 +2,7 @@ name: Shell script checkup with ShellCheck
 
 on:
   pull_request:
-    branch:
-      - master
+    branches: [ master ]
 
 jobs:
   shellcheck:
@@ -11,8 +10,8 @@ jobs:
     runs-on: ubuntu-latest
     steps:
     - name: Checkout code 
-      uses: actions/checkout@v2
+      uses: actions/checkout@v4
     - name: Run ShellCheck
-      uses: ludeeus/action-shellcheck@master
+      uses: ludeeus/action-shellcheck@2.0.0
       with:
-          severity: error 
+        severity: error
