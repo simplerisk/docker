@@ -34,4 +34,5 @@ jobs:
         with:
           image: ${{ env.IMAGE_TAG }}
           only-fixed: true
+          output-format: table
           severity-cutoff: critical
