@@ -40,9 +40,9 @@ jobs:
         file: "simplerisk/jammy/Dockerfile"
         push: ${{ github.event_name != 'pull_request' }}
         tags: |
-          ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
-          ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ env.VERSION }}
-          ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ env.VERSION }}-jammy
+          ${{ env.IMAGE_NAME }}
+          ${{ env.IMAGE_NAME }}:${{ env.VERSION }}
+          ${{ env.IMAGE_NAME }}:${{ env.VERSION }}-jammy
         labels: ${{ steps.meta.outputs.labels }}
 
   github_packages:
