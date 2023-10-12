@@ -1,3 +1,0 @@
-@Library('simplerisk') _
-
-docker()

@@ -1,0 +1,5 @@
+@Library('simplerisk') _
+
+// We will disable Jenkins jobs to rely on Github Actions
+// To enable it, just rename it to Jenkinsfile
+docker()
