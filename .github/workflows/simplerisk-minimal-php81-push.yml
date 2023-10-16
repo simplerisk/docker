@@ -36,13 +36,13 @@ jobs:
       id: build-and-push
       uses: docker/build-push-action@v5
       with:
-        context: "simplerisk"
-        file: "simplerisk/jammy/Dockerfile"
+        context: "simplerisk-minimal"
+        file: "simplerisk-minimal/php81/Dockerfile"
         push: ${{ github.event_name != 'pull_request' }}
         tags: |
           ${{ env.IMAGE_NAME }}
           ${{ env.IMAGE_NAME }}:${{ env.VERSION }}
-          ${{ env.IMAGE_NAME }}:${{ env.VERSION }}-jammy
+          ${{ env.IMAGE_NAME }}:${{ env.VERSION }}-php81
         labels: ${{ steps.meta.outputs.labels }}
 
   github_packages:
