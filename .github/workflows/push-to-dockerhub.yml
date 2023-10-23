@@ -1,0 +1,33 @@
+name: Push images to DockerHub
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [ "master" ]
+    # Publish semver tags as releases.
+    #tags: [ '[2022]0701-001' ]
+
+env:
+  VERSION: "20231006-001"
+
+jobs:
+  simplerisk-jammy:
+    name: 'Push simplerisk/simplerisk image based on Ubuntu 22.04 (Jammy)'
+    uses: ./.github/workflows/push_to_dockerhub_rw.yml
+    with:
+      context_path: "simplerisk"
+      dockerfile_path: "simplerisk/jammy/Dockerfile"
+      image_name: "simplerisk/simplerisk"
+      version: "20231006-001"
+      os_version: "jammy"
+    secrets: inherit
+  simplerisk-minimal-php81:
+    name: 'Push simplerisk/simplerisk-minimal image based on PHP 8.1 with Apache'
+    uses: ./.github/workflows/push_to_dockerhub_rw.yml
+    with:
+      context_path: "simplerisk-minimal"
+      dockerfile_path: "simplerisk-minimal/php81/Dockerfile"
+      image_name: "simplerisk/simplerisk-minimal"
+      version: "20231006-001"
+      os_version: "php81"
+    secrets: inherit
