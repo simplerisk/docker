@@ -1,18 +1,20 @@
 name: Full checkup for SimpleRisk Docker images
 
 on:
-  pull_request:
-    branches: [ master ]
-
-env:
-  IMAGE_TAG: "simplerisk/simplerisk-minimal:testing"
-  CONTEXT_PATH: "simplerisk-minimal/"
-  DOCKERFILE_PATH: "simplerisk-minimal/php81/Dockerfile"
-  DOCKLE_HOST: "unix:///var/run/docker.sock"
+  workflow_call:
+    inputs:
+      context_path:
+        required: true
+        type: string
+      dockerfile_path:
+        required: true
+        type: string
+      image_tag:
+        required: true
+        type: string
 
 jobs:
-  simplerisk-minimal-php81:
-    name: 'Verify simplerisk/simplerisk-minimal image based on php:8.1-apache'
+  verify_image:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout code
@@ -20,19 +22,19 @@ jobs:
       - name: Build Docker container
         uses: docker/build-push-action@v5
         with:
-          context: ${{ env.CONTEXT_PATH }}
-          file: ${{ env.DOCKERFILE_PATH }}
-          tags: ${{ env.IMAGE_TAG }}
+          context: ${{ inputs.context_path }}
+          file: ${{ inputs.dockerfile_path }}
+          tags: ${{ inputs.image_tag }}
       - name: Run linter with Dockle
         uses: erzz/dockle-action@v1
         with:
-          image: ${{ env.IMAGE_TAG }}
+          image: ${{ inputs.image_tag }}
           failure-threshold: FATAL
           dockle-host: "unix:///var/run/docker.sock"
       - name: Scan vulnerabilities with Grype
         uses: anchore/scan-action@v3
         with:
-          image: ${{ env.IMAGE_TAG }}
+          image: ${{ inputs.image_tag }}
           only-fixed: true
           output-format: table
           severity-cutoff: critical

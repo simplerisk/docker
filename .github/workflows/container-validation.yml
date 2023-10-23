@@ -1,0 +1,29 @@
+name: Full checkup for SimpleRisk Docker images
+
+on:
+  workflow_dispatch:
+  pull_request:
+    branches: [ master ]
+
+env:
+  IMAGE_TAG: "simplerisk/simplerisk:testing"
+  CONTEXT_PATH: "simplerisk/"
+  DOCKERFILE_PATH: "simplerisk/jammy/Dockerfile"
+  DOCKLE_HOST: "unix:///var/run/docker.sock"
+
+jobs:
+  simplerisk-minimal-php81:
+    name: 'Verify simplerisk/simplerisk image based on Ubuntu 22.04 (Jammy)'
+    uses: ./.github/workflows/verify_image_rw.yml
+    with:
+      context_path: "simplerisk/"
+      dockerfile_path: "simplerisk/jammy/Dockerfile"
+      image_tag: "simplerisk/simplerisk:testing"
+
+  simplerisk-jammy:
+    name: 'Verify simplerisk/simplerisk image based on PHP 8.1 with Apache'
+    uses: ./.github/workflows/verify_image_rw.yml
+    with:
+      context_path: "simplerisk-minimal/"
+      dockerfile_path: "simplerisk-minimal/php81/Dockerfile"
+      image_tag: "simplerisk/simplerisk-minimal:testing"
