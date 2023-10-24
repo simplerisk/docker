@@ -7,6 +7,8 @@ on:
     # Publish semver tags as releases.
     #tags: [ '[2022]0701-001' ]
 
+# On a job that uses a reusable workflow, it seems you cannot
+# use env on a with block (https://github.com/actions/runner/issues/1189#issuecomment-1741672276)
 env:
   VERSION: "20231006-001"
 
