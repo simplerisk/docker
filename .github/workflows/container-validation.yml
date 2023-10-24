@@ -14,7 +14,7 @@ env:
 jobs:
   simplerisk-minimal-php81:
     name: 'Verify simplerisk/simplerisk image based on Ubuntu 22.04 (Jammy)'
-    uses: ./.github/workflows/verify_image_rw.yml
+    uses: ./.github/workflows/verify-image_rw.yml
     with:
       context_path: "simplerisk/"
       dockerfile_path: "simplerisk/jammy/Dockerfile"
@@ -22,7 +22,7 @@ jobs:
 
   simplerisk-jammy:
     name: 'Verify simplerisk/simplerisk image based on PHP 8.1 with Apache'
-    uses: ./.github/workflows/verify_image_rw.yml
+    uses: ./.github/workflows/verify-image_rw.yml
     with:
       context_path: "simplerisk-minimal/"
       dockerfile_path: "simplerisk-minimal/php81/Dockerfile"
