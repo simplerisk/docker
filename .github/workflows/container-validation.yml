@@ -5,12 +5,6 @@ on:
   pull_request:
     branches: [ master ]
 
-env:
-  IMAGE_TAG: "simplerisk/simplerisk:testing"
-  CONTEXT_PATH: "simplerisk/"
-  DOCKERFILE_PATH: "simplerisk/jammy/Dockerfile"
-  DOCKLE_HOST: "unix:///var/run/docker.sock"
-
 jobs:
   simplerisk-minimal-php81:
     name: 'Verify simplerisk/simplerisk image based on Ubuntu 22.04 (Jammy)'
