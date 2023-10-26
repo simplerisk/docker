@@ -1,0 +1,35 @@
+name: Push images to GitHub Packages
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [ "master" ]
+    # Publish semver tags as releases.
+    #tags: [ '[2022]0701-001' ]
+
+# On a job that uses a reusable workflow, it seems you cannot
+# use env on a with block (https://github.com/actions/runner/issues/1189#issuecomment-1741672276)
+env:
+  VERSION: "20231006-001"
+
+jobs:
+  simplerisk-jammy:
+    name: 'Push simplerisk/simplerisk image based on Ubuntu 22.04 (Jammy)'
+    uses: ./.github/workflows/push-to-gh-pkgs_rw.yml
+    with:
+      context_path: "simplerisk"
+      dockerfile_path: "simplerisk/jammy/Dockerfile"
+      image_name: "simplerisk/simplerisk"
+      version: "20231006-001"
+      os_version: "jammy"
+    secrets: inherit
+  simplerisk-minimal-php81:
+    name: 'Push simplerisk/simplerisk-minimal image based on PHP 8.1 with Apache'
+    uses: ./.github/workflows/push-to-gh-pkgs_rw.yml
+    with:
+      context_path: "simplerisk-minimal"
+      dockerfile_path: "simplerisk-minimal/php81/Dockerfile"
+      image_name: "simplerisk/simplerisk-minimal"
+      version: "20231006-001"
+      os_version: "php81"
+    secrets: inherit
