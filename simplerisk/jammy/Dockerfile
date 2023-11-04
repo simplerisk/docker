@@ -86,7 +86,7 @@ RUN echo %sudo  ALL=NOPASSWD: ALL >> /etc/sudoers && \
 # Download SimpleRisk
 RUN rm -rf /var/www/html && \
     curl -sL https://github.com/simplerisk/database/raw/master/simplerisk-en-20231103-001.sql > /simplerisk.sql && \
-    curl -sL https://github.com/simplerisk/bundles/raw/master/simplerisk-20231103-001.tgz | tar xz -C /var/www
+    curl -sL https://simplerisk-downloads.s3.amazonaws.com/public/bundles/simplerisk-20231103-001.tgz | tar xz -C /var/www
 
 # Permissions
 RUN chown -R www-data: /var/www/simplerisk

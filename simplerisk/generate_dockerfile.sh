@@ -113,7 +113,7 @@ else
 # Download SimpleRisk
 RUN rm -rf /var/www/html && \\
     curl -sL https://github.com/simplerisk/database/raw/master/simplerisk-en-$release.sql > /simplerisk.sql && \\
-    curl -sL https://github.com/simplerisk/bundles/raw/master/simplerisk-$release.tgz | tar xz -C /var/www
+    curl -sL https://simplerisk-downloads.s3.amazonaws.com/public/bundles/simplerisk-$release.tgz | tar xz -C /var/www
 EOF
 fi
 

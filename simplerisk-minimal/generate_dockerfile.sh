@@ -84,7 +84,7 @@ RUN echo 'upload_max_filesize = 5M' >> /usr/local/etc/php/conf.d/docker-php-uplo
 RUN rm -rf /var/www/html && \\
 EOF
 
-[ ! $release == "testing" ] && echo "    curl -sL https://github.com/simplerisk/bundles/raw/master/simplerisk-$release.tgz | tar xz -C /var/www && \\" >> "php$image_dir/Dockerfile" || true
+[ ! $release == "testing" ] && echo "    curl -sL https://simplerisk-downloads.s3.amazonaws.com/public/bundles/simplerisk-$release.tgz | tar xz -C /var/www && \\" >> "php$image_dir/Dockerfile" || true
 echo "    echo $release > /tmp/version" >> "php$image_dir/Dockerfile"
 if [ $release == "testing" ]; then
     cat << EOF >> "php$image_dir/Dockerfile"
