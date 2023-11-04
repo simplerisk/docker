@@ -23,7 +23,7 @@ env:
   # Use docker.io for Docker Hub if empty
   REGISTRY: ghcr.io
   IMAGE_NAME: "${{ github.repository_owner }}/simplerisk"
-  VERSION: "20231006-001"
+  VERSION: "20231103-001"
 
 jobs:
   github_packages:
