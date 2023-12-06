@@ -99,11 +99,7 @@ cat << EOF >> "php$image_dir/Dockerfile"
 RUN useradd -G www-data simplerisk && \\
 	chown -R simplerisk:www-data /var/www/simplerisk /etc/apache2 /var/run/ /var/log/apache2 && \\
 	chmod -R 770 /var/www/simplerisk /etc/apache2 /var/run/ /var/log/apache2 && \\
-	chmod 755 /entrypoint.sh /etc/apache2/foreground.sh && \\
-# Setting up cronjob
-	echo "* * * * * /usr/local/bin/php -f /var/www/simplerisk/cron/cron.php > /dev/null 2>&1" >> /etc/cron.d/backup-cron && \\
-	chmod 0644 /etc/cron.d/backup-cron && \\
-	crontab /etc/cron.d/backup-cron
+	chmod 755 /entrypoint.sh /etc/apache2/foreground.sh
 
 # Data to save
 VOLUME [ "/var/log/apache2", "/etc/apache2/ssl", "/var/www/simplerisk" ]

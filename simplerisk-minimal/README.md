@@ -67,3 +67,4 @@ docker run -d --name simplerisk -e SIMPLERISK_DB_PASSWORD=pass -e SIMPLERISK_DB_
 | `SIMPLERISK_DB_DATABASE` | `simplerisk` | Database name where all SimpleRisk objects are stored |
 | `SIMPLERISK_DB_FOR_SESSIONS` | `true` | Indicator that the application will store all sessions on the configured database |
 | `SIMPLERISK_DB_SSL_CERT_PATH` | Empty string (`''`) | Path where SSL certificates, to contact the database, are located |
+| `SIMPLERISK_CRON_SETUP` | `enabled` | Install the cron job to run in this Docker container |

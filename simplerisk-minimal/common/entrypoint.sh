@@ -88,6 +88,22 @@ set_csrf_secret(){
 	[ -n "${SIMPLERISK_CSRF_SECRET:-}" ] && echo "<?php \$secret = \"${SIMPLERISK_CSRF_SECRET}\"; ?>" > "$CSRF_SECRET_PATH";
 }
 
+set_cron(){
+	# If SIMPLERISK_CRON_SETUP was passed and it is set to disabled
+	if [[ -z "${SIMPLERISK_CRON_SETUP:-}" && "${SIMPLERISK_CRON_SETUP:-}" = disabled* ]]; then
+		print_log "SimpleRisk cron setup is disabled."
+	else
+		print_log "SimpleRisk cron setup is enabled."
+
+		CRON_PATH='/tmp/backup-cron'
+
+		# Create the cron file
+		exec_cmd "echo '* * * * * /usr/local/bin/php -f /var/www/simplerisk/cron/cron.php > /dev/null 2>&1' >> $CRON_PATH"
+		exec_cmd "chmod 0644 $CRON_PATH"
+		exec_cmd "crontab $CRON_PATH"
+	fi
+}
+
 delete_db(){
 	print_log "db_deletion: prepare" "Performing database deletion"
 
@@ -160,11 +176,13 @@ unset_variables() {
 	unset SIMPLERISK_DB_FOR_SESSIONS
 	unset SIMPLERISK_DB_SSL_CERT_PATH
 	unset SIMPLERISK_CSRF_SECRET
+	unset SIMPLERISK_CRON_SETUP
 }
 
 _main() {
 	validate_db_setup
 	set_config
+	set_cron
 	if [[ -n ${DB_SETUP:-} ]]; then
 	  DB_SETUP_USER="${DB_SETUP_USER:-root}"
 	  DB_SETUP_PASS="${DB_SETUP_PASS:-root}"
