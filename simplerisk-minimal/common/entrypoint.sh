@@ -90,7 +90,7 @@ set_csrf_secret(){
 
 set_cron(){
 	# If SIMPLERISK_CRON_SETUP was passed and it is set to disabled
-	if [[ -z "${SIMPLERISK_CRON_SETUP:-}" && "${SIMPLERISK_CRON_SETUP:-}" = disabled* ]]; then
+	if [[ -n "${SIMPLERISK_CRON_SETUP:-}" && "${SIMPLERISK_CRON_SETUP:-}" = disabled* ]]; then
 		print_log "SimpleRisk cron setup is disabled."
 	else
 		print_log "SimpleRisk cron setup is enabled."
