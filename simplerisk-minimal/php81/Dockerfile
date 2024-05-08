@@ -58,7 +58,7 @@ RUN echo 'upload_max_filesize = 5M' >> /usr/local/etc/php/conf.d/docker-php-uplo
 	openssl req -new -key /etc/apache2/ssl/ssl.key/simplerisk.key -out  /etc/apache2/ssl/ssl.crt/simplerisk.csr -subj "/CN=simplerisk" && \
 	openssl x509 -req -days 365 -in /etc/apache2/ssl/ssl.crt/simplerisk.csr -signkey /etc/apache2/ssl/ssl.key/simplerisk.key -out /etc/apache2/ssl/ssl.crt/simplerisk.crt && \
 # Activate Apache modules
-	a2enmod rewrite ssl && \
+	a2enmod headers rewrite ssl && \
 	a2enconf security && \
 	sed -i 's/\(SSLProtocol\) all -SSLv3/\1 TLSv1.2/g' /etc/apache2/mods-enabled/ssl.conf && \
 	sed -i 's/#\(SSLHonorCipherOrder on\)/\1/g' /etc/apache2/mods-enabled/ssl.conf && \

@@ -72,8 +72,7 @@ RUN mkdir -p /etc/apache2/ssl/ssl.crt /etc/apache2/ssl/ssl.key && \
 
 # Activate Apache modules
 RUN phpenmod ldap && \
-	a2enmod rewrite && \
-	a2enmod ssl && \
+	a2enmod headers rewrite ssl && \
 	a2enconf security && \
 	sed -i 's/\(SSLProtocol\) all -SSLv3/\1 TLSv1.2/g' /etc/apache2/mods-enabled/ssl.conf && \
 	sed -i 's/#\(SSLHonorCipherOrder on\)/\1/g' /etc/apache2/mods-enabled/ssl.conf && \
