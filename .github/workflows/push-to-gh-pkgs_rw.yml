@@ -18,6 +18,10 @@ on:
       os_version:
         required: true
         type: string
+      main_image:
+        required: false
+        type: boolean
+        default: false
 
 env:
   # Use docker.io for Docker Hub if empty
@@ -62,8 +66,9 @@ jobs:
       with:
         images: "ghcr.io/${{ github.repository_owner }}/${{ inputs.image_name }}"
 
-    - name: Build and push Docker image
-      id: build-and-push
+    - name: Build and push main Docker image
+      id: build-and-push-main
+      if: ${{ inputs.main_image == 'true' }}
       uses: docker/build-push-action@v5
       with:
         context: ${{ inputs.context_path }}
@@ -72,6 +77,29 @@ jobs:
         tags: |
           ghcr.io/${{ github.repository_owner }}/${{ inputs.image_name }}
           ghcr.io/${{ github.repository_owner }}/${{ inputs.image_name }}:${{ inputs.version }}
+        labels: ${{ steps.meta.outputs.labels }}
+        cache-from: type=gha
+        cache-to: type=gha,mode=max
+
+    # Sign the resulting Docker image digest except on PRs.
+    # This will only write to the public Rekor transparency log when the Docker
+    # repository is public to avoid leaking data.  If you would like to publish
+    # transparency data even for private images, pass --yes to cosign below.
+    # https://github.com/sigstore/cosign
+    - name: Sign the published Docker image
+      if: ${{ github.event_name != 'pull_request' }}
+      # This step uses the identity token to provision an ephemeral certificate
+      # against the sigstore community Fulcio instance.
+      run: echo "${{ steps.meta.outputs.tags }}" | xargs -I {} cosign sign --yes {}@${{ steps.build-and-push-main.outputs.digest }}
+
+    - name: Build and push specific Docker image
+      id: build-and-push-spec
+      uses: docker/build-push-action@v5
+      with:
+        context: ${{ inputs.context_path }}
+        file: ${{ inputs.dockerfile_path }}
+        push: ${{ github.event_name != 'pull_request' }}
+        tags: |
           ghcr.io/${{ github.repository_owner }}/${{ inputs.image_name }}:${{ inputs.version }}-${{ inputs.os_version }}
         labels: ${{ steps.meta.outputs.labels }}
         cache-from: type=gha
@@ -86,4 +114,4 @@ jobs:
       if: ${{ github.event_name != 'pull_request' }}
       # This step uses the identity token to provision an ephemeral certificate
       # against the sigstore community Fulcio instance.
-      run: echo "${{ steps.meta.outputs.tags }}" | xargs -I {} cosign sign --yes {}@${{ steps.build-and-push.outputs.digest }}
+      run: echo "${{ steps.meta.outputs.tags }}" | xargs -I {} cosign sign --yes {}@${{ steps.build-and-push-spec.outputs.digest }}

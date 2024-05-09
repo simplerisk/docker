@@ -6,7 +6,7 @@ on:
     branches: [ master ]
 
 jobs:
-  simplerisk-minimal-php81:
+  simplerisk-jammy:
     name: 'Verify simplerisk/simplerisk image based on Ubuntu 22.04 (Jammy)'
     uses: ./.github/workflows/verify-image_rw.yml
     with:
@@ -14,10 +14,18 @@ jobs:
       dockerfile_path: "simplerisk/jammy/Dockerfile"
       image_tag: "simplerisk/simplerisk:testing"
 
-  simplerisk-jammy:
+  simplerisk-minimal-php81:
     name: 'Verify simplerisk/simplerisk image based on PHP 8.1 with Apache'
     uses: ./.github/workflows/verify-image_rw.yml
     with:
       context_path: "simplerisk-minimal/"
       dockerfile_path: "simplerisk-minimal/php81/Dockerfile"
+      image_tag: "simplerisk/simplerisk-minimal:testing"
+
+  simplerisk-minimal-php83:
+    name: 'Verify simplerisk/simplerisk image based on PHP 8.3 with Apache'
+    uses: ./.github/workflows/verify-image_rw.yml
+    with:
+      context_path: "simplerisk-minimal/"
+      dockerfile_path: "simplerisk-minimal/php83/Dockerfile"
       image_tag: "simplerisk/simplerisk-minimal:testing"

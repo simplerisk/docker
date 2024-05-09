@@ -18,6 +18,10 @@ on:
       os_version:
         required: true
         type: string
+      main_image:
+        required: false
+        default: false
+        type: boolean
     secrets:
       DOCKER_USERNAME:
         required: true
@@ -43,8 +47,9 @@ jobs:
       with:
         images: ${{ inputs.image_name }}
 
-    - name: Build and push Docker image
-      id: build-and-push
+    - name: Build and push main Docker image
+      if: ${{ inputs.main_image == 'true' }}
+      id: build-and-push-main
       uses: docker/build-push-action@v5
       with:
         context: ${{ inputs.context_path }}
@@ -53,6 +58,16 @@ jobs:
         tags: |
           ${{ inputs.image_name }}
           ${{ inputs.image_name }}:${{ inputs.version }}
+        labels: ${{ steps.meta.outputs.labels }}
+
+    - name: Build and push specific Docker image
+      id: build-and-push-spec
+      uses: docker/build-push-action@v5
+      with:
+        context: ${{ inputs.context_path }}
+        file: ${{ inputs.dockerfile_path }}
+        push: ${{ github.event_name != 'pull_request' }}
+        tags: |
           ${{ inputs.image_name }}:${{ inputs.version }}-${{ inputs.os_version }}
         labels: ${{ steps.meta.outputs.labels }}
  
