@@ -22,6 +22,7 @@ jobs:
       image_name: "simplerisk/simplerisk"
       version: "20240318-001"
       os_version: "jammy"
+      main_image: true
     secrets: inherit
   simplerisk-minimal-php81:
     name: 'Push simplerisk/simplerisk-minimal image based on PHP 8.1 with Apache'
@@ -32,4 +33,15 @@ jobs:
       image_name: "simplerisk/simplerisk-minimal"
       version: "20240318-001"
       os_version: "php81"
+      main_image: true
+    secrets: inherit
+  simplerisk-minimal-php83:
+    name: 'Push simplerisk/simplerisk-minimal image based on PHP 8.1 with Apache'
+    uses: ./.github/workflows/push-to-dockerhub_rw.yml
+    with:
+      context_path: "simplerisk-minimal"
+      dockerfile_path: "simplerisk-minimal/php83/Dockerfile"
+      image_name: "simplerisk/simplerisk-minimal"
+      version: "20240318-001"
+      os_version: "php83"
     secrets: inherit
