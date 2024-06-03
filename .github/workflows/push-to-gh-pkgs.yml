@@ -20,7 +20,7 @@ jobs:
       context_path: "simplerisk"
       dockerfile_path: "simplerisk/jammy/Dockerfile"
       image_name: "simplerisk"
-      version: "20240318-001"
+      version: "20240603-001"
       os_version: "jammy"
       main_image: true
     secrets: inherit
@@ -31,7 +31,7 @@ jobs:
       context_path: "simplerisk-minimal"
       dockerfile_path: "simplerisk-minimal/php81/Dockerfile"
       image_name: "simplerisk-minimal"
-      version: "20240318-001"
+      version: "20240603-001"
       os_version: "php81"
       main_image: true
     secrets: inherit
@@ -42,6 +42,6 @@ jobs:
       context_path: "simplerisk-minimal"
       dockerfile_path: "simplerisk-minimal/php83/Dockerfile"
       image_name: "simplerisk-minimal"
-      version: "20240318-001"
+      version: "20240603-001"
       os_version: "php83"
     secrets: inherit
