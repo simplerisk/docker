@@ -53,7 +53,7 @@ jobs:
         images: ${{ inputs.image_name }}
 
     - name: Build and push main Docker image
-      if: ${{ inputs.main_image == 'true' }}
+      if: ${{ inputs.main_image }}
       id: build-and-push-main
       uses: docker/build-push-action@v5
       with:
