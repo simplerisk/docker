@@ -4,22 +4,27 @@ on:
   workflow_call:
     inputs:
       context_path:
+        description: Base path to perform the build
         required: true
         type: string
       dockerfile_path:
+        description: Path where Dockerfile is located
         required: true
         type: string
       image_name:
+        description: What would be the name of the image
         required: true
         type: string
       version:
+        description: SimpleRisk version to upload
         required: true
         type: string
       os_version:
+        description: Type of base image to put on the tag
         required: true
         type: string
       main_image:
-        required: false
+        description: Is this the latest image?
         default: false
         type: boolean
     secrets:
@@ -48,7 +53,7 @@ jobs:
         images: ${{ inputs.image_name }}
 
     - name: Build and push main Docker image
-      if: ${{ inputs.main_image == 'true' }}
+      if: ${{ inputs.main_image }}
       id: build-and-push-main
       uses: docker/build-push-action@v5
       with:

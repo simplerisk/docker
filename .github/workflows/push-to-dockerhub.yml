@@ -36,7 +36,7 @@ jobs:
       main_image: true
     secrets: inherit
   simplerisk-minimal-php83:
-    name: 'Push simplerisk/simplerisk-minimal image based on PHP 8.1 with Apache'
+    name: 'Push simplerisk/simplerisk-minimal image based on PHP 8.3 with Apache'
     uses: ./.github/workflows/push-to-dockerhub_rw.yml
     with:
       context_path: "simplerisk-minimal"
