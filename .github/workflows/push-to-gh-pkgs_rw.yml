@@ -19,9 +19,8 @@ on:
         required: true
         type: string
       main_image:
-        required: false
-        type: boolean
         default: false
+        type: boolean
 
 env:
   # Use docker.io for Docker Hub if empty
@@ -68,7 +67,7 @@ jobs:
 
     - name: Build and push main Docker image
       id: build-and-push-main
-      if: ${{ inputs.main_image == 'true' }}
+      if: ${{ inputs.main_image }}
       uses: docker/build-push-action@v5
       with:
         context: ${{ inputs.context_path }}
@@ -87,7 +86,7 @@ jobs:
     # transparency data even for private images, pass --yes to cosign below.
     # https://github.com/sigstore/cosign
     - name: Sign the published Docker image
-      if: ${{ github.event_name != 'pull_request' }}
+      if: ${{ inputs.main_image && github.event_name != 'pull_request' }}
       # This step uses the identity token to provision an ephemeral certificate
       # against the sigstore community Fulcio instance.
       run: echo "${{ steps.meta.outputs.tags }}" | xargs -I {} cosign sign --yes {}@${{ steps.build-and-push-main.outputs.digest }}
