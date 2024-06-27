@@ -22,6 +22,16 @@ jobs:
       image_name: "simplerisk"
       version: "20240603-001"
       os_version: "jammy"
+    secrets: inherit
+  simplerisk-noble:
+    name: 'Push simplerisk/simplerisk image based on Ubuntu 24.04 (Noble)'
+    uses: ./.github/workflows/push-to-gh-pkgs_rw.yml
+    with:
+      context_path: "simplerisk"
+      dockerfile_path: "simplerisk/noble/Dockerfile"
+      image_name: "simplerisk"
+      version: "20240603-001"
+      os_version: "noble"
       main_image: true
     secrets: inherit
   simplerisk-minimal-php81:
