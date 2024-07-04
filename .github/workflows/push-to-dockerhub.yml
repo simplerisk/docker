@@ -43,7 +43,6 @@ jobs:
       image_name: "simplerisk/simplerisk-minimal"
       version: "20240603-001"
       os_version: "php81"
-      main_image: true
     secrets: inherit
   simplerisk-minimal-php83:
     name: 'Push simplerisk/simplerisk-minimal image based on PHP 8.3 with Apache'
@@ -54,4 +53,5 @@ jobs:
       image_name: "simplerisk/simplerisk-minimal"
       version: "20240603-001"
       os_version: "php83"
+      main_image: true
     secrets: inherit
