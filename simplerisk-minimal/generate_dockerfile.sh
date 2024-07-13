@@ -33,7 +33,7 @@ RUN apt-get update && \\
                        libzip-dev \\
                        supervisor \\
                        cron \\
-                       mysql-client && \\
+                       default-mysql-client && \\
     rm -rf /var/lib/apt/lists/*
 # Configure all PHP extensions
 RUN docker-php-ext-configure ldap --with-libdir=lib/x86_64-linux-gnu && \\
