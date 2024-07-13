@@ -6,6 +6,12 @@ FROM php:8.3-apache
 LABEL maintainer="Simplerisk <support@simplerisk.com>"
 
 WORKDIR /var/www
+
+# Add the apt config package
+RUN apt-get update && \
+    apt-get install -y gnupg2 && \
+    apt-key adv --keyserver pgp.mit.edu --recv-keys A8D3785C && \
+    echo "deb http://repo.mysql.com/apt/debian bookworm mysql-8.0" > /etc/apt/sources.list.d/mysql.list
                                                                     
 # Installing apt dependencies     
 RUN apt-get update && \
@@ -17,7 +23,7 @@ RUN apt-get update && \
                        libzip-dev \
                        supervisor \
                        cron \
-                       default-mysql-client && \
+                       mysql-community-client && \
     rm -rf /var/lib/apt/lists/*
 # Configure all PHP extensions
 RUN docker-php-ext-configure ldap --with-libdir=lib/x86_64-linux-gnu && \
