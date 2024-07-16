@@ -7,6 +7,7 @@ print_log(){
 }
 
 generate_random_password() {
+	# shellcheck disable=SC2005
 	echo "$(< /dev/urandom tr -dc A-Za-z0-9 | head -c21)"
 }
 
@@ -17,7 +18,9 @@ run_sql_command() {
 }
 
 set_db_password(){
+	# shellcheck disable=SC2005
 	echo "$(generate_random_password)" > /passwords/pass_mysql_root.txt
+	# shellcheck disable=SC2005
 	echo "$(generate_random_password)" > /passwords/pass_simplerisk.txt
 	sed -i "s/\('DB_PASSWORD', '\).*\(');\)/\1$(cat /passwords/pass_simplerisk.txt)\2/g" "$CONFIG_PATH"
 }
@@ -39,7 +42,10 @@ set_config(){
 
 		# shellcheck disable=SC2015
 		[ "$(cat /tmp/version)" == "testing" ] && sed -i "s|//\(define('.*_URL\)|\1|g" $CONFIG_PATH || true
-	
+
+		# shellcheck disable=SC2015
+		[ "$(stat -c '%U' /var/lib/mysql)" != 'mysql' ] && chown -R mysql: '/var/lib/mysql' || true
+
 		# Create a file so this doesn't run again
 		touch /configurations/simplerisk-config-configured
 
@@ -71,7 +77,7 @@ configure_db() {
 		run_sql_command "${password}" "UPDATE mysql.db SET References_priv='Y',Index_priv='Y' WHERE db='simplerisk';"
 
 		# Update the SIMPLERISK_INSTALLED value because of the DB installation
-		sed -i "s/\('SIMPLERISK_INSTALLED', 'false'\)/'SIMPLERISK_INSTALLED', 'true'/g" $CONFIG_PATH
+		sed -i "s/\('SIMPLERISK_INSTALLED', 'false'\)/'SIMPLERISK_INSTALLED', 'true'/g" "$CONFIG_PATH"
 
 		# Create a file so this doesn't run again
 		touch /configurations/mysql-configured
