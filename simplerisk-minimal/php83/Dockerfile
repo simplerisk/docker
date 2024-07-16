@@ -7,14 +7,15 @@ LABEL maintainer="Simplerisk <support@simplerisk.com>"
 
 WORKDIR /var/www
 
-# Add the apt config package
-RUN apt-get update && \
-    apt-get install -y gnupg2 && \
+# Creating keyring env and installing apt dependencies
+RUN mkdir -p /etc/apt/keyrings && \
+    apt-get update && \
+    apt-get install -y gnupg2 wget && \
+    wget -qO - http://repo.mysql.com/RPM-GPG-KEY-mysql-2023 | gpg --dearmor -o /etc/apt/keyrings/mysql.gpg && \
+    echo 'deb [signed-by=/etc/apt/keyrings/mysql.gpg] http://repo.mysql.com/apt/$(lsb_release -si | tr '[:upper:]' '[:lower:]')/ $(lsb_release -sc) mysql-8.0' | tee /etc/apt/sources.list.d/mysql.list && \
     apt-key adv --keyserver pgp.mit.edu --recv-keys A8D3785C && \
-    echo "deb http://repo.mysql.com/apt/debian bookworm mysql-8.0" > /etc/apt/sources.list.d/mysql.list
-                                                                    
-# Installing apt dependencies     
-RUN apt-get update && \
+    echo "deb http://repo.mysql.com/apt/debian bookworm mysql-8.0" > /etc/apt/sources.list.d/mysql.list && \
+    apt-get update && \
     apt-get -y install libldap2-dev \
                        libicu-dev \
                        libcap2-bin \
