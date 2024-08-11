@@ -21,7 +21,7 @@ There are two ways to run this container:
 
 ### Database Setup (Optional)
 
-If this is the first time running the application, the MySQL/MariaDB database needs to be set up with the SimpleRisk schema. You have two options to set it up:
+If this is the first time running the application, the MySQL database needs to be set up with the SimpleRisk schema. You have two options to set it up:
 
 #### New Installer (GUI)
 
