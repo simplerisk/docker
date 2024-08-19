@@ -6,9 +6,9 @@ services:
   simplerisk:
     environment:
     - DB_SETUP=automatic
-    - DB_SETUP_PASS=m7pmEolBOuosuCWLYJ0kZ
+    - DB_SETUP_PASS=yf5RZRAXlVHoSiYUd7kl_
     - SIMPLERISK_DB_HOSTNAME=mysql
-    image: simplerisk/simplerisk-minimal:20240818-001
+    image: simplerisk/simplerisk-minimal:20240819-001
     ports:
     - "80:80"
     - "443:443"
@@ -16,7 +16,7 @@ services:
   mariadb:
     command: mysqld --sql_mode="NO_ENGINE_SUBSTITUTION"
     environment:
-    - MYSQL_ROOT_PASSWORD=m7pmEolBOuosuCWLYJ0kZ
+    - MYSQL_ROOT_PASSWORD=yf5RZRAXlVHoSiYUd7kl_
     image: mysql:8.0
 
   smtp:
