@@ -25,7 +25,7 @@ services:
     - "80:80"
     - "443:443"
 
-  mariadb:
+  mysql:
     command: mysqld --sql_mode="NO_ENGINE_SUBSTITUTION"
     environment:
     - MYSQL_ROOT_PASSWORD=$pass
