@@ -15,8 +15,6 @@ A `stack.yml` file is provided for a stack deployment of the application through
 
 Change its settings according to your needs.
 
-[![Try in PWD](https://raw.githubusercontent.com/play-with-docker/stacks/master/assets/images/button.png)](https://labs.play-with-docker.com/?stack=https://raw.githubusercontent.com/simplerisk/docker/master/stack.yml)
-
 ## Build it yourself
 
 Click on the image name on the [Images Overview](#images-overview) section for more details.
