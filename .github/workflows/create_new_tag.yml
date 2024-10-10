@@ -1,0 +1,24 @@
+name: Create new release tag
+on:
+  workflow_dispatch:
+  push:
+
+jobs:
+  create-release:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+      - name: Configure git
+        run: |
+          git config user.name "SimpleRisk Updater"
+          git config user.email "support@simplerisk.com"
+          git config push.followTags true
+          git fetch --tags
+      - name: Check if tag does not exist, and generate one
+        run: |
+          TAG_NAME=$(grep "/tmp/version" simplerisk-minimal/php81/Dockerfile | cut -d ' ' -f 6)
+          if ! git rev-parse "$TAG_NAME" >/dev/null 2>&1; then
+            git tag -a $TAG_NAME -m "SimpleRisk $TAG_NAME Release"
+          fi
+          git push --tags
