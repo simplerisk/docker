@@ -1,5 +1,7 @@
 # SimpleRisk Minimal Image
 
+[![Try in PWD](https://raw.githubusercontent.com/play-with-docker/stacks/master/assets/images/button.png)](https://labs.play-with-docker.com/?stack=https://raw.githubusercontent.com/simplerisk/docker/master/simplerisk-minimal/stack.yml)
+
 This image is intended to run SimpleRisk in a 'microservices' approach (database is not included). It uses PHP 8.X with Apache as a base image. Also has the capability of setting properties of the `config.php` file through environment variables.
 
 For any of the executions, it is recommended to map the 80 and 443 ports to be able to access the application.
@@ -37,17 +39,17 @@ You must provide the environment variable `DB_SETUP=automatic|automatic-only` an
 Another detail to consider is that if the database set up is being executed and the `SIMPLERISK_DB_PASSWORD` variable is not provided, the application will generate a random password and show it on the container logs.
 
 The way to run the container on this mode are the following:
-```
+```bash
 # Automatic setup (set database and keep running)
-docker run -d --name simplerisk -e DB_SETUP=automatic -e AUTO_DB_SETUP_PASS=test -e SIMPLERISK_DB_HOSTNAME=172.17.0.2 -p 80:80 -p 443:443 simplerisk/simplerisk-minimal
+docker run -d --name simplerisk -e DB_SETUP=automatic -e DB_SETUP_PASS=test -e SIMPLERISK_DB_HOSTNAME=172.17.0.2 -p 80:80 -p 443:443 simplerisk/simplerisk-minimal
 
 # Automatic-only setup (set database and stop container)
-docker run -d --name simplerisk -e DB_SETUP=automatic-only -e AUTO_DB_SETUP_PASS=test -e SIMPLERISK_DB_HOSTNAME=172.17.0.2 -p 80:80 -p 443:443 simplerisk/simplerisk-minimal
+docker run -d --name simplerisk -e DB_SETUP=automatic-only -e DB_SETUP_PASS=test -e SIMPLERISK_DB_HOSTNAME=172.17.0.2 -p 80:80 -p 443:443 simplerisk/simplerisk-minimal
 ```
 
 ### Normal execution
 
-If the database is already set up for SimpleRisk to use it, run the container by just providing the `SIMPLERISK_DB_*` options. For example, if the database is located at `db-server.example.com` on port 45329, the command to run the container would be:
+If the database is already set up for SimpleRisk to use it, there is no need to use the `DB_SETUP` variable; you can run the container by just providing the `SIMPLERISK_DB_*` options. For example, if the database is located at `db-server.example.com` on port 45329, the command to run the container would be:
 ```
 docker run -d --name simplerisk -e SIMPLERISK_DB_PASSWORD=pass -e SIMPLERISK_DB_HOSTNAME=db-server.example.com -e SIMPLERISK_DB_PORT=45329 -p 80:80 -p 443:443 simplerisk/simplerisk-minimal
 ```
@@ -56,7 +58,7 @@ docker run -d --name simplerisk -e SIMPLERISK_DB_PASSWORD=pass -e SIMPLERISK_DB_
 
 | Variable Name | Default Value | Purpose |
 |:-------------:|:-------------:|:--------|
-| `DB_SETUP` | `null` (Accepts any value) | The container will start as if the database has not been set up. The valid options here are `automatic` (in case you want the container to configure the database), `automatic-only` (the same as `automatic`, but stops the container after finishing the setup), `delete` (removes the SimpleRisk database and user from MySQL) or `manual` (allows the user to run the manual setup) |
+| `DB_SETUP` | `null` (Accepts any value) | The container will start as if the database has not been set up. The valid options here are `automatic` (in case you want the container to configure the database), `automatic-only` (the same as `automatic`, but stops the container after finishing the setup), `delete` (removes the SimpleRisk database and user from MySQL) or `manual` (allows the user to run the manual installation) |
 | `DB_SETUP_USER` | `root` | Used when `DB_SETUP=automatic\|automatic-only\|delete`. User name of database privileged user to install SimpleRisk schema and other components |
 | `DB_SETUP_PASS` | `root` | Used when `DB_SETUP=automatic\|automatic-only\|delete`. Password for database privileged user to install SimpleRisk schema and other components |
 | `DB_SETUP_WAIT` | 20 | Used when `DB_SETUP=automatic\|automatic-only`. Time, in seconds, the application is going to wait to set up the database. Useful if you are deploying the database and SimpleRisk at the same time |
