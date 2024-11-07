@@ -35,4 +35,4 @@ services:
     image: namshi/smtp
 EOF
 
-sed -i -r "s/(version:) \"[0-9]{8,}-[0-9]{3,}\"/\1 \"${release}\"/g" .github/workflows/push*
+sed -i -r "s/(version:) \"[0-9]{8,}-[0-9]{3,}\"/\1 \"${release}\"/g" ../.github/workflows/push*
