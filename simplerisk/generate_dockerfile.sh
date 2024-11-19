@@ -19,8 +19,8 @@ case "$image" in
 	'noble') php_version='8.3';;
 esac
 
-if [ ! -d "$image" ]; then
-	mkdir "$image"
+if [ ! -d "${SCRIPT_LOCATION}/${image}" ]; then
+	mkdir "${SCRIPT_LOCATION}/${image}"
 fi
 
 cat << EOF > "${SCRIPT_LOCATION}/${image}/Dockerfile"
