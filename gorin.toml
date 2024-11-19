@@ -1,0 +1,17 @@
+tools = ["docker-compose", "dockle", "gorin", "grype"]
+
+[options.generate_makefile]
+description = "Generates the makefile for this project (using gorin)"
+command = """
+check_dependencies
+\t@gorin makefile > Makefile
+"""
+
+[options.update_version]
+description = "Updates the version of Dockerfiles, stacks and others"
+command = """
+\n\t./update_workflows.sh $(VERSION)
+\t./simplerisk/generate_dockerfile.sh $(VERSION)
+\t./simplerisk-minimal/update_stack_and_workflows.sh $(VERSION)
+\t./simplerisk-minimal/generate_dockerfile.sh $(VERSION)
+"""
