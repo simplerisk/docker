@@ -1,26 +1,30 @@
 {
-  description = "virtual environments";
+  description = "SimpleRisk's Docker and related artifacts";
 
-  inputs.devshell.url = "github:numtide/devshell";
-  inputs.flake-utils.url = "github:numtide/flake-utils";
-
-  inputs.flake-compat = {
-    url = "github:edolstra/flake-compat";
-    flake = false;
+  inputs = {
+    flake-compat = {
+      url = "github:edolstra/flake-compat";
+      flake = false;
+    };
+    gorinapp.url = "git+https://codeberg.org/wolfangaukang/gorin";
   };
 
-  outputs = { self, flake-utils, devshell, nixpkgs, ... }:
-    flake-utils.lib.eachDefaultSystem (system: {
-      devShell =
-        let
-          pkgs = import nixpkgs {
-            inherit system;
+  outputs = { nixpkgs, gorinapp, ... }:
+    let
+      overlays = [
+        gorinapp.overlays.default
+      ];
+      forEachSystem = nixpkgs.lib.genAttrs (nixpkgs.lib.systems.flakeExposed);
+      pkgsFor = forEachSystem (system: import nixpkgs { inherit overlays system; });
 
-            overlays = [ devshell.overlays.default ];
-          };
-        in
-        pkgs.devshell.mkShell {
-          imports = [ (pkgs.devshell.importTOML ./devshell.toml) ];
-        };
-    });
+    in
+    {
+      devShells = forEachSystem (system:
+        let
+          pkgs = pkgsFor.${system};
+
+        in {
+          default = pkgs.mkShell { packages = (with pkgs; [ docker-compose dockle grype gorin ]); };
+        });
+      };
 }
