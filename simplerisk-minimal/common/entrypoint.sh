@@ -112,8 +112,7 @@ delete_db(){
 	SET sql_mode = 'ANSI_QUOTES';
 	DROP DATABASE \"${SIMPLERISK_DB_DATABASE}\";
 	USE mysql;
-	DELETE FROM user WHERE User='${SIMPLERISK_DB_USERNAME}';
-	DELETE FROM db WHERE User='${SIMPLERISK_DB_USERNAME}';
+	DROP USER '${SIMPLERISK_DB_USERNAME}'@'%';
 	FLUSH PRIVILEGES;
 EOSQL" "Was not able to apply settings on database. Check error above. Exiting."
 
