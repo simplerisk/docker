@@ -22,6 +22,8 @@ if [ "$release" != "testing" ]; then
 	cat << EOF >> "${SCRIPT_LOCATION}/Dockerfile"
 FROM alpine/curl:8.12.1 AS downloader
 
+SHELL [ "/bin/ash", "-eo", "pipefail", "-c" ]
+
 RUN mkdir -p /var/www && \
         curl -sL https://simplerisk-downloads.s3.amazonaws.com/public/bundles/simplerisk-$release.tgz | tar xz -C /var/www
 
@@ -37,22 +39,24 @@ ENV version=$release
 
 WORKDIR /var/www
 
+SHELL [ "/bin/bash", "-o", "pipefail", "-c" ]
+
 # Creating keyring env and installing apt dependencies
 RUN mkdir -p /etc/apt/keyrings && \\
     apt-get update && \\
-    apt-get install -y gnupg2 wget lsb-release && \\
+    apt-get install -y --no-install-recommends gnupg2 wget lsb-release && \\
     wget -qO - $MYSQL_KEY_URL | gpg --dearmor -o /etc/apt/keyrings/mysql.gpg && \\
     echo "deb [signed-by=/etc/apt/keyrings/mysql.gpg] http://repo.mysql.com/apt/debian/ \$(lsb_release -cs) mysql-8.0" | tee /etc/apt/sources.list.d/mysql.list && \\
     apt-get update && \\
-    apt-get -y install libldap2-dev \\
-                       libicu-dev \\
-                       libcap2-bin \\
-                       libcurl4-gnutls-dev \\
-                       libpng-dev \\
-                       libzip-dev \\
-                       supervisor \\
-                       cron \\
-                       mysql-community-client && \\
+    apt-get -y install --no-install-recommends libldap2-dev \\
+                                               libicu-dev \\
+                                               libcap2-bin \\
+                                               libcurl4-gnutls-dev \\
+                                               libpng-dev \\
+                                               libzip-dev \\
+                                               supervisor \\
+                                               cron \\
+                                               mysql-community-client && \\
     apt-get -y remove gnupg2 wget lsb-release && \\
     rm -rf /var/lib/apt/lists/*
 # Configure all PHP extensions
