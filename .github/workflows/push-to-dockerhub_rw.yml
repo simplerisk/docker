@@ -27,6 +27,9 @@ on:
         description: Is this the latest image?
         default: false
         type: boolean
+      build_args:
+        description: Arguments to use on image at runtime
+        type: string
     secrets:
       DOCKER_USERNAME:
         required: true
@@ -60,6 +63,7 @@ jobs:
         context: ${{ inputs.context_path }}
         file: ${{ inputs.dockerfile_path }}
         push: ${{ github.event_name != 'pull_request' }}
+        build-args: ${{ inputs.build_args || '' }}
         tags: |
           ${{ inputs.image_name }}
           ${{ inputs.image_name }}:${{ inputs.version }}
@@ -72,6 +76,7 @@ jobs:
         context: ${{ inputs.context_path }}
         file: ${{ inputs.dockerfile_path }}
         push: ${{ github.event_name != 'pull_request' }}
+        build-args: ${{ inputs.build_args || '' }}
         tags: |
           ${{ inputs.image_name }}:${{ inputs.version }}-${{ inputs.os_version }}
         labels: ${{ steps.meta.outputs.labels }}

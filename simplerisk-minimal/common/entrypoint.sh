@@ -76,7 +76,7 @@ set_config(){
 	[ -z "${DB_SETUP:-}" ] && exec_cmd "sed -i \"s/\('SIMPLERISK_INSTALLED', \)'false'/\1'true'/g\" $CONFIG_PATH" || true
 
 	# Testing related operations
-	if [ "$(cat /tmp/version)" = "testing" ]; then
+	if [ "$version" = "testing" ]; then
 		exec_cmd "sed -i \"s|//\(define('.*_URL\)|\1|g\" $CONFIG_PATH"
 	fi
 }
@@ -126,14 +126,14 @@ db_setup(){
 
 	print_log "initial_setup:info" "Starting database set up"
 
-	if [ "$(cat /tmp/version)" == "testing" ]; then
+	if [ "$version" == "testing" ]; then
 		print_log "initial_setup:info" "Testing version detected. Looking for SQL script (simplerisk.sql) at /var/www/simplerisk/..."
 		SCHEMA_FILE='/var/www/simplerisk/simplerisk.sql'
 		exec_cmd "[ -f $SCHEMA_FILE ]" "SQL script not found. Exiting."
 	else
 		print_log "initial_setup:info" "Downloading schema..."
 		SCHEMA_FILE='/tmp/simplerisk.sql'
-		exec_cmd "curl -sL https://github.com/simplerisk/database/raw/master/simplerisk-en-$(cat /tmp/version).sql > $SCHEMA_FILE" "Could not download schema from Github. Exiting."
+		exec_cmd "curl -sL https://github.com/simplerisk/database/raw/master/simplerisk-en-$version.sql > $SCHEMA_FILE" "Could not download schema from Github. Exiting."
 	fi
 
 	print_log "initial_setup:info" "Applying changes to MySQL database... (MySQL error will be printed to console as guidance)"
