@@ -29,13 +29,13 @@ jobs:
       context_path: "simplerisk-minimal/"
       dockerfile_path: "simplerisk-minimal/Dockerfile"
       image_tag: "simplerisk/simplerisk-minimal:testing"
-      build_args: "version=8.1"
+      build_args: "php_version=8.1"
 
   simplerisk-minimal-php83:
     name: 'Verify simplerisk/simplerisk image based on PHP 8.3 with Apache'
     uses: ./.github/workflows/verify-image_rw.yml
     with:
       context_path: "simplerisk-minimal/"
-      dockerfile_path: "simplerisk-minimal/php83/Dockerfile"
+      dockerfile_path: "simplerisk-minimal/Dockerfile"
       image_tag: "simplerisk/simplerisk-minimal:testing"
-      build_args: "version=8.3"
+      build_args: "php_version=8.3"

@@ -39,19 +39,21 @@ jobs:
     uses: ./.github/workflows/push-to-dockerhub_rw.yml
     with:
       context_path: "simplerisk-minimal"
-      dockerfile_path: "simplerisk-minimal/php81/Dockerfile"
+      dockerfile_path: "simplerisk-minimal/Dockerfile"
       image_name: "simplerisk/simplerisk-minimal"
       version: "20250411-001"
       os_version: "php81"
+      build_args: "php_version=8.1"
     secrets: inherit
   simplerisk-minimal-php83:
     name: 'Push simplerisk/simplerisk-minimal image based on PHP 8.3 with Apache'
     uses: ./.github/workflows/push-to-dockerhub_rw.yml
     with:
       context_path: "simplerisk-minimal"
-      dockerfile_path: "simplerisk-minimal/php83/Dockerfile"
+      dockerfile_path: "simplerisk-minimal/Dockerfile"
       image_name: "simplerisk/simplerisk-minimal"
       version: "20250411-001"
       os_version: "php83"
       main_image: true
+      build_args: "php_version=8.3"
     secrets: inherit
