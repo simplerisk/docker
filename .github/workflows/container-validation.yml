@@ -11,16 +11,18 @@ jobs:
     uses: ./.github/workflows/verify-image_rw.yml
     with:
       context_path: "simplerisk/"
-      dockerfile_path: "simplerisk/jammy/Dockerfile"
+      dockerfile_path: "simplerisk/Dockerfile"
       image_tag: "simplerisk/simplerisk:testing"
+      build_args: "ubuntu_version_code=jammy"
 
   simplerisk-noble:
     name: 'Verify simplerisk/simplerisk image based on Ubuntu 24.04 (Noble)'
     uses: ./.github/workflows/verify-image_rw.yml
     with:
       context_path: "simplerisk/"
-      dockerfile_path: "simplerisk/noble/Dockerfile"
+      dockerfile_path: "simplerisk/Dockerfile"
       image_tag: "simplerisk/simplerisk:testing"
+      build_args: "ubuntu_version_code=noble"
 
   simplerisk-minimal-php81:
     name: 'Verify simplerisk/simplerisk-minimal image based on PHP 8.1 with Apache'

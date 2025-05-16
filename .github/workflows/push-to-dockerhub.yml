@@ -18,21 +18,23 @@ jobs:
     uses: ./.github/workflows/push-to-dockerhub_rw.yml
     with:
       context_path: "simplerisk"
-      dockerfile_path: "simplerisk/jammy/Dockerfile"
+      dockerfile_path: "simplerisk/Dockerfile"
       image_name: "simplerisk/simplerisk"
       version: "20250411-001"
       os_version: "jammy"
+      build_args: "ubuntu_version_code=jammy"
     secrets: inherit
   simplerisk-noble:
     name: 'Push simplerisk/simplerisk image based on Ubuntu 24.04 (Noble)'
     uses: ./.github/workflows/push-to-dockerhub_rw.yml
     with:
       context_path: "simplerisk"
-      dockerfile_path: "simplerisk/noble/Dockerfile"
+      dockerfile_path: "simplerisk/Dockerfile"
       image_name: "simplerisk/simplerisk"
       version: "20250411-001"
       os_version: "noble"
       main_image: true
+      build_args: "ubuntu_version_code=noble"
     secrets: inherit
   simplerisk-minimal-php81:
     name: 'Push simplerisk/simplerisk-minimal image based on PHP 8.1 with Apache'
