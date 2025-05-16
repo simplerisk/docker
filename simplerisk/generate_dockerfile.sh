@@ -41,6 +41,8 @@ ENV version=$release
 # Maintained by SimpleRisk
 LABEL maintainer="Simplerisk <support@simplerisk.com>"
 
+SHELL [ "/bin/bash", "-o", "pipefail", "-c" ]
+
 # Make necessary directories
 RUN mkdir -p /configurations \\
 	     /etc/apache2/ssl \\
@@ -54,27 +56,27 @@ RUN mkdir -p /configurations \\
 RUN dpkg-divert --local --rename /usr/bin/ischroot && \\
     ln -sf /bin/true /usr/bin/ischroot && \\
     apt-get update && \\
-    DEBIAN_FRONTEND=noninteractive apt-get -y install apache2 \\
-                                                      php \\
-                                                      php-mysql \\
-                                                      php-json \\
-                                                      php-dev \\
-                                                      php-ldap \\
-                                                      php-mbstring \\
-                                                      php-curl \\
-                                                      php-zip \\
-                                                      php-gd \\
-                                                      php-intl \\
-                                                      mysql-client \\
-                                                      mysql-server \\
-                                                      nfs-common \\
-                                                      chrony \\
-                                                      cron \\
-                                                      vim-tiny \\
-                                                      sendmail \\
-                                                      openssl \\
-                                                      ufw \\
-                                                      supervisor && \\
+    DEBIAN_FRONTEND=noninteractive apt-get -y install --no-install-recommends apache2 \\
+                                                                              php \\
+                                                                              php-mysql \\
+                                                                              php-json \\
+                                                                              php-dev \\
+                                                                              php-ldap \\
+                                                                              php-mbstring \\
+                                                                              php-curl \\
+                                                                              php-zip \\
+                                                                              php-gd \\
+                                                                              php-intl \\
+                                                                              mysql-client \\
+                                                                              mysql-server \\
+                                                                              nfs-common \\
+                                                                              chrony \\
+                                                                              cron \\
+                                                                              vim-tiny \\
+                                                                              sendmail \\
+                                                                              openssl \\
+                                                                              ufw \\
+                                                                              supervisor && \\
     rm -rf /var/lib/apt/lists
 
 # Create the OpenSSL password
@@ -102,11 +104,11 @@ cat << EOF >> "${SCRIPT_LOCATION}/Dockerfile"
 RUN sed -i 's/\[mysqld\]/\[mysqld\]\nsql-mode="NO_ENGINE_SUBSTITUTION"/g' /etc/mysql/mysql.conf.d/mysqld.cnf
 
 # Configure Apache
-RUN php_version=\$(php -v | grep -oP '^PHP \K[0-9]+\.[0-9]+') && \\
-    sed -i 's/\\(upload_max_filesize =\\) .*\\(M\\)/\\1 5\\2/g' /etc/php/\$php_version/apache2/php.ini && \\
-    sed -i 's/\\(memory_limit =\\) .*\\(M\\)/\\1 256\\2/g' /etc/php/\$php_version/apache2/php.ini && \\
-    sed -i 's/;.*\\(max_input_vars =\\) .*/\\1 3000/g' /etc/php/\$php_version/apache2/php.ini && \\
-    sed -i 's/;.*\(display_errors =\) .*/\1 Off/g' /etc/php/\$php_version/apache2/php.ini
+RUN php_version="\$(php -v | grep -oP '^PHP \K[0-9]+\.[0-9]+')" && \\
+    sed -i 's/\\(upload_max_filesize =\\) .*\\(M\\)/\\1 5\\2/g' "/etc/php/\$php_version/apache2/php.ini" && \\
+    sed -i 's/\\(memory_limit =\\) .*\\(M\\)/\\1 256\\2/g' "/etc/php/\$php_version/apache2/php.ini" && \\
+    sed -i 's/;.*\\(max_input_vars =\\) .*/\\1 3000/g' "/etc/php/\$php_version/apache2/php.ini" && \\
+    sed -i 's/;.*\(display_errors =\) .*/\1 Off/g' "/etc/php/\$php_version/apache2/php.ini"
 
 # Create SSL Certificates for Apache SSL
 RUN mkdir -p /etc/apache2/ssl/ssl.crt /etc/apache2/ssl/ssl.key && \\
