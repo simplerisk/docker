@@ -23,7 +23,7 @@ jobs:
       image_tag: "simplerisk/simplerisk:testing"
 
   simplerisk-minimal-php81:
-    name: 'Verify simplerisk/simplerisk image based on PHP 8.1 with Apache'
+    name: 'Verify simplerisk/simplerisk-minimal image based on PHP 8.1 with Apache'
     uses: ./.github/workflows/verify-image_rw.yml
     with:
       context_path: "simplerisk-minimal/"
@@ -32,7 +32,7 @@ jobs:
       build_args: "php_version=8.1"
 
   simplerisk-minimal-php83:
-    name: 'Verify simplerisk/simplerisk image based on PHP 8.3 with Apache'
+    name: 'Verify simplerisk/simplerisk-minimal image based on PHP 8.3 with Apache'
     uses: ./.github/workflows/verify-image_rw.yml
     with:
       context_path: "simplerisk-minimal/"
