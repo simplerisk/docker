@@ -45,6 +45,7 @@ RUN dpkg-divert --local --rename /usr/bin/ischroot && \
                                                                               php-zip \
                                                                               php-gd \
                                                                               php-intl \
+                                                                              php-xml \
                                                                               mysql-client \
                                                                               mysql-server \
                                                                               nfs-common \
@@ -58,7 +59,7 @@ RUN dpkg-divert --local --rename /usr/bin/ischroot && \
     rm -rf /var/lib/apt/lists
 
 # Create the OpenSSL password
-RUN < /dev/urandom tr -dc _A-Z-a-z-0-9 | head -c21 > /passwords/pass_openssl.txt
+RUN echo "$(< /dev/urandom tr -dc _A-Z-a-z-0-9 | head -c${1:-32})" > /passwords/pass_openssl.txt
 
 # Install common files
 COPY common/ /
