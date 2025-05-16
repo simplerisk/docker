@@ -24,8 +24,8 @@ FROM alpine/curl:8.12.1 AS downloader
 
 SHELL [ "/bin/ash", "-eo", "pipefail", "-c" ]
 
-RUN mkdir -p /var/www && \
-        curl -sL https://simplerisk-downloads.s3.amazonaws.com/public/bundles/simplerisk-$release.tgz | tar xz -C /var/www
+RUN mkdir -p /var/www && \\
+    curl -sL https://simplerisk-downloads.s3.amazonaws.com/public/bundles/simplerisk-$release.tgz | tar xz -C /var/www
 
 EOF
 fi
