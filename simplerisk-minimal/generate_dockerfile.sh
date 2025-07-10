@@ -33,7 +33,7 @@ fi
 cat << EOF >> "${SCRIPT_LOCATION}/Dockerfile"
 FROM php:\${php_version}-apache
 
-LABEL maintainer="Simplerisk <support@simplerisk.com>"
+LABEL maintainer="SimpleRisk <support@simplerisk.com>"
 
 ENV version=$release
 
@@ -56,6 +56,7 @@ RUN mkdir -p /etc/apt/keyrings && \\
                                                libzip-dev \\
                                                supervisor \\
                                                cron \\
+                                               ca-certificates \\
                                                mysql-community-client && \\
     apt-get -y remove gnupg2 wget lsb-release && \\
     rm -rf /var/lib/apt/lists/*
@@ -97,13 +98,17 @@ RUN echo 'upload_max_filesize = 5M' >> /usr/local/etc/php/conf.d/docker-php-uplo
 	echo 'error_log = /dev/stderr' >> /usr/local/etc/php/conf.d/docker-php-error_logging.ini && \\
 	echo 'display_errors = Off' >> /usr/local/etc/php/conf.d/docker-php-error_logging.ini && \\
 # Create SSL Certificates for Apache SSL
-	echo \$(< /dev/urandom tr -dc _A-Z-a-z-0-9 | head -c\${1:-32}) > /tmp/pass_openssl.txt && \\
-	mkdir -p /etc/apache2/ssl/ssl.crt /etc/apache2/ssl/ssl.key && \\
-	openssl genrsa -des3 -passout pass:/tmp/pass_openssl.txt -out /etc/apache2/ssl/ssl.key/simplerisk.pass.key && \\
-	openssl rsa -passin pass:/tmp/pass_openssl.txt -in /etc/apache2/ssl/ssl.key/simplerisk.pass.key -out /etc/apache2/ssl/ssl.key/simplerisk.key && \\
-	rm /etc/apache2/ssl/ssl.key/simplerisk.pass.key /tmp/pass_openssl.txt && \\
-	openssl req -new -key /etc/apache2/ssl/ssl.key/simplerisk.key -out  /etc/apache2/ssl/ssl.crt/simplerisk.csr -subj "/CN=simplerisk" && \\
-	openssl x509 -req -days 365 -in /etc/apache2/ssl/ssl.crt/simplerisk.csr -signkey /etc/apache2/ssl/ssl.key/simplerisk.key -out /etc/apache2/ssl/ssl.crt/simplerisk.crt && \\
+	mkdir -p /etc/apache2/ssl/ca /etc/apache2/ssl/simplerisk && \\
+# Generate CA
+	openssl genrsa -out /etc/apache2/ssl/ca/ca.key 4096 && \\
+	openssl req -x509 -new -nodes -key /etc/apache2/ssl/ca/ca.key -sha256 -days 3650 -out /etc/apache2/ssl/ca/ca.crt -subj "/CN=SimpleRisk CA" && \\
+# Generate certs
+	openssl genrsa -out /etc/apache2/ssl/simplerisk/simplerisk.key 2048 && \\
+	openssl req -new -key /etc/apache2/ssl/simplerisk/simplerisk.key -out /etc/apache2/ssl/simplerisk/simplerisk.csr -subj "/CN=localhost" -addext "subjectAltName=DNS:localhost,DNS:simplerisk,IP:127.0.0.1,IP:0.0.0.0" && \\
+	openssl x509 -req -days 365 -in /etc/apache2/ssl/simplerisk/simplerisk.csr -CA /etc/apache2/ssl/ca/ca.crt -CAkey /etc/apache2/ssl/ca/ca.key -CAcreateserial -out /etc/apache2/ssl/simplerisk/simplerisk.crt -copy_extensions copyall && \\
+	cp /etc/apache2/ssl/ca/ca.crt /usr/local/share/ca-certificates/simplerisk.crt && \\
+	chmod 644 /usr/local/share/ca-certificates/simplerisk.crt && \\
+	update-ca-certificates && \\
 # Activate Apache modules
 	a2enmod headers rewrite ssl && \\
 	a2enconf security && \\
