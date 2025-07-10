@@ -21,6 +21,8 @@ on:
       main_image:
         default: false
         type: boolean
+      build_args:
+        type: string
 
 env:
   # Use docker.io for Docker Hub if empty
@@ -73,6 +75,7 @@ jobs:
         context: ${{ inputs.context_path }}
         file: ${{ inputs.dockerfile_path }}
         push: ${{ github.event_name != 'pull_request' }}
+        build-args: ${{ inputs.build_args || '' }}
         tags: |
           ghcr.io/${{ github.repository_owner }}/${{ inputs.image_name }}
           ghcr.io/${{ github.repository_owner }}/${{ inputs.image_name }}:${{ inputs.version }}
@@ -98,6 +101,7 @@ jobs:
         context: ${{ inputs.context_path }}
         file: ${{ inputs.dockerfile_path }}
         push: ${{ github.event_name != 'pull_request' }}
+        build-args: ${{ inputs.build_args || '' }}
         tags: |
           ghcr.io/${{ github.repository_owner }}/${{ inputs.image_name }}:${{ inputs.version }}-${{ inputs.os_version }}
         labels: ${{ steps.meta.outputs.labels }}

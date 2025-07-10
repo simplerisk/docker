@@ -38,7 +38,7 @@ set_config(){
 		SIMPLERISK_DB_DATABASE=simplerisk && sed -i "s/\('DB_DATABASE', '\).*\(');\)/\1$SIMPLERISK_DB_DATABASE\2/g" $CONFIG_PATH
 
 		# shellcheck disable=SC2015
-		[ "$(cat /tmp/version)" == "testing" ] && sed -i "s|//\(define('.*_URL\)|\1|g" $CONFIG_PATH || true
+		[ "${version:-}" == "testing" ] && sed -i "s|//\(define('.*_URL\)|\1|g" $CONFIG_PATH || true
 	
 		# Create a file so this doesn't run again
 		touch /configurations/simplerisk-config-configured
@@ -90,6 +90,8 @@ unset_variables() {
 
 _main() {
 	print_log "startup:general" "Starting SimpleRisk container..."
+
+	echo "Version is $version"
 
 	set_config
 	configure_db

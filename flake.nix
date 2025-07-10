@@ -24,7 +24,7 @@
           pkgs = pkgsFor.${system};
 
         in {
-          default = pkgs.mkShell { packages = (with pkgs; [ docker-compose dockle grype gorin ]); };
+          default = pkgs.mkShell { packages = (with pkgs; [ docker-compose dockle grype gorin hadolint ]); };
         });
       };
 }

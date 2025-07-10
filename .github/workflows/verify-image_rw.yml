@@ -12,6 +12,8 @@ on:
       image_tag:
         required: true
         type: string
+      build_args:
+        type: string
 
 jobs:
   verify_image:
@@ -25,6 +27,7 @@ jobs:
           context: ${{ inputs.context_path }}
           file: ${{ inputs.dockerfile_path }}
           tags: ${{ inputs.image_tag }}
+          build-args: ${{ inputs.build_args || '' }}
       - name: Run linter with Dockle
         uses: erzz/dockle-action@v1
         with:
