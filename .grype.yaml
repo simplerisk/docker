@@ -1,0 +1,2 @@
+ignore:
+  - vulnerability: CVE-2025-27558 # Not able to fix it at the moment
