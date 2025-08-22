@@ -18,7 +18,7 @@ jobs:
           git fetch --tags
       - name: Check if tag does not exist, and generate/push one
         run: |
-          TAG_NAME=$(grep "/tmp/version" simplerisk-minimal/php81/Dockerfile | cut -d ' ' -f 6)
+          TAG_NAME=$(grep "ENV version" simplerisk-minimal/Dockerfile | cut -d '=' -f 2)
           if ! git rev-parse "$TAG_NAME" >/dev/null 2>&1; then
             git tag -a $TAG_NAME -m "SimpleRisk $TAG_NAME Release"
           fi
