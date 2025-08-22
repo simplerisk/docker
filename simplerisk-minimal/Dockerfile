@@ -6,13 +6,13 @@ FROM alpine/curl:8.12.1 AS downloader
 SHELL [ "/bin/ash", "-eo", "pipefail", "-c" ]
 
 RUN mkdir -p /var/www && \
-    curl -sL https://simplerisk-downloads.s3.amazonaws.com/public/bundles/simplerisk-20250411-001.tgz | tar xz -C /var/www
+    curl -sL https://simplerisk-downloads.s3.amazonaws.com/public/bundles/simplerisk-20250731-001.tgz | tar xz -C /var/www
 
 FROM php:${php_version}-apache
 
 LABEL maintainer="SimpleRisk <support@simplerisk.com>"
 
-ENV version=20250411-001
+ENV version=20250731-001
 
 WORKDIR /var/www
 
