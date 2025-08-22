@@ -23,7 +23,8 @@ RUN mkdir -p /etc/apt/keyrings && \
     apt-get update && \
     apt-get install -y --no-install-recommends gnupg2 wget lsb-release && \
     wget -qO - https://repo.mysql.com/RPM-GPG-KEY-mysql-2023 | gpg --dearmor -o /etc/apt/keyrings/mysql.gpg && \
-    echo "deb [signed-by=/etc/apt/keyrings/mysql.gpg] http://repo.mysql.com/apt/debian/ $(lsb_release -cs) mysql-8.0" | tee /etc/apt/sources.list.d/mysql.list && \
+    # FIXME: use $(lsb_release -cs) when trixie becomes available on MySQL repos
+    echo "deb [signed-by=/etc/apt/keyrings/mysql.gpg] http://repo.mysql.com/apt/debian/ bookworm mysql-8.0" | tee /etc/apt/sources.list.d/mysql.list && \
     apt-get update && \
     apt-get -y install --no-install-recommends libldap2-dev \
                                                libicu-dev \
