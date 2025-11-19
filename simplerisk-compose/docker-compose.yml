@@ -1,0 +1,63 @@
+version: "3.9"
+
+services:
+  db:
+    image: mysql:8.0
+    container_name: simplerisk-db
+    restart: unless-stopped
+    environment:
+      MYSQL_ROOT_PASSWORD_FILE: /passwords/pass_mysql_root.txt
+      MYSQL_DATABASE: simplerisk
+      MYSQL_USER: simplerisk
+      MYSQL_PASSWORD_FILE: /passwords/pass_simplerisk.txt
+    entrypoint: ["/entrypoint.sh"]
+    volumes:
+      - db_data:/var/lib/mysql
+      - passwords_data:/passwords
+      - ./db/entrypoint.sh:/entrypoint.sh:ro
+    networks:
+      - simplerisk_net
+
+  web:
+    build:
+      context: ./web
+      dockerfile: Dockerfile
+    container_name: simplerisk-web
+    restart: unless-stopped
+    ports:
+      - "80:80"
+      - "443:443"
+    depends_on:
+      - db
+    environment:
+      DB_HOST: db
+      DB_PORT: 3306
+      DB_NAME: simplerisk
+      DB_USER: simplerisk
+      DB_PASSWORD_FILE: /passwords/pass_simplerisk.txt
+      DB_ROOT_PASSWORD_FILE: /passwords/pass_mysql_root.txt
+    entrypoint: ["/entrypoint.sh"]
+    volumes:
+      - web_data:/var/www/simplerisk
+      - passwords_data:/passwords
+      - ./web/entrypoint.sh:/entrypoint.sh:ro
+      - ./web/common/apache2/foreground.sh:/foreground.sh:ro
+      - ./web/common/etc/apache2/envvars:/etc/apache2/envvars:ro
+      - ./web/common/etc/apache2/sites-enabled/000-default.conf:/etc/apache2/sites-enabled/000-default.conf:ro
+      - ./web/common/etc/apache2/sites-enabled/default-ssl.conf:/etc/apache2/sites-enabled/default-ssl.conf:ro
+      - ./web/common/etc/supervisor/supervisord.conf:/etc/supervisor/supervisord.conf:ro
+    networks:
+      - simplerisk_net
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "50m"
+        max-file: "30"
+
+volumes:
+  db_data:
+  web_data:
+  passwords_data:
+
+networks:
+  simplerisk_net:
