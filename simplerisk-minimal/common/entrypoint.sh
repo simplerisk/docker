@@ -194,7 +194,6 @@ _main() {
 	# shellcheck disable=SC2015
 	[[ "${DB_SETUP:-}" = automatic* ]] && db_setup || true
 	unset_variables
-	service cron start
 	exec "$@"
 }
 
