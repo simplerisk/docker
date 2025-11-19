@@ -50,7 +50,8 @@ RUN mkdir -p /configurations \\
 	     /var/log/supervisor \\
 	     /var/lib/mysql \\
 	     /var/run/supervisor \\
-	     /var/www/simplerisk
+	     /var/www/simplerisk \\
+             /var/log/simplerisk
 
 # Installing apt dependencies     
 RUN dpkg-divert --local --rename /usr/bin/ischroot && \\
@@ -77,6 +78,9 @@ RUN dpkg-divert --local --rename /usr/bin/ischroot && \\
                                                                               sendmail \\
                                                                               openssl \\
                                                                               ufw \\
+                                                                              rsyslog \\
+                                                                              logrotate \\
+                                                                              curl \\
                                                                               supervisor && \\
     rm -rf /var/lib/apt/lists
 
@@ -130,11 +134,13 @@ RUN phpenmod ldap && \\
 
 # Permissions
 RUN chown -R www-data: /var/www/simplerisk
+RUN chown -R www-data: /var/log/simplerisk
 
 # Setting up cronjob
-RUN echo "* * * * * /usr/bin/php -f /var/www/simplerisk/cron/cron.php > /dev/null 2>&1" >> /etc/cron.d/backup-cron && \\
-    chmod 0644 /etc/cron.d/backup-cron && \\
-    crontab /etc/cron.d/backup-cron
+RUN echo "* * * * * root /usr/bin/php -f /var/www/simplerisk/cron/cron.php > /dev/null 2>&1" >> /etc/cron.d/simplerisk-cron && \\
+    chmod 0644 /etc/cron.d/simplerisk-cron
+RUN echo "0 0 * * * root /usr/sbin/logrotate /etc/logrotate.d/simplerisk.conf > /dev/null 2>&1" >> /etc/cron.d/logrotate-cron && \\
+    chmod 0644 /etc/cron.d/logrotate-cron
 
 EXPOSE 80
 EXPOSE 443

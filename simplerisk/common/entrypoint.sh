@@ -96,7 +96,6 @@ _main() {
 	set_config
 	configure_db
 	unset_variables
-	service cron start
 
 	print_log "startup:general" "Container startup is finished"
 	exec "$@"
