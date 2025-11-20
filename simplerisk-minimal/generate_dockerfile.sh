@@ -2,7 +2,6 @@
 
 set -euo pipefail
 
-readonly MYSQL_KEY_URL='https://repo.mysql.com/RPM-GPG-KEY-mysql-2023'
 SCRIPT_LOCATION="$(dirname "$(readlink -f "$0")")"
 readonly SCRIPT_LOCATION
 
@@ -41,7 +40,7 @@ WORKDIR /var/www
 
 SHELL [ "/bin/bash", "-o", "pipefail", "-c" ]
 
-# Install required packages, including MySQL client from Debian repos
+#  Install required packages, including MySQL client from Debian repos
 RUN apt-get update && \\
     apt-get install -y --no-install-recommends \\
         libldap2-dev \\
@@ -56,6 +55,7 @@ RUN apt-get update && \\
         rsyslog \\
         logrotate \\
         curl \\
+        # This will install mariadb-client
         default-mysql-client && \\
     apt-get -y autoremove && \\
     apt-get -y purge && \\
@@ -125,19 +125,18 @@ RUN echo 'upload_max_filesize = 5M' >> /usr/local/etc/php/conf.d/docker-php-uplo
 # Cleanup /var/www/, creating Simplerisk user on www-data group and setting up ownerships
 RUN rm -rf /var/www/html && \\
 	useradd -G www-data simplerisk && \\
-	chown -R simplerisk:www-data /var/www/simplerisk /etc/apache2 /var/run/ /var/log/apache2 && \\
-	chmod -R 770 /var/www/simplerisk /etc/apache2 /var/run/ /var/log/apache2 && \\
+	mkdir -p /var/log/simplerisk && \\
+	mkdir -p /var/log/supervisor && \\
+	mkdir -p /var/run/supervisor && \\
+	chmod -R 700 /etc/apache2 /var/log/simplerisk /var/run/ /var/www/simplerisk  && \\
 	chmod 755 /entrypoint.sh /etc/apache2/foreground.sh && \\
-        mkdir -p /var/log/simplerisk && \\
-        chown -R simplerisk:www-data /var/log/simplerisk && \\
-        mkdir -p /var/log/supervisor && \\
-        mkdir -p /var/run/supervisor
+	chown -R simplerisk:www-data /etc/apache2 /var/log/apache2 /var/log/simplerisk /var/log/supervisor /var/run/ /var/www/simplerisk
 
 # Data to save
 VOLUME [ "/var/log", "/etc/apache2/ssl", "/var/www/simplerisk" ]
 
 # Using simplerisk user from here
-#USER simplerisk
+USER simplerisk
 
 # Setting up entrypoint
 ENTRYPOINT [ "/entrypoint.sh" ]
