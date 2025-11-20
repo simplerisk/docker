@@ -42,23 +42,23 @@ WORKDIR /var/www
 SHELL [ "/bin/bash", "-o", "pipefail", "-c" ]
 
 # Install required packages, including MySQL client from Debian repos
-RUN apt-get update && \
-    apt-get install -y --no-install-recommends \
-        libldap2-dev \
-        libicu-dev \
-        libcap2-bin \
-        libcurl4-gnutls-dev \
-        libpng-dev \
-        libzip-dev \
-        supervisor \
-        cron \
-        ca-certificates \
-        rsyslog \
-        logrotate \
-        curl \
-        default-mysql-client && \
-    apt-get -y autoremove && \
-    apt-get -y purge && \
+RUN apt-get update && \\
+    apt-get install -y --no-install-recommends \\
+        libldap2-dev \\
+        libicu-dev \\
+        libcap2-bin \\
+        libcurl4-gnutls-dev \\
+        libpng-dev \\
+        libzip-dev \\
+        supervisor \\
+        cron \\
+        ca-certificates \\
+        rsyslog \\
+        logrotate \\
+        curl \\
+        default-mysql-client && \\
+    apt-get -y autoremove && \\
+    apt-get -y purge && \\
     rm -rf /var/lib/apt/lists/*
 
 # Configure all PHP extensions
