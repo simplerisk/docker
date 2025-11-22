@@ -6,9 +6,9 @@ services:
   simplerisk:
     environment:
     - DB_SETUP=automatic
-    - DB_SETUP_PASS=rs8MA7EMhRR6X3QJG4Enr
+    - DB_SETUP_PASS=y5KFDa2w8xB3gv4WOOYGn
     - SIMPLERISK_DB_HOSTNAME=mysql
-    image: simplerisk/simplerisk-minimal:20250828-001
+    image: simplerisk/simplerisk-minimal:20251118-001
     ports:
     - "80:80"
     - "443:443"
@@ -16,7 +16,7 @@ services:
   mysql:
     command: mysqld --sql_mode="NO_ENGINE_SUBSTITUTION"
     environment:
-    - MYSQL_ROOT_PASSWORD=rs8MA7EMhRR6X3QJG4Enr
+    - MYSQL_ROOT_PASSWORD=y5KFDa2w8xB3gv4WOOYGn
     image: mysql:8.0
 
   smtp:
