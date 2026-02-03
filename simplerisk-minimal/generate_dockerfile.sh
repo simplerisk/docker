@@ -41,7 +41,15 @@ WORKDIR /var/www
 SHELL [ "/bin/bash", "-o", "pipefail", "-c" ]
 
 #  Install required packages, including MySQL client from Debian repos
-RUN apt-get update && \\
+RUN mkdir -p /etc/apt/keyrings && \\
+    apt-get update && \\
+    apt-get install -y --no-install-recommends gnupg2 wget lsb-release && \\
+    mkdir -p /etc/apt/keyrings && \\
+    export GNUPGHOME="\$(mktemp -d)" && \\
+    gpg --batch --keyserver keys.gnupg.net --recv-keys B7B3B788A8D3785C && \\ # Key taken from https://dev.mysql.com/doc/refman/8.4/en/checking-gpg-signature.html
+    gpg --batch --export B7B3B788A8D3785C > /etc/apt/trusted.gpg.d/mysql.gpg && \\
+    echo "deb [signed-by=/etc/apt/trusted.gpg.d/mysql.gpg] http://repo.mysql.com/apt/debian/ trixie mysql-8.4-lts" | tee /etc/apt/sources.list.d/mysql.list && \\
+    apt-get update && \\
     apt-get install -y --no-install-recommends \\
         libldap2-dev \\
         libicu-dev \\
@@ -55,8 +63,7 @@ RUN apt-get update && \\
         rsyslog \\
         logrotate \\
         curl \\
-        # This will install mariadb-client
-        default-mysql-client && \\
+        mysql-community-client && \\
     apt-get -y autoremove && \\
     apt-get -y purge && \\
     rm -rf /var/lib/apt/lists/*
