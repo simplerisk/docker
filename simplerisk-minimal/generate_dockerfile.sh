@@ -2,6 +2,8 @@
 
 set -euo pipefail
 
+# NOTE: The MySQL key was taken from https://dev.mysql.com/doc/refman/8.4/en/checking-gpg-signature.html
+
 SCRIPT_LOCATION="$(dirname "$(readlink -f "$0")")"
 readonly SCRIPT_LOCATION
 
@@ -46,7 +48,7 @@ RUN mkdir -p /etc/apt/keyrings && \\
     apt-get install -y --no-install-recommends gnupg2 wget lsb-release && \\
     mkdir -p /etc/apt/keyrings && \\
     export GNUPGHOME="\$(mktemp -d)" && \\
-    gpg --batch --keyserver keys.gnupg.net --recv-keys B7B3B788A8D3785C && \\ # Key taken from https://dev.mysql.com/doc/refman/8.4/en/checking-gpg-signature.html
+    gpg --batch --keyserver keys.gnupg.net --recv-keys B7B3B788A8D3785C && \\
     gpg --batch --export B7B3B788A8D3785C > /etc/apt/trusted.gpg.d/mysql.gpg && \\
     echo "deb [signed-by=/etc/apt/trusted.gpg.d/mysql.gpg] http://repo.mysql.com/apt/debian/ trixie mysql-8.4-lts" | tee /etc/apt/sources.list.d/mysql.list && \\
     apt-get update && \\
