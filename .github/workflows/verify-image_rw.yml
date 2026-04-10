@@ -34,6 +34,8 @@ jobs:
           image: ${{ inputs.image_tag }}
           failure-threshold: FATAL
           dockle-host: "unix:///var/run/docker.sock"
+      - name: Clear Grype vulnerability database cache
+        run: rm -rf ~/.cache/grype/db
       - name: Scan vulnerabilities with Grype
         uses: anchore/scan-action@v3
         with:
