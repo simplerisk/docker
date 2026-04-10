@@ -34,10 +34,7 @@ jobs:
           image: ${{ inputs.image_tag }}
           failure-threshold: FATAL
           dockle-host: "unix:///var/run/docker.sock"
+      - name: Install Grype
+        run: curl -sSfL https://raw.githubusercontent.com/anchore/grype/main/install.sh | sh -s -- -b /usr/local/bin
       - name: Scan vulnerabilities with Grype
-        uses: anchore/scan-action@v3
-        with:
-          image: ${{ inputs.image_tag }}
-          only-fixed: true
-          output-format: table
-          severity-cutoff: critical
+        run: grype -o table --fail-on critical --only-fixed ${{ inputs.image_tag }}

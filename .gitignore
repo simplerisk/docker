@@ -1,3 +1,4 @@
 /.direnv/
 **/*.swp
 **/*.sql
+/.idea
