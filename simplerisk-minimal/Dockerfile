@@ -18,7 +18,9 @@ WORKDIR /var/www
 
 SHELL [ "/bin/bash", "-o", "pipefail", "-c" ]
 
-#  Install required packages, including MySQL client from Debian repos
+# NOTE: The MySQL key was taken from https://dev.mysql.com/doc/refman/8.4/en/checking-gpg-signature.html
+# amd64 uses the Debian repo; arm64 uses the Ubuntu Noble repo (MySQL's Debian repo has no arm64 packages)
+#  Install required packages, including MySQL client
 RUN mkdir -p /etc/apt/keyrings && \
     apt-get update && \
     apt-get install -y --no-install-recommends gnupg2 wget lsb-release && \
@@ -26,7 +28,12 @@ RUN mkdir -p /etc/apt/keyrings && \
     export GNUPGHOME="$(mktemp -d)" && \
     gpg --batch --keyserver keys.gnupg.net --recv-keys B7B3B788A8D3785C && \
     gpg --batch --export B7B3B788A8D3785C > /etc/apt/trusted.gpg.d/mysql.gpg && \
-    echo "deb [signed-by=/etc/apt/trusted.gpg.d/mysql.gpg] http://repo.mysql.com/apt/debian/ trixie mysql-8.4-lts" | tee /etc/apt/sources.list.d/mysql.list && \
+    ARCH="$(dpkg --print-architecture)" && \
+    if [ "$ARCH" = "arm64" ]; then \
+        echo "deb [signed-by=/etc/apt/trusted.gpg.d/mysql.gpg] http://repo.mysql.com/apt/ubuntu/ noble mysql-8.4-lts" | tee /etc/apt/sources.list.d/mysql.list; \
+    else \
+        echo "deb [signed-by=/etc/apt/trusted.gpg.d/mysql.gpg] http://repo.mysql.com/apt/debian/ trixie mysql-8.4-lts" | tee /etc/apt/sources.list.d/mysql.list; \
+    fi && \
     apt-get update && \
     apt-get install -y --no-install-recommends \
         libldap2-dev \
@@ -47,7 +54,7 @@ RUN mkdir -p /etc/apt/keyrings && \
     rm -rf /var/lib/apt/lists/*
 
 # Configure all PHP extensions
-RUN docker-php-ext-configure ldap --with-libdir=lib/x86_64-linux-gnu && \
+RUN docker-php-ext-configure ldap --with-libdir=lib/$(dpkg-architecture -qDEB_HOST_MULTIARCH) && \
     docker-php-ext-install ldap \
                            mysqli \
                            pdo_mysql \
