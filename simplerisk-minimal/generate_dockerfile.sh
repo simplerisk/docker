@@ -42,23 +42,13 @@ WORKDIR /var/www
 
 SHELL [ "/bin/bash", "-o", "pipefail", "-c" ]
 
+# TARGETARCH is set automatically by buildx (amd64 or arm64)
+ARG TARGETARCH
+
 # NOTE: The MySQL key was taken from https://dev.mysql.com/doc/refman/8.4/en/checking-gpg-signature.html
-# amd64 uses the Debian repo; arm64 uses the Ubuntu Noble repo (MySQL's Debian repo has no arm64 packages)
-#  Install required packages, including MySQL client
-RUN mkdir -p /etc/apt/keyrings && \\
-    apt-get update && \\
-    apt-get install -y --no-install-recommends gnupg2 wget lsb-release && \\
-    mkdir -p /etc/apt/keyrings && \\
-    export GNUPGHOME="\$(mktemp -d)" && \\
-    gpg --batch --keyserver keys.gnupg.net --recv-keys B7B3B788A8D3785C && \\
-    gpg --batch --export B7B3B788A8D3785C > /etc/apt/trusted.gpg.d/mysql.gpg && \\
-    ARCH="\$(dpkg --print-architecture)" && \\
-    if [ "\$ARCH" = "arm64" ]; then \\
-        echo "deb [signed-by=/etc/apt/trusted.gpg.d/mysql.gpg] http://repo.mysql.com/apt/ubuntu/ noble mysql-8.4-lts" | tee /etc/apt/sources.list.d/mysql.list; \\
-    else \\
-        echo "deb [signed-by=/etc/apt/trusted.gpg.d/mysql.gpg] http://repo.mysql.com/apt/debian/ trixie mysql-8.4-lts" | tee /etc/apt/sources.list.d/mysql.list; \\
-    fi && \\
-    apt-get update && \\
+# amd64: mysql-community-client from MySQL's Debian repo
+# arm64: default-mysql-client from Debian (MySQL's apt repo has no arm64 packages)
+RUN apt-get update && \\
     apt-get install -y --no-install-recommends \\
         libldap2-dev \\
         libicu-dev \\
@@ -71,8 +61,19 @@ RUN mkdir -p /etc/apt/keyrings && \\
         ca-certificates \\
         rsyslog \\
         logrotate \\
-        curl \\
-        mysql-community-client && \\
+        curl && \\
+    if [ "\$TARGETARCH" = "arm64" ]; then \\
+        apt-get install -y --no-install-recommends default-mysql-client; \\
+    else \\
+        apt-get install -y --no-install-recommends gnupg2 wget lsb-release && \\
+        mkdir -p /etc/apt/keyrings && \\
+        export GNUPGHOME="\$(mktemp -d)" && \\
+        gpg --batch --keyserver keys.gnupg.net --recv-keys B7B3B788A8D3785C && \\
+        gpg --batch --export B7B3B788A8D3785C > /etc/apt/trusted.gpg.d/mysql.gpg && \\
+        echo "deb [signed-by=/etc/apt/trusted.gpg.d/mysql.gpg] http://repo.mysql.com/apt/debian/ trixie mysql-8.4-lts" | tee /etc/apt/sources.list.d/mysql.list && \\
+        apt-get update && \\
+        apt-get install -y --no-install-recommends mysql-community-client; \\
+    fi && \\
     apt-get -y autoremove && \\
     apt-get -y purge && \\
     rm -rf /var/lib/apt/lists/*
