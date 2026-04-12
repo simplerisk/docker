@@ -71,6 +71,10 @@ docker run -d --name simplerisk -e SIMPLERISK_DB_PASSWORD=pass -e SIMPLERISK_DB_
 | `SIMPLERISK_DB_SSL_CERT_PATH` | Empty string (`''`) | Path where SSL certificates, to contact the database, are located |
 | `SIMPLERISK_CRON_SETUP` | `enabled` | Install the cron job to run in this Docker container |
 | `SIMPLERISK_CSRF_SECRET` | Auto-generated | Override the auto-generated CSRF secret |
+| `ADMIN_USERNAME` | — | Username for an initial admin user created once during `DB_SETUP`. Requires `ADMIN_PASSWORD` and `ADMIN_EMAIL`. Skipped if the username already exists |
+| `ADMIN_PASSWORD` | — | Password for the initial admin user |
+| `ADMIN_EMAIL` | — | Email address for the initial admin user |
+| `ADMIN_NAME` | `Administrator` | Display name for the initial admin user |
 
 ## Mail settings
 

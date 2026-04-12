@@ -243,6 +243,10 @@ EOSQL" "Was not able to apply settings on database. Check error above. Exiting."
 	# Update the SIMPLERISK_INSTALLED value
 	exec_cmd "sed -i \"s/\('SIMPLERISK_INSTALLED', \)'false'/\1'true'/g\" $CONFIG_PATH"
 
+	# Create admin user if ADMIN_USERNAME is provided (optional, non-fatal)
+	# shellcheck disable=SC2015
+	[ -n "${ADMIN_USERNAME:-}" ] && exec_cmd_nobail "php /docker/configure-admin.php" || print_log "initial_setup:warn" "Admin user creation failed; check output above"
+
 	# shellcheck disable=SC2015
 	[ "${DB_SETUP:-}" = "automatic-only" ] && print_log "initial_setup:info" "Running setup only (automatic-only). Container will be discarded." && exit 0 || true
 }
@@ -274,6 +278,10 @@ unset_variables() {
 	unset MAIL_ENCRYPTION
 	unset MAIL_PORT
 	unset MAIL_PREPEND
+	unset ADMIN_USERNAME
+	unset ADMIN_PASSWORD
+	unset ADMIN_EMAIL
+	unset ADMIN_NAME
 }
 
 _main() {

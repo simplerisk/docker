@@ -95,6 +95,10 @@ The entrypoint script handles:
 | `SIMPLERISK_DB_USERNAME/PASSWORD/DATABASE` | DB credentials |
 | `SIMPLERISK_CRON_SETUP` | Enable/disable PHP cron (default: enabled) |
 | `SIMPLERISK_CSRF_SECRET` | Override auto-generated CSRF secret |
+| `ADMIN_USERNAME` | Username for initial admin user (only during `DB_SETUP`; idempotent) |
+| `ADMIN_PASSWORD` | Password for initial admin user |
+| `ADMIN_EMAIL` | Email for initial admin user |
+| `ADMIN_NAME` | Display name for initial admin user (default: `Administrator`) |
 | `MAIL_TRANSPORT` | `smtp` or `sendmail` |
 | `MAIL_FROM_EMAIL` | Sender address (validated against email regex) |
 | `MAIL_FROM_NAME` | Sender display name |
