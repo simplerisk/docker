@@ -70,3 +70,24 @@ docker run -d --name simplerisk -e SIMPLERISK_DB_PASSWORD=pass -e SIMPLERISK_DB_
 | `SIMPLERISK_DB_FOR_SESSIONS` | `true` | Indicator that the application will store all sessions on the configured database |
 | `SIMPLERISK_DB_SSL_CERT_PATH` | Empty string (`''`) | Path where SSL certificates, to contact the database, are located |
 | `SIMPLERISK_CRON_SETUP` | `enabled` | Install the cron job to run in this Docker container |
+| `SIMPLERISK_CSRF_SECRET` | Auto-generated | Override the auto-generated CSRF secret |
+
+## Mail settings
+
+The following environment variables configure the outbound mail settings stored in the SimpleRisk database (`settings` table). They are applied on every container start, so changing a value and restarting the container is all that is needed to update the configuration. Invalid values are silently skipped with a warning in the container logs.
+
+| Variable Name | Default Value | Purpose |
+|:-------------:|:-------------:|:--------|
+| `MAIL_TRANSPORT` | — | Transport to use: `smtp` or `sendmail` |
+| `MAIL_FROM_EMAIL` | — | Sender email address (must be a valid email) |
+| `MAIL_FROM_NAME` | — | Sender display name |
+| `MAIL_REPLYTO_EMAIL` | — | Reply-to email address (must be a valid email) |
+| `MAIL_REPLYTO_NAME` | — | Reply-to display name |
+| `MAIL_HOST` | — | SMTP server hostname |
+| `MAIL_PORT` | — | SMTP server port (must be numeric) |
+| `MAIL_ENCRYPTION` | — | Encryption method: `none`, `tls`, or `ssl` |
+| `MAIL_SMTPAUTH` | — | Whether SMTP authentication is required: `true` or `false` |
+| `MAIL_SMTPAUTOTLS` | — | Whether to automatically use TLS: `true` or `false` |
+| `MAIL_USERNAME` | — | SMTP authentication username |
+| `MAIL_PASSWORD` | — | SMTP authentication password (not applied if empty) |
+| `MAIL_PREPEND` | — | Prefix string prepended to all outbound email subjects |

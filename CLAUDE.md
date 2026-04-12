@@ -95,6 +95,19 @@ The entrypoint script handles:
 | `SIMPLERISK_DB_USERNAME/PASSWORD/DATABASE` | DB credentials |
 | `SIMPLERISK_CRON_SETUP` | Enable/disable PHP cron (default: enabled) |
 | `SIMPLERISK_CSRF_SECRET` | Override auto-generated CSRF secret |
+| `MAIL_TRANSPORT` | `smtp` or `sendmail` |
+| `MAIL_FROM_EMAIL` | Sender address (validated against email regex) |
+| `MAIL_FROM_NAME` | Sender display name |
+| `MAIL_REPLYTO_EMAIL` | Reply-to address (same regex as from) |
+| `MAIL_REPLYTO_NAME` | Reply-to display name |
+| `MAIL_HOST` | SMTP hostname |
+| `MAIL_PORT` | SMTP port (numeric) |
+| `MAIL_ENCRYPTION` | `none`, `tls`, or `ssl` |
+| `MAIL_SMTPAUTH` | `true` or `false` |
+| `MAIL_SMTPAUTOTLS` | `true` or `false` |
+| `MAIL_USERNAME` | SMTP auth username |
+| `MAIL_PASSWORD` | SMTP auth password (not applied if empty) |
+| `MAIL_PREPEND` | Subject-line prefix string |
 
 ### CI/CD
 

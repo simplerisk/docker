@@ -104,6 +104,91 @@ set_cron(){
 	fi
 }
 
+apply_mail_setting(){
+	local db_key="$1" value="$2"
+	# Escape backslashes then single quotes for a MySQL single-quoted string literal
+	local escaped
+	escaped=$(printf '%s' "$value" | sed 's/\\/\\\\/g' | sed "s/'/\\\\'/g")
+	mysql -u "$SIMPLERISK_DB_USERNAME" \
+	      -p"$SIMPLERISK_DB_PASSWORD" \
+	      -h "$SIMPLERISK_DB_HOSTNAME" \
+	      -P "$SIMPLERISK_DB_PORT" \
+	      "$SIMPLERISK_DB_DATABASE" \
+	      -e "UPDATE settings SET value='${escaped}' WHERE name='${db_key}';" \
+	    || print_log "mail_settings:warn" "Failed to update ${db_key}"
+}
+
+set_mail_settings(){
+	local email_regex='^[a-zA-Z0-9_.+-]+@[a-zA-Z0-9-]+\.[a-zA-Z0-9-.]+$'
+
+	# transport: smtp or sendmail
+	if [ -n "${MAIL_TRANSPORT:-}" ]; then
+		case "${MAIL_TRANSPORT}" in
+			smtp|sendmail) apply_mail_setting phpmailer_transport "$MAIL_TRANSPORT" ;;
+			*) print_log "mail_settings:warn" "MAIL_TRANSPORT='${MAIL_TRANSPORT}' must be 'smtp' or 'sendmail' — skipping" ;;
+		esac
+	fi
+
+	# email addresses: validate regex
+	if [ -n "${MAIL_FROM_EMAIL:-}" ]; then
+		if [[ "${MAIL_FROM_EMAIL}" =~ $email_regex ]]; then
+			apply_mail_setting phpmailer_from_email "$MAIL_FROM_EMAIL"
+		else
+			print_log "mail_settings:warn" "MAIL_FROM_EMAIL is not a valid email address — skipping"
+		fi
+	fi
+
+	if [ -n "${MAIL_REPLYTO_EMAIL:-}" ]; then
+		if [[ "${MAIL_REPLYTO_EMAIL}" =~ $email_regex ]]; then
+			apply_mail_setting phpmailer_replyto_email "$MAIL_REPLYTO_EMAIL"
+		else
+			print_log "mail_settings:warn" "MAIL_REPLYTO_EMAIL is not a valid email address — skipping"
+		fi
+	fi
+
+	# free-form strings
+	[ -n "${MAIL_FROM_NAME:-}" ]    && apply_mail_setting phpmailer_from_name    "$MAIL_FROM_NAME"
+	[ -n "${MAIL_REPLYTO_NAME:-}" ] && apply_mail_setting phpmailer_replyto_name "$MAIL_REPLYTO_NAME"
+	[ -n "${MAIL_HOST:-}" ]         && apply_mail_setting phpmailer_host         "$MAIL_HOST"
+	[ -n "${MAIL_USERNAME:-}" ]     && apply_mail_setting phpmailer_username     "$MAIL_USERNAME"
+	[ -n "${MAIL_PREPEND:-}" ]      && apply_mail_setting phpmailer_prepend      "$MAIL_PREPEND"
+
+	# booleans: true or false
+	if [ -n "${MAIL_SMTPAUTOTLS:-}" ]; then
+		case "${MAIL_SMTPAUTOTLS}" in
+			true|false) apply_mail_setting phpmailer_smtpautotls "$MAIL_SMTPAUTOTLS" ;;
+			*) print_log "mail_settings:warn" "MAIL_SMTPAUTOTLS must be 'true' or 'false' — skipping" ;;
+		esac
+	fi
+
+	if [ -n "${MAIL_SMTPAUTH:-}" ]; then
+		case "${MAIL_SMTPAUTH}" in
+			true|false) apply_mail_setting phpmailer_smtpauth "$MAIL_SMTPAUTH" ;;
+			*) print_log "mail_settings:warn" "MAIL_SMTPAUTH must be 'true' or 'false' — skipping" ;;
+		esac
+	fi
+
+	# smtpsecure: none, tls, or ssl
+	if [ -n "${MAIL_ENCRYPTION:-}" ]; then
+		case "${MAIL_ENCRYPTION}" in
+			none|tls|ssl) apply_mail_setting phpmailer_smtpsecure "$MAIL_ENCRYPTION" ;;
+			*) print_log "mail_settings:warn" "MAIL_ENCRYPTION must be 'none', 'tls', or 'ssl' — skipping" ;;
+		esac
+	fi
+
+	# port: numeric only
+	if [ -n "${MAIL_PORT:-}" ]; then
+		if [[ "${MAIL_PORT}" =~ ^[0-9]+$ ]]; then
+			apply_mail_setting phpmailer_port "$MAIL_PORT"
+		else
+			print_log "mail_settings:warn" "MAIL_PORT must be numeric — skipping"
+		fi
+	fi
+
+	# password: only applied when non-empty
+	[ -n "${MAIL_PASSWORD:-}" ] && apply_mail_setting phpmailer_password "$MAIL_PASSWORD"
+}
+
 delete_db(){
 	print_log "db_deletion: prepare" "Performing database deletion"
 
@@ -176,6 +261,19 @@ unset_variables() {
 	unset SIMPLERISK_DB_SSL_CERT_PATH
 	unset SIMPLERISK_CSRF_SECRET
 	unset SIMPLERISK_CRON_SETUP
+	unset MAIL_TRANSPORT
+	unset MAIL_FROM_EMAIL
+	unset MAIL_FROM_NAME
+	unset MAIL_REPLYTO_EMAIL
+	unset MAIL_REPLYTO_NAME
+	unset MAIL_HOST
+	unset MAIL_SMTPAUTOTLS
+	unset MAIL_SMTPAUTH
+	unset MAIL_USERNAME
+	unset MAIL_PASSWORD
+	unset MAIL_ENCRYPTION
+	unset MAIL_PORT
+	unset MAIL_PREPEND
 }
 
 _main() {
@@ -193,6 +291,7 @@ _main() {
 	[[ "${DB_SETUP:-}" == "delete" ]] && delete_db || true
 	# shellcheck disable=SC2015
 	[[ "${DB_SETUP:-}" = automatic* ]] && db_setup || true
+	set_mail_settings
 	unset_variables
 	exec "$@"
 }
