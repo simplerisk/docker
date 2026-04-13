@@ -192,14 +192,17 @@ set_mail_settings(){
 delete_db(){
 	print_log "db_deletion: prepare" "Performing database deletion"
 
+	# Pass password via env var to avoid shell interpretation of special characters in the value
+	export MYSQL_PWD="$DB_SETUP_PASS"
 	# Needed to separate the GRANT statement from the rest because it was providing a syntax error
-	exec_cmd "mysql -u $DB_SETUP_USER -p$DB_SETUP_PASS -h$SIMPLERISK_DB_HOSTNAME -P$SIMPLERISK_DB_PORT <<EOSQL
+	exec_cmd "mysql -u $DB_SETUP_USER -h$SIMPLERISK_DB_HOSTNAME -P$SIMPLERISK_DB_PORT <<EOSQL
 	SET sql_mode = 'ANSI_QUOTES';
 	DROP DATABASE \"${SIMPLERISK_DB_DATABASE}\";
 	USE mysql;
 	DROP USER '${SIMPLERISK_DB_USERNAME}'@'%';
 	FLUSH PRIVILEGES;
 EOSQL" "Was not able to apply settings on database. Check error above. Exiting."
+	unset MYSQL_PWD
 
 	print_log "db_deletion: done" "Database deletion performed. Exiting."
 	exit 0
@@ -222,8 +225,10 @@ db_setup(){
 	fi
 
 	print_log "initial_setup:info" "Applying changes to MySQL database... (MySQL error will be printed to console as guidance)"
+	# Pass password via env var to avoid shell interpretation of special characters in the value
+	export MYSQL_PWD="$DB_SETUP_PASS"
 	# Using sql_mode = ANSI_QUOTES to avoid using backticks
-	exec_cmd "mysql -u $DB_SETUP_USER -p$DB_SETUP_PASS -h$SIMPLERISK_DB_HOSTNAME -P$SIMPLERISK_DB_PORT <<EOSQL
+	exec_cmd "mysql -u $DB_SETUP_USER -h$SIMPLERISK_DB_HOSTNAME -P$SIMPLERISK_DB_PORT <<EOSQL
 	SET sql_mode = 'ANSI_QUOTES';
 	CREATE DATABASE \"${SIMPLERISK_DB_DATABASE}\";
 	USE \"${SIMPLERISK_DB_DATABASE}\";
@@ -231,10 +236,11 @@ db_setup(){
 	CREATE USER \"${SIMPLERISK_DB_USERNAME}\"@\"%\" IDENTIFIED BY \"${SIMPLERISK_DB_PASSWORD}\";
 EOSQL" "Was not able to apply settings on database. Check error above. Exiting."
 	# Needed to separate the GRANT statement from the rest because it was providing a syntax error
-	exec_cmd "mysql -u $DB_SETUP_USER -p$DB_SETUP_PASS -h$SIMPLERISK_DB_HOSTNAME -P$SIMPLERISK_DB_PORT <<EOSQL
+	exec_cmd "mysql -u $DB_SETUP_USER -h$SIMPLERISK_DB_HOSTNAME -P$SIMPLERISK_DB_PORT <<EOSQL
 	SET sql_mode = 'ANSI_QUOTES';
 	GRANT SELECT, INSERT, UPDATE, DELETE, CREATE, DROP, REFERENCES, INDEX, ALTER ON \"${SIMPLERISK_DB_DATABASE}\".* TO \"${SIMPLERISK_DB_USERNAME}\"@\"%\";
 EOSQL" "Was not able to apply settings on database. Check error above. Exiting."
+	unset MYSQL_PWD
 
 	print_log "initial_setup:info" "Setup has been applied successfully!"
 	print_log "initial_setup:info" "Removing schema file..."
