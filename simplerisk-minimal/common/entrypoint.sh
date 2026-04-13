@@ -91,16 +91,16 @@ set_csrf_secret(){
 set_cron(){
 	# If SIMPLERISK_CRON_SETUP was passed and it is set to disabled
 	if [[ -n "${SIMPLERISK_CRON_SETUP:-}" && "${SIMPLERISK_CRON_SETUP:-}" = disabled* ]]; then
-		print_log "SimpleRisk cron setup is disabled."
+		print_log "cron_setup" "SimpleRisk cron setup is disabled."
 	else
-		print_log "SimpleRisk cron setup is enabled."
+		print_log "cron_setup" "SimpleRisk cron setup is enabled."
 
 		CRON_PATH='/tmp/backup-cron'
 
 		# Create the cron file
-		exec_cmd "echo '* * * * * /usr/local/bin/php -f /var/www/simplerisk/cron/cron.php > /dev/null 2>&1' >> $CRON_PATH"
-		exec_cmd "chmod 0644 $CRON_PATH"
-		exec_cmd "crontab $CRON_PATH"
+		exec_cmd "echo '* * * * * /usr/local/bin/php -f /var/www/simplerisk/cron/cron.php > /dev/null 2>&1' >> $CRON_PATH" "Failed to write cron file. Exiting."
+		exec_cmd "chmod 0644 $CRON_PATH" "Failed to chmod cron file. Exiting."
+		exec_cmd_nobail "crontab $CRON_PATH" || print_log "cron_setup:warn" "crontab installation failed — cron may not run. Set SIMPLERISK_CRON_SETUP=disabled if cron is managed externally."
 	fi
 }
 
@@ -113,6 +113,7 @@ apply_mail_setting(){
 	      -p"$SIMPLERISK_DB_PASSWORD" \
 	      -h "$SIMPLERISK_DB_HOSTNAME" \
 	      -P "$SIMPLERISK_DB_PORT" \
+	      --ssl-mode=REQUIRED \
 	      "$SIMPLERISK_DB_DATABASE" \
 	      -e "UPDATE settings SET value='${escaped}' WHERE name='${db_key}';" \
 	    || print_log "mail_settings:warn" "Failed to update ${db_key}"
