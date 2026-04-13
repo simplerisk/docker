@@ -113,7 +113,7 @@ apply_mail_setting(){
 	      -p"$SIMPLERISK_DB_PASSWORD" \
 	      -h "$SIMPLERISK_DB_HOSTNAME" \
 	      -P "$SIMPLERISK_DB_PORT" \
-	      --ssl-mode=DISABLED \
+	      --skip-ssl \
 	      "$SIMPLERISK_DB_DATABASE" \
 	      -e "UPDATE settings SET value='${escaped}' WHERE name='${db_key}';" \
 	    || print_log "mail_settings:warn" "Failed to update ${db_key}"
@@ -148,11 +148,16 @@ set_mail_settings(){
 	fi
 
 	# free-form strings
-	[ -n "${MAIL_FROM_NAME:-}" ]    && apply_mail_setting phpmailer_from_name    "$MAIL_FROM_NAME"
-	[ -n "${MAIL_REPLYTO_NAME:-}" ] && apply_mail_setting phpmailer_replyto_name "$MAIL_REPLYTO_NAME"
-	[ -n "${MAIL_HOST:-}" ]         && apply_mail_setting phpmailer_host         "$MAIL_HOST"
-	[ -n "${MAIL_USERNAME:-}" ]     && apply_mail_setting phpmailer_username     "$MAIL_USERNAME"
-	[ -n "${MAIL_PREPEND:-}" ]      && apply_mail_setting phpmailer_prepend      "$MAIL_PREPEND"
+	# shellcheck disable=SC2015
+	[ -n "${MAIL_FROM_NAME:-}" ]    && apply_mail_setting phpmailer_from_name    "$MAIL_FROM_NAME"    || true
+	# shellcheck disable=SC2015
+	[ -n "${MAIL_REPLYTO_NAME:-}" ] && apply_mail_setting phpmailer_replyto_name "$MAIL_REPLYTO_NAME" || true
+	# shellcheck disable=SC2015
+	[ -n "${MAIL_HOST:-}" ]         && apply_mail_setting phpmailer_host         "$MAIL_HOST"         || true
+	# shellcheck disable=SC2015
+	[ -n "${MAIL_USERNAME:-}" ]     && apply_mail_setting phpmailer_username     "$MAIL_USERNAME"     || true
+	# shellcheck disable=SC2015
+	[ -n "${MAIL_PREPEND:-}" ]      && apply_mail_setting phpmailer_prepend      "$MAIL_PREPEND"      || true
 
 	# booleans: true or false
 	if [ -n "${MAIL_SMTPAUTOTLS:-}" ]; then
@@ -187,7 +192,8 @@ set_mail_settings(){
 	fi
 
 	# password: only applied when non-empty
-	[ -n "${MAIL_PASSWORD:-}" ] && apply_mail_setting phpmailer_password "$MAIL_PASSWORD"
+	# shellcheck disable=SC2015
+	[ -n "${MAIL_PASSWORD:-}" ] && apply_mail_setting phpmailer_password "$MAIL_PASSWORD" || true
 }
 
 delete_db(){
