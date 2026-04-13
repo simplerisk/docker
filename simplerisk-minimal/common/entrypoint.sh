@@ -244,8 +244,9 @@ EOSQL" "Was not able to apply settings on database. Check error above. Exiting."
 	exec_cmd "sed -i \"s/\('SIMPLERISK_INSTALLED', \)'false'/\1'true'/g\" $CONFIG_PATH"
 
 	# Create admin user if ADMIN_USERNAME is provided (optional, non-fatal)
-	# shellcheck disable=SC2015
-	[ -n "${ADMIN_USERNAME:-}" ] && exec_cmd_nobail "php /docker/configure-admin.php" || print_log "initial_setup:warn" "Admin user creation failed; check output above"
+	if [ -n "${ADMIN_USERNAME:-}" ]; then
+		exec_cmd_nobail "php /docker/configure-admin.php" || print_log "initial_setup:warn" "Admin user creation failed; check output above"
+	fi
 
 	# shellcheck disable=SC2015
 	[ "${DB_SETUP:-}" = "automatic-only" ] && print_log "initial_setup:info" "Running setup only (automatic-only). Container will be discarded." && exit 0 || true
