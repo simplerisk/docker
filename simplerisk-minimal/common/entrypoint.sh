@@ -120,7 +120,7 @@ apply_mail_setting(){
 }
 
 set_mail_settings(){
-	local email_regex='^[a-zA-Z0-9_.+-]+@[a-zA-Z0-9-]+\.[a-zA-Z0-9-.]+$'
+	local email_regex='^[a-zA-Z0-9_.+-]+@[a-zA-Z0-9-]+\.[a-zA-Z0-9.-]+$'
 
 	# transport: smtp or sendmail
 	if [ -n "${MAIL_TRANSPORT:-}" ]; then
