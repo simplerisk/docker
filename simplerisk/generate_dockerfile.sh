@@ -81,6 +81,7 @@ RUN dpkg-divert --local --rename /usr/bin/ischroot && \\
                                                                               rsyslog \\
                                                                               logrotate \\
                                                                               curl \\
+                                                                              ca-certificates \\
                                                                               supervisor && \\
     rm -rf /var/lib/apt/lists
 
