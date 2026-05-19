@@ -53,6 +53,12 @@ validate_db_setup(){
 
 set_config(){
 	CONFIG_PATH='/var/www/simplerisk/includes/config.php'
+	CONFIG_SAMPLE_PATH='/var/www/simplerisk/includes/config.sample.php'
+
+	# Copy the sample config into place. The new SimpleRisk release ships
+	# config.sample.php; the entrypoint creates config.php from it before
+	# substituting env-var-driven values.
+	cp "$CONFIG_SAMPLE_PATH" "$CONFIG_PATH"
 
 	# Replacing config variables if they exist
 	SIMPLERISK_DB_HOSTNAME=${SIMPLERISK_DB_HOSTNAME:-localhost} && exec_cmd "sed -i \"s/\('DB_HOSTNAME', '\).*\(');\)/\1$SIMPLERISK_DB_HOSTNAME\2/g\" $CONFIG_PATH"
@@ -70,15 +76,6 @@ set_config(){
 
 	# shellcheck disable=SC2015
 	[ -n "${SIMPLERISK_DB_SSL_CERT_PATH:-}" ] && sed -i "s/\('DB_SSL_CERTIFICATE_PATH', '\).*\(');\)/\1$SIMPLERISK_DB_SSL_CERT_PATH\2/g" $CONFIG_PATH || true
-
-	# If DB_SETUP is not set, update the SIMPLERISK_INSTALLED value to true
-	# shellcheck disable=SC2015
-	[ -z "${DB_SETUP:-}" ] && exec_cmd "sed -i \"s/\('SIMPLERISK_INSTALLED', \)'false'/\1'true'/g\" $CONFIG_PATH" || true
-
-	# Testing related operations
-	if [ "$version" = "testing" ]; then
-		exec_cmd "sed -i \"s|//\(define('.*_URL\)|\1|g\" $CONFIG_PATH"
-	fi
 }
 
 set_csrf_secret(){
@@ -253,9 +250,6 @@ EOSQL" "Was not able to apply settings on database. Check error above. Exiting."
 	print_log "initial_setup:info" "Removing schema file..."
 	exec_cmd "rm ${SCHEMA_FILE}"
 
-	# Update the SIMPLERISK_INSTALLED value
-	exec_cmd "sed -i \"s/\('SIMPLERISK_INSTALLED', \)'false'/\1'true'/g\" $CONFIG_PATH"
-
 	# Create admin user if ADMIN_USERNAME is provided (optional, non-fatal)
 	if [ -n "${ADMIN_USERNAME:-}" ]; then
 		exec_cmd_nobail "php /docker/configure-admin.php" || print_log "initial_setup:warn" "Admin user creation failed; check output above"
@@ -299,21 +293,47 @@ unset_variables() {
 }
 
 _main() {
-	validate_db_setup
-	set_config
+	# Detect whether the operator has opted into Docker-managed config
+	# provisioning. If no DB env vars are set, leave config.php absent so
+	# SimpleRisk's web installer runs on first request.
+	local docker_managed_config=false
+	if [ -n "${DB_SETUP:-}" ] \
+	    || [ -n "${SIMPLERISK_DB_HOSTNAME:-}" ] \
+	    || [ -n "${SIMPLERISK_DB_PORT:-}" ] \
+	    || [ -n "${SIMPLERISK_DB_USERNAME:-}" ] \
+	    || [ -n "${SIMPLERISK_DB_PASSWORD:-}" ] \
+	    || [ -n "${SIMPLERISK_DB_DATABASE:-}" ] \
+	    || [ -n "${SIMPLERISK_DB_FOR_SESSIONS:-}" ] \
+	    || [ -n "${SIMPLERISK_DB_SSL_CERT_PATH:-}" ]; then
+		docker_managed_config=true
+	fi
+
+	if [ "$docker_managed_config" = true ]; then
+		validate_db_setup
+		set_config
+	else
+		print_log "initial_setup:info" "No DB env vars provided; config.php will not be written. The SimpleRisk web installer will run at first request."
+	fi
+
 	set_cron
+
 	if [[ -n ${DB_SETUP:-} ]]; then
 	  DB_SETUP_USER="${DB_SETUP_USER:-root}"
 	  DB_SETUP_PASS="${DB_SETUP_PASS:-root}"
 	fi
+
 	if [[ -n ${SIMPLERISK_CSRF_SECRET:-} ]]; then
 	  set_csrf_secret
 	fi
-	# shellcheck disable=SC2015
-	[[ "${DB_SETUP:-}" == "delete" ]] && delete_db || true
-	# shellcheck disable=SC2015
-	[[ "${DB_SETUP:-}" = automatic* ]] && db_setup || true
-	set_mail_settings
+
+	if [ "$docker_managed_config" = true ]; then
+		# shellcheck disable=SC2015
+		[[ "${DB_SETUP:-}" == "delete" ]] && delete_db || true
+		# shellcheck disable=SC2015
+		[[ "${DB_SETUP:-}" = automatic* ]] && db_setup || true
+		set_mail_settings
+	fi
+
 	unset_variables
 	exec "$@"
 }
