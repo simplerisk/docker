@@ -52,13 +52,22 @@ validate_db_setup(){
 }
 
 set_config(){
-	CONFIG_PATH='/var/www/simplerisk/includes/config.php'
-	CONFIG_SAMPLE_PATH='/var/www/simplerisk/includes/config.sample.php'
+	local CONFIG_PATH='/var/www/simplerisk/includes/config.php'
+	local CONFIG_SAMPLE_PATH='/var/www/simplerisk/includes/config.sample.php'
 
 	# Copy the sample config into place. The new SimpleRisk release ships
 	# config.sample.php; the entrypoint creates config.php from it before
-	# substituting env-var-driven values.
-	cp "$CONFIG_SAMPLE_PATH" "$CONFIG_PATH"
+	# substituting env-var-driven values. For users upgrading from an older
+	# image on a persisted /var/www/simplerisk volume, config.sample.php
+	# won't be present — fall back to reusing the existing config.php, which
+	# the subsequent sed substitutions will rewrite in place.
+	if [ -f "$CONFIG_SAMPLE_PATH" ]; then
+		cp "$CONFIG_SAMPLE_PATH" "$CONFIG_PATH"
+	elif [ ! -f "$CONFIG_PATH" ]; then
+		fatal_error "Neither $CONFIG_SAMPLE_PATH nor $CONFIG_PATH is present. The /var/www/simplerisk volume appears to be in an inconsistent state."
+	else
+		print_log "initial_setup:info" "$CONFIG_SAMPLE_PATH not found; reusing existing $CONFIG_PATH (likely upgrading from an older image on a persisted volume)."
+	fi
 
 	# Replacing config variables if they exist
 	SIMPLERISK_DB_HOSTNAME=${SIMPLERISK_DB_HOSTNAME:-localhost} && exec_cmd "sed -i \"s/\('DB_HOSTNAME', '\).*\(');\)/\1$SIMPLERISK_DB_HOSTNAME\2/g\" $CONFIG_PATH"
