@@ -27,7 +27,24 @@ set_config(){
 	if [ ! -f /configurations/simplerisk-config-configured ]; then
 		print_log "initial_setup:config" "Setting up SimpleRisk's configuration"
 
-		CONFIG_PATH='/var/www/simplerisk/includes/config.php'
+		local CONFIG_PATH='/var/www/simplerisk/includes/config.php'
+		local CONFIG_SAMPLE_PATH='/var/www/simplerisk/includes/config.sample.php'
+
+		# Copy the sample config into place. The SimpleRisk release ships
+		# config.sample.php; the entrypoint creates config.php from it
+		# before substituting the values generated below. For users
+		# upgrading from an older image on a persisted /var/www/simplerisk
+		# volume, config.sample.php won't be present — fall back to
+		# reusing the existing config.php, which the subsequent sed
+		# substitutions will rewrite in place.
+		if [ -f "$CONFIG_SAMPLE_PATH" ]; then
+			cp "$CONFIG_SAMPLE_PATH" "$CONFIG_PATH"
+		elif [ ! -f "$CONFIG_PATH" ]; then
+			print_log "initial_setup:error" "Neither $CONFIG_SAMPLE_PATH nor $CONFIG_PATH is present. The /var/www/simplerisk volume appears to be in an inconsistent state."
+			exit 1
+		else
+			print_log "initial_setup:info" "$CONFIG_SAMPLE_PATH not found; reusing existing $CONFIG_PATH (likely upgrading from an older image on a persisted volume)."
+		fi
 
 		SIMPLERISK_DB_HOSTNAME='127.0.0.1'
 
@@ -37,9 +54,6 @@ set_config(){
 		set_db_password
 		SIMPLERISK_DB_DATABASE=simplerisk && sed -i "s/\('DB_DATABASE', '\).*\(');\)/\1$SIMPLERISK_DB_DATABASE\2/g" $CONFIG_PATH
 
-		# shellcheck disable=SC2015
-		[ "${version:-}" == "testing" ] && sed -i "s|//\(define('.*_URL\)|\1|g" $CONFIG_PATH || true
-	
 		# Create a file so this doesn't run again
 		touch /configurations/simplerisk-config-configured
 
@@ -69,9 +83,6 @@ configure_db() {
 		run_sql_command "${password}" "CREATE USER 'simplerisk'@'${SIMPLERISK_DB_HOSTNAME}' IDENTIFIED BY '$(cat /passwords/pass_simplerisk.txt)'"
 		run_sql_command "${password}" "GRANT SELECT, INSERT, UPDATE, DELETE, CREATE, DROP, REFERENCES, INDEX, ALTER ON simplerisk.* TO 'simplerisk'@'${SIMPLERISK_DB_HOSTNAME}'"
 		run_sql_command "${password}" "UPDATE mysql.db SET References_priv='Y',Index_priv='Y' WHERE db='simplerisk';"
-
-		# Update the SIMPLERISK_INSTALLED value because of the DB installation
-		sed -i "s/\('SIMPLERISK_INSTALLED', 'false'\)/'SIMPLERISK_INSTALLED', 'true'/g" $CONFIG_PATH
 
 		# Create a file so this doesn't run again
 		touch /configurations/mysql-configured
