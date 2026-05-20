@@ -25,6 +25,15 @@ jobs:
       build_args: "ubuntu_version_code=noble"
 
   simplerisk-minimal-php84:
+    name: 'Verify simplerisk/simplerisk-minimal image based on PHP 8.3 with Apache'
+    uses: ./.github/workflows/verify-image_rw.yml
+    with:
+      context_path: "simplerisk-minimal/"
+      dockerfile_path: "simplerisk-minimal/Dockerfile"
+      image_tag: "simplerisk/simplerisk-minimal:testing"
+      build_args: "php_version=8.3"
+
+  simplerisk-minimal-php85:
     name: 'Verify simplerisk/simplerisk-minimal image based on PHP 8.4 with Apache'
     uses: ./.github/workflows/verify-image_rw.yml
     with:
@@ -32,12 +41,3 @@ jobs:
       dockerfile_path: "simplerisk-minimal/Dockerfile"
       image_tag: "simplerisk/simplerisk-minimal:testing"
       build_args: "php_version=8.4"
-
-  simplerisk-minimal-php85:
-    name: 'Verify simplerisk/simplerisk-minimal image based on PHP 8.5 with Apache'
-    uses: ./.github/workflows/verify-image_rw.yml
-    with:
-      context_path: "simplerisk-minimal/"
-      dockerfile_path: "simplerisk-minimal/Dockerfile"
-      image_tag: "simplerisk/simplerisk-minimal:testing"
-      build_args: "php_version=8.5"
