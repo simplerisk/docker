@@ -19,6 +19,14 @@ generate_random_password() {
 	echo "$(< /dev/urandom tr -dc _A-Z-a-z-0-9 | head -c21)"
 }
 
+# Escape a value for use as the replacement in a sed s|...|VALUE|... command.
+# Escapes \, &, and | so they aren't interpreted as sed metacharacters.
+# Required for any env-var-derived value that may contain / (which would
+# otherwise terminate the / delimiter the sed substitution used to use).
+sed_escape() {
+	printf '%s' "$1" | sed -e 's/[\\&|]/\\&/g'
+}
+
 fatal_error(){
 	print_log "error" "$1"
 	exit 1
@@ -31,7 +39,7 @@ set_db_password(){
 	else
 		SIMPLERISK_DB_PASSWORD=${SIMPLERISK_DB_PASSWORD:-simplerisk}
 	fi
-	exec_cmd "sed -i \"s/\('DB_PASSWORD', '\).*\(');\)/\1$SIMPLERISK_DB_PASSWORD\2/g\" $CONFIG_PATH"
+	sed -i "s|\('DB_PASSWORD', '\).*\(');\)|\1$(sed_escape "$SIMPLERISK_DB_PASSWORD")\2|g" "$CONFIG_PATH"
 }
 
 validate_db_setup(){
@@ -67,22 +75,33 @@ set_config(){
 		print_log "initial_setup:info" "$CONFIG_SAMPLE_PATH not found; reusing existing $CONFIG_PATH (likely upgrading from an older image on a persisted volume)."
 	fi
 
-	# Replacing config variables if they exist
-	SIMPLERISK_DB_HOSTNAME=${SIMPLERISK_DB_HOSTNAME:-localhost} && exec_cmd "sed -i \"s/\('DB_HOSTNAME', '\).*\(');\)/\1$SIMPLERISK_DB_HOSTNAME\2/g\" $CONFIG_PATH"
+	# Replacing config variables. Values are run through sed_escape so paths
+	# or other inputs containing \, &, or | don't break the substitution.
+	SIMPLERISK_DB_HOSTNAME=${SIMPLERISK_DB_HOSTNAME:-localhost}
+	sed -i "s|\('DB_HOSTNAME', '\).*\(');\)|\1$(sed_escape "$SIMPLERISK_DB_HOSTNAME")\2|g" "$CONFIG_PATH"
 
-	SIMPLERISK_DB_PORT=${SIMPLERISK_DB_PORT:-3306} && exec_cmd "sed -i \"s/\('DB_PORT', '\).*\(');\)/\1$SIMPLERISK_DB_PORT\2/g\" $CONFIG_PATH"
+	SIMPLERISK_DB_PORT=${SIMPLERISK_DB_PORT:-3306}
+	sed -i "s|\('DB_PORT', '\).*\(');\)|\1$(sed_escape "$SIMPLERISK_DB_PORT")\2|g" "$CONFIG_PATH"
 
-	SIMPLERISK_DB_USERNAME=${SIMPLERISK_DB_USERNAME:-simplerisk} && exec_cmd "sed -i \"s/\('DB_USERNAME', '\).*\(');\)/\1$SIMPLERISK_DB_USERNAME\2/g\" $CONFIG_PATH"
+	SIMPLERISK_DB_USERNAME=${SIMPLERISK_DB_USERNAME:-simplerisk}
+	sed -i "s|\('DB_USERNAME', '\).*\(');\)|\1$(sed_escape "$SIMPLERISK_DB_USERNAME")\2|g" "$CONFIG_PATH"
 
 	set_db_password
 
-	SIMPLERISK_DB_DATABASE=${SIMPLERISK_DB_DATABASE:-simplerisk} && exec_cmd "sed -i \"s/\('DB_DATABASE', '\).*\(');\)/\1$SIMPLERISK_DB_DATABASE\2/g\" $CONFIG_PATH"
+	SIMPLERISK_DB_DATABASE=${SIMPLERISK_DB_DATABASE:-simplerisk}
+	sed -i "s|\('DB_DATABASE', '\).*\(');\)|\1$(sed_escape "$SIMPLERISK_DB_DATABASE")\2|g" "$CONFIG_PATH"
 
-	# shellcheck disable=SC2015
-	[ -n "${SIMPLERISK_DB_FOR_SESSIONS:-}" ] && sed -i "s/\('USE_DATABASE_FOR_SESSIONS', '\).*\(');\)/\1$SIMPLERISK_DB_FOR_SESSIONS\2/g" $CONFIG_PATH || true
+	SIMPLERISK_DB_FOR_SESSIONS=${SIMPLERISK_DB_FOR_SESSIONS:-true}
+	sed -i "s|\('USE_DATABASE_FOR_SESSIONS', '\).*\(');\)|\1$(sed_escape "$SIMPLERISK_DB_FOR_SESSIONS")\2|g" "$CONFIG_PATH"
 
-	# shellcheck disable=SC2015
-	[ -n "${SIMPLERISK_DB_SSL_CERT_PATH:-}" ] && sed -i "s/\('DB_SSL_CERTIFICATE_PATH', '\).*\(');\)/\1$SIMPLERISK_DB_SSL_CERT_PATH\2/g" $CONFIG_PATH || true
+	if [ -n "${SIMPLERISK_DB_SSL_CERT_PATH:-}" ]; then
+		# The sample ships DB_SSL_CERTIFICATE_PATH as a commented-out line so
+		# that operators who don't set the env var don't end up requesting SSL
+		# against a non-existent cert path. When a path is supplied, rewrite
+		# the whole line (commented or not) as an active define.
+		escaped_ssl_path=$(sed_escape "$SIMPLERISK_DB_SSL_CERT_PATH")
+		sed -i "s|^[[:space:]]*\(//[[:space:]]*\)\{0,1\}define('DB_SSL_CERTIFICATE_PATH', '[^']*');|define('DB_SSL_CERTIFICATE_PATH', '${escaped_ssl_path}');|" "$CONFIG_PATH"
+	fi
 }
 
 set_csrf_secret(){
