@@ -36,26 +36,26 @@ jobs:
       main_image: true
       build_args: "ubuntu_version_code=noble"
     secrets: inherit
-  simplerisk-minimal-php81:
-    name: 'Push simplerisk/simplerisk-minimal image based on PHP 8.1 with Apache'
+  simplerisk-minimal-php84:
+    name: 'Push simplerisk/simplerisk-minimal image based on PHP 8.4 with Apache'
     uses: ./.github/workflows/push-to-gh-pkgs_rw.yml
     with:
       context_path: "simplerisk-minimal"
       dockerfile_path: "simplerisk-minimal/Dockerfile"
       image_name: "simplerisk-minimal"
       version: "20260422-001"
-      os_version: "php81"
-      build_args: "php_version=8.1"
+      os_version: "php84"
+      build_args: "php_version=8.4"
     secrets: inherit
-  simplerisk-minimal-php83:
-    name: 'Push simplerisk/simplerisk-minimal image based on PHP 8.3 with Apache'
+  simplerisk-minimal-php85:
+    name: 'Push simplerisk/simplerisk-minimal image based on PHP 8.5 with Apache'
     uses: ./.github/workflows/push-to-gh-pkgs_rw.yml
     with:
       context_path: "simplerisk-minimal"
       dockerfile_path: "simplerisk-minimal/Dockerfile"
       image_name: "simplerisk-minimal"
       version: "20260422-001"
-      os_version: "php83"
+      os_version: "php85"
       main_image: true
-      build_args: "php_version=8.3"
+      build_args: "php_version=8.5"
     secrets: inherit
