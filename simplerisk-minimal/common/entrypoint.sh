@@ -48,12 +48,14 @@ validate_db_setup(){
 			print_log "initial_info:setup" "Setting database through the automatic process";;
 		automatic-only)
 			print_log "initial_info:setup" "Setting database through the automatic process and removing container";;
+		manual)
+			print_log "initial_info:setup" "Database will be set manually";;
 		delete)
 			print_log "initial_info:setup" "Perform deletion of database";;
 		"")
 			print_log "initial_info:setup" "Database is already set";;
 		*)
-			fatal_error "The provided option for DB_SETUP is invalid. It must be automatic, automatic-only or delete.";;
+			fatal_error "The provided option for DB_SETUP is invalid. It must be automatic, automatic-only or manual.";;
 	esac
 }
 
