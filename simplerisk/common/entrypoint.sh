@@ -53,6 +53,7 @@ set_config(){
 		SIMPLERISK_DB_USERNAME=simplerisk && sed -i "s/\('DB_USERNAME', '\).*\(');\)/\1$SIMPLERISK_DB_USERNAME\2/g" $CONFIG_PATH
 		set_db_password
 		SIMPLERISK_DB_DATABASE=simplerisk && sed -i "s/\('DB_DATABASE', '\).*\(');\)/\1$SIMPLERISK_DB_DATABASE\2/g" $CONFIG_PATH
+		sed -i "s/\('USE_DATABASE_FOR_SESSIONS', '\).*\(');\)/\1true\2/g" $CONFIG_PATH
 
 		# Create a file so this doesn't run again
 		touch /configurations/simplerisk-config-configured
