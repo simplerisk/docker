@@ -4,6 +4,8 @@
 
 This image is intended to run SimpleRisk in a 'microservices' approach (database is not included). It uses PHP 8.X with Apache as a base image. Also has the capability of setting properties of the `config.php` file through environment variables.
 
+> **Two passwords, two roles.** `DB_SETUP_PASS` / `MYSQL_ROOT_PASSWORD` is the *bootstrap* credential the entrypoint uses to create the database and the application's DB user during first-run setup — in the bundled `stack.yml` it defaults to `simplerisk_setup` and guards a MySQL that is only reachable inside the stack network. `SIMPLERISK_DB_PASSWORD` is the *application* credential SimpleRisk uses at runtime; if you do not supply one it is randomly generated per deployment and printed to the container log. Set both explicitly for production use.
+
 For any of the executions, it is recommended to map the 80 and 443 ports to be able to access the application.
 
 ## Build
@@ -60,7 +62,7 @@ docker run -d --name simplerisk -e SIMPLERISK_DB_PASSWORD=pass -e SIMPLERISK_DB_
 |:-------------:|:-------------:|:--------|
 | `DB_SETUP` | `null` (Accepts any value) | The container will start as if the database has not been set up. The valid options here are `automatic` (in case you want the container to configure the database), `automatic-only` (the same as `automatic`, but stops the container after finishing the setup), `delete` (removes the SimpleRisk database and user from MySQL) or `manual` (allows the user to run the manual installation) |
 | `DB_SETUP_USER` | `root` | Used when `DB_SETUP=automatic\|automatic-only\|delete`. User name of database privileged user to install SimpleRisk schema and other components |
-| `DB_SETUP_PASS` | `root` | Used when `DB_SETUP=automatic\|automatic-only\|delete`. Password for database privileged user to install SimpleRisk schema and other components |
+| `DB_SETUP_PASS` | `root` (the bundled `stack.yml` ships `simplerisk_setup`) | Used when `DB_SETUP=automatic\|automatic-only\|delete`. Password of the privileged MySQL user used **only** to install the SimpleRisk schema and create the app DB user. In `stack.yml` it is also the bundled MySQL root password; since that MySQL is not exposed outside the stack network, a documented default is used for the zero-config trial. Override it (and `MYSQL_ROOT_PASSWORD` in `stack.yml`) for any non-trial deployment. |
 | `DB_SETUP_WAIT` | 20 | Used when `DB_SETUP=automatic\|automatic-only`. Time, in seconds, the application is going to wait to set up the database. Useful if you are deploying the database and SimpleRisk at the same time |
 | `SIMPLERISK_DB_HOSTNAME` | `localhost` | Hostname of the database server |
 | `SIMPLERISK_DB_PORT` | 3306 | Port to contact the database |
