@@ -138,7 +138,7 @@ apply_mail_setting(){
 	      -p"$SIMPLERISK_DB_PASSWORD" \
 	      -h "$SIMPLERISK_DB_HOSTNAME" \
 	      -P "$SIMPLERISK_DB_PORT" \
-	      --skip-ssl \
+	      --ssl-mode=DISABLED \
 	      "$SIMPLERISK_DB_DATABASE" \
 	      -e "UPDATE settings SET value='${escaped}' WHERE name='${db_key}';" \
 	    || print_log "mail_settings:warn" "Failed to update ${db_key}"
