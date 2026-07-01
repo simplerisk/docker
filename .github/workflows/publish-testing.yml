@@ -1,0 +1,141 @@
+name: Publish simplerisk-minimal testing image + promote
+
+# Publishes a TESTING-channel simplerisk-minimal image and promotes it into the
+# dedicated-hosting (customers-cdk) account so tier=testing customers auto-update.
+#
+# Trigger: a push to this repo's `testing` branch (code-development mirrors the
+# current testing version here on each testing publish — see the code-development
+# `sync_docker_testing` workflow), or a manual dispatch.
+#
+# Build: the CURRENT testing bundle from bundles-test (the built testing-branch
+# code) + the database/testing schema, via `generate_dockerfile.sh testing`
+# (COPYs the app from the context) — the same recipe the code-development
+# `test_docker_deploy` smoke uses, but pushed multi-arch to Docker Hub.
+#
+# Tags (see design 2026-07-01-testing-image-promote): an IMMUTABLE per-version
+# tag `<VERSION>-testing` plus the floating `:testing` alias. The bare `<VERSION>`
+# and `:latest` tags are RESERVED for the release build (master) and are NOT
+# touched here — the testing and release images are different builds (testing
+# bundle vs finalized public bundle), so they must not share the bare version tag.
+#
+# Promote: writes SSM /simplerisk/customers/image-tag/testing = <VERSION>-testing
+# in the customers account via OIDC; the image-updater Lambda there rolls every
+# tier=testing service (new image + fresh extras together).
+
+on:
+  push:
+    branches: [testing]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  id-token: write        # OIDC: assume the cross-account image-tag promoter role
+
+concurrency:
+  group: publish-testing
+  cancel-in-progress: false
+
+env:
+  IMAGE_NAME: simplerisk/simplerisk-minimal
+  AWS_REGION: us-east-1
+  SSM_PARAM: /simplerisk/customers/image-tag/testing
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    timeout-minutes: 40
+    steps:
+      - name: Checkout (docker@testing)
+        uses: actions/checkout@v6
+
+      - name: Resolve current testing version + fetch bundle/schema
+        id: fetch
+        run: |
+          set -euo pipefail
+          # The testing channel keeps exactly one current bundle; list it and
+          # derive VERSION from its name (self-sufficient — no version file needed
+          # in this repo). `|| true` so a zero-match reaches the COUNT guard.
+          BUNDLE=$(curl -fsSL "https://bundles-test.simplerisk.com/?list-type=2" \
+            | grep -oE 'simplerisk-[0-9]{8}-[0-9]{3}\.tgz' | sort -u || true)
+          COUNT=$(printf '%s\n' "$BUNDLE" | grep -c . || true)
+          if [ "$COUNT" -ne 1 ]; then
+            echo "::error::expected exactly one testing bundle, found $COUNT: [$BUNDLE]"; exit 1
+          fi
+          VERSION=$(printf '%s' "$BUNDLE" | sed -n 's/^simplerisk-\([0-9]\{8\}-[0-9]\{3\}\)\.tgz$/\1/p')
+          if ! printf '%s' "$VERSION" | grep -qE '^[0-9]{8}-[0-9]{3}$'; then
+            echo "::error::could not derive VERSION from bundle '$BUNDLE'"; exit 1
+          fi
+          echo "testing bundle: $BUNDLE (version $VERSION)"
+          curl -fsSL -o /tmp/testing-bundle.tgz "https://bundles-test.simplerisk.com/$BUNDLE"
+          # Integrity: verify the bundle against the sha256 published in the served
+          # updates-test feed (publish-bundle writes the hash on the same push).
+          # VERSION is regex-guarded, so it is safe in the sed pattern.
+          EXPECTED_SHA=$(curl -fsSL "https://updates-test.simplerisk.com/releases.xml" \
+            | sed -n "/<release version=\"${VERSION}\">/,/<\/release>/p" \
+            | grep -oE '<bundle_sha256>[a-f0-9]{64}</bundle_sha256>' | head -1 | grep -oE '[a-f0-9]{64}')
+          if ! printf '%s' "$EXPECTED_SHA" | grep -qE '^[a-f0-9]{64}$'; then
+            echo "::error::no bundle_sha256 for $VERSION in updates-test releases.xml"; exit 1
+          fi
+          ACTUAL_SHA=$(sha256sum /tmp/testing-bundle.tgz | cut -d' ' -f1)
+          if [ "$ACTUAL_SHA" != "$EXPECTED_SHA" ]; then
+            echo "::error::bundle sha256 mismatch for $VERSION (expected $EXPECTED_SHA, got $ACTUAL_SHA)"; exit 1
+          fi
+          echo "bundle sha256 verified"
+          SQL_URL="https://raw.githubusercontent.com/simplerisk/database/testing/simplerisk-en-${VERSION}.sql"
+          curl -fsSL -o /tmp/testing.sql "$SQL_URL" \
+            || { echo "::error::testing schema not found: $SQL_URL"; exit 1; }
+          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
+
+      - name: Assemble the testing build context
+        env:
+          VERSION: ${{ steps.fetch.outputs.version }}
+        run: |
+          set -euo pipefail
+          cd simplerisk-minimal
+          # generate_dockerfile.sh testing -> a Dockerfile that COPYs simplerisk/
+          # (app) + common/simplerisk.sql (schema) from this context.
+          ./generate_dockerfile.sh testing
+          tar xzf /tmp/testing-bundle.tgz -C .
+          cp /tmp/testing.sql common/simplerisk.sql
+          test -d simplerisk || { echo "::error::bundle did not extract a simplerisk/ dir"; exit 1; }
+
+      - name: Set up QEMU
+        uses: docker/setup-qemu-action@v4
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v4
+
+      - name: Log in to Docker Hub
+        uses: docker/login-action@v4
+        with:
+          username: ${{ secrets.DOCKER_USERNAME }}
+          password: ${{ secrets.DOCKER_TOKEN }}
+
+      - name: Build and push (multi-arch) — <VERSION>-testing + :testing
+        uses: docker/build-push-action@v7
+        with:
+          context: simplerisk-minimal
+          file: simplerisk-minimal/Dockerfile
+          push: true
+          platforms: linux/amd64,linux/arm64
+          tags: |
+            ${{ env.IMAGE_NAME }}:${{ steps.fetch.outputs.version }}-testing
+            ${{ env.IMAGE_NAME }}:testing
+          cache-from: type=gha,scope=minimal-testing
+          cache-to: type=gha,mode=max,scope=minimal-testing
+
+      - name: Configure AWS credentials (OIDC → customers account)
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ vars.IMAGE_PROMOTER_TESTING_ROLE_ARN }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Promote — SSM /image-tag/testing = <VERSION>-testing
+        env:
+          VERSION: ${{ steps.fetch.outputs.version }}
+        run: |
+          set -euo pipefail
+          aws ssm put-parameter --name "$SSM_PARAM" \
+            --value "${VERSION}-testing" --type String --overwrite \
+            --region "$AWS_REGION"
+          echo "promoted $SSM_PARAM = ${VERSION}-testing" >> "$GITHUB_STEP_SUMMARY"
