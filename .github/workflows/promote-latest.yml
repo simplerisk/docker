@@ -1,0 +1,68 @@
+name: Promote latest image tag (release)
+
+# On a release (push to master that bumps the version), promote the customers-cdk
+# `latest` channel: write SSM /simplerisk/customers/image-tag/latest = <VERSION> in
+# the customers account via OIDC, so the image-updater Lambda rolls tier=latest
+# (production) services onto the just-published release image.
+#
+# The release IMAGE itself is built + pushed (:latest + :<VERSION>) by the existing
+# push-to-dockerhub workflow on the same master push — this workflow ONLY does the
+# cross-account SSM promote (the missing automation link). Path-filtered to the
+# minimal Dockerfile so a docs-only master push does not roll production.
+#
+# See design docs/superpowers/specs/2026-07-01-testing-image-promote (customers-cdk).
+
+on:
+  push:
+    branches: [master]
+    paths:
+      - simplerisk-minimal/Dockerfile
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  id-token: write
+
+concurrency:
+  group: promote-latest
+  cancel-in-progress: false
+
+env:
+  AWS_REGION: us-east-1
+  SSM_PARAM: /simplerisk/customers/image-tag/latest
+
+jobs:
+  promote:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+
+      - name: Read release version from the minimal Dockerfile
+        id: ver
+        run: |
+          set -euo pipefail
+          # The committed simplerisk-minimal/Dockerfile carries `ENV version=<VERSION>`
+          # (set by generate_dockerfile.sh at release cut), same source create_new_tag
+          # uses. Guard the shape before it reaches the promote.
+          VERSION=$(grep -E '^ENV version=' simplerisk-minimal/Dockerfile | head -1 | cut -d '=' -f 2 | tr -d '[:space:]')
+          if ! printf '%s' "$VERSION" | grep -qE '^[0-9]{8}-[0-9]{3}$'; then
+            echo "::error::release version '$VERSION' from simplerisk-minimal/Dockerfile is missing or malformed"; exit 1
+          fi
+          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
+
+      - name: Configure AWS credentials (OIDC → customers account)
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ vars.IMAGE_PROMOTER_LATEST_ROLE_ARN }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Promote — SSM /image-tag/latest = <VERSION>
+        env:
+          VERSION: ${{ steps.ver.outputs.version }}
+        run: |
+          set -euo pipefail
+          aws ssm put-parameter --name "$SSM_PARAM" \
+            --value "$VERSION" --type String --overwrite \
+            --region "$AWS_REGION"
+          echo "promoted $SSM_PARAM = $VERSION" >> "$GITHUB_STEP_SUMMARY"
