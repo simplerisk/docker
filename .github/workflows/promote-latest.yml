@@ -1,22 +1,17 @@
 name: Promote latest image tag (release)
 
-# On a release (push to master that bumps the version), promote the customers-cdk
-# `latest` channel: write SSM /simplerisk/customers/image-tag/latest = <VERSION> in
-# the customers account via OIDC, so the image-updater Lambda rolls tier=latest
-# (production) services onto the just-published release image.
+# GA promotion for simplerisk-minimal, run MANUALLY (workflow_dispatch) once the
+# release has merged to master. Build-once model: the RC image was already built
+# by publish-testing.yml at the testing cut (tags <VERSION>-php83/84/85 + bare
+# <VERSION>). GA does NOT rebuild — it (1) retags DockerHub :latest to the
+# existing <VERSION>-php85 digest via `buildx imagetools create` (multi-arch
+# preserved), and (2) writes SSM /simplerisk/customers/image-tag/latest =
+# <VERSION>-php85 in the customers account (OIDC), so the image-updater Lambda
+# rolls tier=latest (production) services onto the promoted digest.
 #
-# The release IMAGE itself is built + pushed (:latest + :<VERSION>) by the existing
-# push-to-dockerhub workflow on the same master push — this workflow ONLY does the
-# cross-account SSM promote (the missing automation link). Path-filtered to the
-# minimal Dockerfile so a docs-only master push does not roll production.
-#
-# See design docs/superpowers/specs/2026-07-01-testing-image-promote (customers-cdk).
+# See design code-development docs/superpowers/specs/2026-07-10-release-image-promotion-design.
 
 on:
-  push:
-    branches: [master]
-    paths:
-      - simplerisk-minimal/Dockerfile
   workflow_dispatch:
 
 permissions:
@@ -38,6 +33,15 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v6
 
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v4
+
+      - name: Log in to Docker Hub
+        uses: docker/login-action@v4
+        with:
+          username: ${{ secrets.DOCKER_USERNAME }}
+          password: ${{ secrets.DOCKER_TOKEN }}
+
       - name: Read release version from the minimal Dockerfile
         id: ver
         run: |
@@ -51,18 +55,45 @@ jobs:
           fi
           echo "version=$VERSION" >> "$GITHUB_OUTPUT"
 
+      - name: Verify the RC image exists, then retag :latest → <VERSION>-php85
+        env:
+          VERSION: ${{ steps.ver.outputs.version }}
+          IMAGE_NAME: simplerisk/simplerisk-minimal
+        run: |
+          set -euo pipefail
+          # The php85 immutable tag MUST already exist (built by publish-testing
+          # at the RC cut). Fail loudly rather than silently promoting nothing.
+          if ! docker buildx imagetools inspect "${IMAGE_NAME}:${VERSION}-php85" >/dev/null 2>&1; then
+            echo "::error::${IMAGE_NAME}:${VERSION}-php85 not found on Docker Hub — was the RC published (Plan 1)?"; exit 1
+          fi
+          # Currency guard: only promote the version that is CURRENTLY in testing.
+          # :testing floats to the current RC (publish-testing tags <V>-php85 and
+          # :testing on the same build), so the digests match iff VERSION is the
+          # current RC. Prevents a stale committed Dockerfile version (or a stale
+          # dispatch ref) from promoting an old-but-existing release to prod :latest.
+          SRC_DIGEST=$(docker buildx imagetools inspect "${IMAGE_NAME}:${VERSION}-php85" --format '{{.Manifest.Digest}}')
+          TESTING_DIGEST=$(docker buildx imagetools inspect "${IMAGE_NAME}:testing" --format '{{.Manifest.Digest}}')
+          if [ "$SRC_DIGEST" != "$TESTING_DIGEST" ]; then
+            echo "::error::${IMAGE_NAME}:${VERSION}-php85 ($SRC_DIGEST) is not the current testing RC ($TESTING_DIGEST) — refusing to promote a stale version to :latest"; exit 1
+          fi
+          # Retag (no rebuild): create :latest from the existing multi-arch digest.
+          docker buildx imagetools create \
+            --tag "${IMAGE_NAME}:latest" \
+            "${IMAGE_NAME}:${VERSION}-php85"
+          echo "retagged ${IMAGE_NAME}:latest -> ${VERSION}-php85 digest" >> "$GITHUB_STEP_SUMMARY"
+
       - name: Configure AWS credentials (OIDC → customers account)
         uses: aws-actions/configure-aws-credentials@v4
         with:
           role-to-assume: ${{ vars.IMAGE_PROMOTER_LATEST_ROLE_ARN }}
           aws-region: ${{ env.AWS_REGION }}
 
-      - name: Promote — SSM /image-tag/latest = <VERSION>
+      - name: Promote — SSM /image-tag/latest = <VERSION>-php85
         env:
           VERSION: ${{ steps.ver.outputs.version }}
         run: |
           set -euo pipefail
           aws ssm put-parameter --name "$SSM_PARAM" \
-            --value "$VERSION" --type String --overwrite \
+            --value "${VERSION}-php85" --type String --overwrite \
             --region "$AWS_REGION"
-          echo "promoted $SSM_PARAM = $VERSION" >> "$GITHUB_STEP_SUMMARY"
+          echo "promoted $SSM_PARAM = ${VERSION}-php85" >> "$GITHUB_STEP_SUMMARY"
