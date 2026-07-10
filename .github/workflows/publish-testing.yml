@@ -8,17 +8,20 @@ name: Publish simplerisk-minimal testing image + promote
 # `sync_docker_testing` workflow), or a manual dispatch.
 #
 # Build: the CURRENT testing bundle from bundles-test (the built testing-branch
-# code) + the database/testing schema, via `generate_dockerfile.sh testing`
-# (COPYs the app from the context) — the same recipe the code-development
-# `test_docker_deploy` smoke uses, but pushed multi-arch to Docker Hub.
+# code) + the database/testing schema, via `generate_dockerfile.sh "$VERSION"
+# context` (COPYs the app from the assembled context, real `ENV version`) — the
+# same recipe the code-development `test_docker_deploy` smoke uses, but pushed
+# multi-arch to Docker Hub.
 #
-# Tags (see design 2026-07-01-testing-image-promote): an IMMUTABLE per-version
-# tag `<VERSION>-testing` plus the floating `:testing` alias. The bare `<VERSION>`
-# and `:latest` tags are RESERVED for the release build (master) and are NOT
-# touched here — the testing and release images are different builds (testing
-# bundle vs finalized public bundle), so they must not share the bare version tag.
+# Tags (see design code-development docs/superpowers/specs/2026-07-10-release-image-
+# promotion-design): the RC is built ONCE here from the testing bundle and later
+# PROMOTED (not rebuilt) to prod. Publishes immutable per-PHP variants
+# <VERSION>-php83/-php84/-php85, the bare <VERSION> (= php85, the default/main),
+# and moves the floating :testing alias to it. There is NO <VERSION>-testing tag.
+# The floating :latest and the prod SSM tier are moved by the separate GA promote
+# (Plan 2), which retags this same digest — it never rebuilds.
 #
-# Promote: writes SSM /simplerisk/customers/image-tag/testing = <VERSION>-testing
+# Promote: writes SSM /simplerisk/customers/image-tag/testing = <VERSION>-php85
 # in the customers account via OIDC; the image-updater Lambda there rolls every
 # tier=testing service (new image + fresh extras together).
 
@@ -43,7 +46,8 @@ env:
 jobs:
   publish:
     runs-on: ubuntu-latest
-    timeout-minutes: 40
+    # 3 sequential multi-arch (arm64 = QEMU-emulated, slow) variant builds run here.
+    timeout-minutes: 120
     steps:
       - name: Checkout (docker@testing)
         uses: actions/checkout@v6
@@ -92,9 +96,10 @@ jobs:
         run: |
           set -euo pipefail
           cd simplerisk-minimal
-          # generate_dockerfile.sh testing -> a Dockerfile that COPYs simplerisk/
-          # (app) + common/simplerisk.sql (schema) from this context.
-          ./generate_dockerfile.sh testing
+          # generate_dockerfile.sh "$VERSION" context -> a Dockerfile that COPYs
+          # simplerisk/ (app) + common/simplerisk.sql (schema) from this context,
+          # with a real `ENV version=$VERSION` (no literal "testing").
+          ./generate_dockerfile.sh "$VERSION" context
           tar xzf /tmp/testing-bundle.tgz -C .
           cp /tmp/testing.sql common/simplerisk.sql
           test -d simplerisk || { echo "::error::bundle did not extract a simplerisk/ dir"; exit 1; }
@@ -111,18 +116,44 @@ jobs:
           username: ${{ secrets.DOCKER_USERNAME }}
           password: ${{ secrets.DOCKER_TOKEN }}
 
-      - name: Build and push (multi-arch) — <VERSION>-testing + :testing
+      - name: Build and push php83 — <VERSION>-php83
         uses: docker/build-push-action@v7
         with:
           context: simplerisk-minimal
           file: simplerisk-minimal/Dockerfile
           push: true
           platforms: linux/amd64,linux/arm64
+          build-args: php_version=8.3
+          tags: ${{ env.IMAGE_NAME }}:${{ steps.fetch.outputs.version }}-php83
+          cache-from: type=gha,scope=minimal-testing-php83
+          cache-to: type=gha,mode=max,scope=minimal-testing-php83
+
+      - name: Build and push php84 — <VERSION>-php84
+        uses: docker/build-push-action@v7
+        with:
+          context: simplerisk-minimal
+          file: simplerisk-minimal/Dockerfile
+          push: true
+          platforms: linux/amd64,linux/arm64
+          build-args: php_version=8.4
+          tags: ${{ env.IMAGE_NAME }}:${{ steps.fetch.outputs.version }}-php84
+          cache-from: type=gha,scope=minimal-testing-php84
+          cache-to: type=gha,mode=max,scope=minimal-testing-php84
+
+      - name: Build and push php85 (default) — <VERSION>-php85 + <VERSION> + :testing
+        uses: docker/build-push-action@v7
+        with:
+          context: simplerisk-minimal
+          file: simplerisk-minimal/Dockerfile
+          push: true
+          platforms: linux/amd64,linux/arm64
+          build-args: php_version=8.5
           tags: |
-            ${{ env.IMAGE_NAME }}:${{ steps.fetch.outputs.version }}-testing
+            ${{ env.IMAGE_NAME }}:${{ steps.fetch.outputs.version }}-php85
+            ${{ env.IMAGE_NAME }}:${{ steps.fetch.outputs.version }}
             ${{ env.IMAGE_NAME }}:testing
-          cache-from: type=gha,scope=minimal-testing
-          cache-to: type=gha,mode=max,scope=minimal-testing
+          cache-from: type=gha,scope=minimal-testing-php85
+          cache-to: type=gha,mode=max,scope=minimal-testing-php85
 
       - name: Configure AWS credentials (OIDC → customers account)
         uses: aws-actions/configure-aws-credentials@v4
@@ -130,12 +161,12 @@ jobs:
           role-to-assume: ${{ vars.IMAGE_PROMOTER_TESTING_ROLE_ARN }}
           aws-region: ${{ env.AWS_REGION }}
 
-      - name: Promote — SSM /image-tag/testing = <VERSION>-testing
+      - name: Promote — SSM /image-tag/testing = <VERSION>-php85
         env:
           VERSION: ${{ steps.fetch.outputs.version }}
         run: |
           set -euo pipefail
           aws ssm put-parameter --name "$SSM_PARAM" \
-            --value "${VERSION}-testing" --type String --overwrite \
+            --value "${VERSION}-php85" --type String --overwrite \
             --region "$AWS_REGION"
-          echo "promoted $SSM_PARAM = ${VERSION}-testing" >> "$GITHUB_STEP_SUMMARY"
+          echo "promoted $SSM_PARAM = ${VERSION}-php85" >> "$GITHUB_STEP_SUMMARY"

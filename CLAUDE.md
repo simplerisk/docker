@@ -19,7 +19,7 @@ Both images use multi-stage builds (Alpine curl downloader stage → main stage)
 # Full-stack (build args: ubuntu_version_code=jammy|noble)
 docker build -t simplerisk/simplerisk simplerisk/
 
-# Minimal (build args: php_version=8.1|8.3|8.4)
+# Minimal (build args: php_version=8.3|8.4|8.5)
 docker build -t simplerisk/simplerisk-minimal simplerisk-minimal/
 ```
 
@@ -115,7 +115,7 @@ The entrypoint script handles:
 
 ### CI/CD
 
-- **PRs** trigger `container-validation.yml`: builds all 4 variants (jammy, noble, php81, php83), runs Dockle (Dockerfile linter) and Grype (CVE scanner, severity cutoff: critical, only-fixed).
+- **PRs** trigger `container-validation.yml`: builds all 4 variants (jammy, noble, php83, php84, php85), runs Dockle (Dockerfile linter) and Grype (CVE scanner, severity cutoff: critical, only-fixed).
 - **Pushes** trigger separate workflows to publish to Docker Hub and GitHub Container Registry (GHCR). GHCR images are signed with Cosign/sigstore. The `simplerisk-minimal` push builds target both `linux/amd64` and `linux/arm64`.
 - The reusable workflow files (`*_rw.yml`) are called by the entry-point workflows.
 
