@@ -8,9 +8,10 @@ name: Publish simplerisk-minimal testing image + promote
 # `sync_docker_testing` workflow), or a manual dispatch.
 #
 # Build: the CURRENT testing bundle from bundles-test (the built testing-branch
-# code) + the database/testing schema, via `generate_dockerfile.sh testing`
-# (COPYs the app from the context) — the same recipe the code-development
-# `test_docker_deploy` smoke uses, but pushed multi-arch to Docker Hub.
+# code) + the database/testing schema, via `generate_dockerfile.sh "$VERSION"
+# context` (COPYs the app from the assembled context, real `ENV version`) — the
+# same recipe the code-development `test_docker_deploy` smoke uses, but pushed
+# multi-arch to Docker Hub.
 #
 # Tags (see design code-development docs/superpowers/specs/2026-07-10-release-image-
 # promotion-design): the RC is built ONCE here from the testing bundle and later
@@ -45,7 +46,8 @@ env:
 jobs:
   publish:
     runs-on: ubuntu-latest
-    timeout-minutes: 40
+    # 3 sequential multi-arch (arm64 = QEMU-emulated, slow) variant builds run here.
+    timeout-minutes: 120
     steps:
       - name: Checkout (docker@testing)
         uses: actions/checkout@v6
@@ -94,8 +96,9 @@ jobs:
         run: |
           set -euo pipefail
           cd simplerisk-minimal
-          # generate_dockerfile.sh testing -> a Dockerfile that COPYs simplerisk/
-          # (app) + common/simplerisk.sql (schema) from this context.
+          # generate_dockerfile.sh "$VERSION" context -> a Dockerfile that COPYs
+          # simplerisk/ (app) + common/simplerisk.sql (schema) from this context,
+          # with a real `ENV version=$VERSION` (no literal "testing").
           ./generate_dockerfile.sh "$VERSION" context
           tar xzf /tmp/testing-bundle.tgz -C .
           cp /tmp/testing.sql common/simplerisk.sql
