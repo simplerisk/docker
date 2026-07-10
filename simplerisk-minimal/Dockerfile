@@ -3,11 +3,23 @@ ARG php_version=8.4
 
 FROM alpine/curl:8.12.1 AS downloader
 
+# PREGA_BUNDLE_FALLBACK is a CI-ONLY switch, default false. bump_downstream opens
+# the docker update-<version> PR at the testing cut, before that version's PROD
+# bundle exists (it lands in public/bundles/ only at GA). container-validation
+# sets this true so the PR can validate against the testing bundle. The GA publish
+# leaves it FALSE, so a released image is ALWAYS built from the prod bundle and
+# NEVER silently falls back to testing bytes (even on a transient prod failure).
+ARG PREGA_BUNDLE_FALLBACK=false
+
 SHELL [ "/bin/ash", "-eo", "pipefail", "-c" ]
 
 RUN mkdir -p /var/www && \
-    { curl -fsSL https://simplerisk-downloads.s3.amazonaws.com/public/bundles/simplerisk-20260519-001.tgz \
-      || curl -fsSL https://bundles-test.simplerisk.com/simplerisk-20260519-001.tgz; } | tar xz -C /var/www
+    if curl -fsSL https://simplerisk-downloads.s3.amazonaws.com/public/bundles/simplerisk-20260519-001.tgz -o /tmp/bundle.tgz; then true; \
+    elif [ "$PREGA_BUNDLE_FALLBACK" = "true" ]; then \
+      echo "prod bundle absent — pre-GA CI fallback to bundles-test"; \
+      curl -fsSL https://bundles-test.simplerisk.com/simplerisk-20260519-001.tgz -o /tmp/bundle.tgz; \
+    else echo "prod bundle simplerisk-20260519-001.tgz not found and PREGA_BUNDLE_FALLBACK=false" && exit 1; fi && \
+    tar xzf /tmp/bundle.tgz -C /var/www && rm -f /tmp/bundle.tgz
 
 FROM php:${php_version}-apache
 

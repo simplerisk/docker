@@ -22,14 +22,27 @@ if [ "$release" != "testing" ]; then
 FROM alpine/curl:8.12.1 AS downloader
 
 ARG DB_LANG=en
+# PREGA_BUNDLE_FALLBACK is a CI-ONLY switch, default false. bump_downstream opens
+# the docker update-<version> PR at the testing cut, before that version's PROD
+# bundle + SQL exist (they land in public/bundles/ and database/master only at GA).
+# container-validation sets this true so the PR can validate against the testing
+# sources. The GA publish leaves it FALSE, so a released image is ALWAYS built from
+# the prod bundle/SQL and NEVER silently falls back to testing bytes.
+ARG PREGA_BUNDLE_FALLBACK=false
 
 SHELL [ "/bin/ash", "-eo", "pipefail", "-c" ]
 
 RUN mkdir -p /var/www && \\
-    { curl -fsSL https://simplerisk-downloads.s3.amazonaws.com/public/bundles/simplerisk-$release.tgz \\
-      || curl -fsSL https://bundles-test.simplerisk.com/simplerisk-$release.tgz; } | tar xz -C /var/www && \\
-    { curl -fsSL "https://github.com/simplerisk/database/raw/master/simplerisk-\$DB_LANG-$release.sql" \\
-      || curl -fsSL "https://github.com/simplerisk/database/raw/testing/simplerisk-\$DB_LANG-$release.sql"; } > /simplerisk.sql
+    if curl -fsSL https://simplerisk-downloads.s3.amazonaws.com/public/bundles/simplerisk-$release.tgz -o /tmp/bundle.tgz; then true; \\
+    elif [ "\$PREGA_BUNDLE_FALLBACK" = "true" ]; then \\
+      echo "prod bundle absent — pre-GA CI fallback to bundles-test"; \\
+      curl -fsSL https://bundles-test.simplerisk.com/simplerisk-$release.tgz -o /tmp/bundle.tgz; \\
+    else echo "prod bundle simplerisk-$release.tgz not found and PREGA_BUNDLE_FALLBACK=false" && exit 1; fi && \\
+    tar xzf /tmp/bundle.tgz -C /var/www && rm -f /tmp/bundle.tgz && \\
+    if curl -fsSL "https://github.com/simplerisk/database/raw/master/simplerisk-\$DB_LANG-$release.sql" -o /simplerisk.sql; then true; \\
+    elif [ "\$PREGA_BUNDLE_FALLBACK" = "true" ]; then \\
+      curl -fsSL "https://github.com/simplerisk/database/raw/testing/simplerisk-\$DB_LANG-$release.sql" -o /simplerisk.sql; \\
+    else echo "prod SQL simplerisk-\$DB_LANG-$release.sql not found and PREGA_BUNDLE_FALLBACK=false" && exit 1; fi
 
 EOF
 fi
