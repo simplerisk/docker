@@ -34,10 +34,22 @@ if [ "$source_mode" == "download" ]; then
 	cat << EOF >> "${SCRIPT_LOCATION}/Dockerfile"
 FROM alpine/curl:8.12.1 AS downloader
 
+# PREGA_BUNDLE_FALLBACK is a CI-ONLY switch, default false. Pre-GA the prod
+# bundle for a new version does not exist yet (it lands in public/bundles/ only
+# at GA). CI sets this true so a pre-GA build can fall back to the testing
+# bundle. A released image is ALWAYS built from the prod bundle and NEVER
+# silently falls back to testing bytes (even on a transient prod failure).
+ARG PREGA_BUNDLE_FALLBACK=false
+
 SHELL [ "/bin/ash", "-eo", "pipefail", "-c" ]
 
 RUN mkdir -p /var/www && \\
-    curl -sL https://simplerisk-downloads.s3.amazonaws.com/public/bundles/simplerisk-$release.tgz | tar xz -C /var/www
+    if curl -fsSL https://simplerisk-downloads.s3.amazonaws.com/public/bundles/simplerisk-$release.tgz -o /tmp/bundle.tgz; then true; \\
+    elif [ "\$PREGA_BUNDLE_FALLBACK" = "true" ]; then \\
+      echo "prod bundle absent — pre-GA CI fallback to bundles-test"; \\
+      curl -fsSL https://bundles-test.simplerisk.com/simplerisk-$release.tgz -o /tmp/bundle.tgz; \\
+    else echo "prod bundle simplerisk-$release.tgz not found and PREGA_BUNDLE_FALLBACK=false" && exit 1; fi && \\
+    tar xzf /tmp/bundle.tgz -C /var/www && rm -f /tmp/bundle.tgz
 
 EOF
 fi
