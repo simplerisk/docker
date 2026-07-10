@@ -8,8 +8,10 @@ ARG DB_LANG=en
 SHELL [ "/bin/ash", "-eo", "pipefail", "-c" ]
 
 RUN mkdir -p /var/www && \
-    curl -sL https://simplerisk-downloads.s3.amazonaws.com/public/bundles/simplerisk-20260519-001.tgz | tar xz -C /var/www && \
-    curl -sL "https://github.com/simplerisk/database/raw/master/simplerisk-$DB_LANG-20260519-001.sql" > /simplerisk.sql
+    { curl -fsSL https://simplerisk-downloads.s3.amazonaws.com/public/bundles/simplerisk-20260519-001.tgz \
+      || curl -fsSL https://bundles-test.simplerisk.com/simplerisk-20260519-001.tgz; } | tar xz -C /var/www && \
+    { curl -fsSL "https://github.com/simplerisk/database/raw/master/simplerisk-$DB_LANG-20260519-001.sql" \
+      || curl -fsSL "https://github.com/simplerisk/database/raw/testing/simplerisk-$DB_LANG-20260519-001.sql"; } > /simplerisk.sql
 
 # Using Ubuntu image
 FROM ubuntu:${ubuntu_version_code}
