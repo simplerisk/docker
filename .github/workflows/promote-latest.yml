@@ -66,6 +66,16 @@ jobs:
           if ! docker buildx imagetools inspect "${IMAGE_NAME}:${VERSION}-php85" >/dev/null 2>&1; then
             echo "::error::${IMAGE_NAME}:${VERSION}-php85 not found on Docker Hub — was the RC published (Plan 1)?"; exit 1
           fi
+          # Currency guard: only promote the version that is CURRENTLY in testing.
+          # :testing floats to the current RC (publish-testing tags <V>-php85 and
+          # :testing on the same build), so the digests match iff VERSION is the
+          # current RC. Prevents a stale committed Dockerfile version (or a stale
+          # dispatch ref) from promoting an old-but-existing release to prod :latest.
+          SRC_DIGEST=$(docker buildx imagetools inspect "${IMAGE_NAME}:${VERSION}-php85" --format '{{.Manifest.Digest}}')
+          TESTING_DIGEST=$(docker buildx imagetools inspect "${IMAGE_NAME}:testing" --format '{{.Manifest.Digest}}')
+          if [ "$SRC_DIGEST" != "$TESTING_DIGEST" ]; then
+            echo "::error::${IMAGE_NAME}:${VERSION}-php85 ($SRC_DIGEST) is not the current testing RC ($TESTING_DIGEST) — refusing to promote a stale version to :latest"; exit 1
+          fi
           # Retag (no rebuild): create :latest from the existing multi-arch digest.
           docker buildx imagetools create \
             --tag "${IMAGE_NAME}:latest" \
@@ -78,7 +88,7 @@ jobs:
           role-to-assume: ${{ vars.IMAGE_PROMOTER_LATEST_ROLE_ARN }}
           aws-region: ${{ env.AWS_REGION }}
 
-      - name: Promote — SSM /image-tag/latest = <VERSION>
+      - name: Promote — SSM /image-tag/latest = <VERSION>-php85
         env:
           VERSION: ${{ steps.ver.outputs.version }}
         run: |
