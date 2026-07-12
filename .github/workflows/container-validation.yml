@@ -3,7 +3,7 @@ name: Full checkup for SimpleRisk Docker images
 on:
   workflow_dispatch:
   pull_request:
-    branches: [ master ]
+    branches: [ master, testing ]
 
 jobs:
   simplerisk-jammy:
