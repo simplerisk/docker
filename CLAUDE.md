@@ -81,6 +81,7 @@ If `TARGETARCH` is unset (plain `docker build` without buildx), the amd64 path r
 The entrypoint script handles:
 - Writing `config.php` by substituting env vars via `sed`
 - Automatic database provisioning (`DB_SETUP=automatic|automatic-only|manual|delete`)
+- Headless schema upgrade of an already-installed database (`DB_UPGRADE=automatic|automatic-only`) — runs SimpleRisk's core release-by-release upgrade (`run_database_upgrade_structured`) as the app DB user via `/db-upgrade.php`, emitting the structured per-release JSON to the log; `automatic-only` exits with the upgrade status (used by the EKS release upgrade Job)
 - SSL certificate generation (minimal image generates a CA + signed cert; full-stack generates a self-signed cert)
 - Cron setup (`SIMPLERISK_CRON_SETUP` in minimal; always-on in full-stack)
 - Supervisor start (full-stack) or `apache2-foreground` (minimal)
@@ -91,6 +92,7 @@ The entrypoint script handles:
 |---|---|
 | `DB_SETUP` | `automatic`, `automatic-only`, `manual`, `delete` |
 | `DB_SETUP_PASS` | Password used when setting up the DB |
+| `DB_UPGRADE` | `automatic`, `automatic-only` — headless release-by-release **schema upgrade** of an existing DB (uses the `SIMPLERISK_DB_*` app creds, no privileged user; JSON result to the log; non-zero exit on failure) |
 | `SIMPLERISK_DB_HOSTNAME` | External DB host |
 | `SIMPLERISK_DB_USERNAME/PASSWORD/DATABASE` | DB credentials |
 | `SIMPLERISK_CRON_SETUP` | Enable/disable PHP cron (default: enabled) |
