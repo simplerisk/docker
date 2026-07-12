@@ -2,7 +2,7 @@ name: Shell script checkup with ShellCheck
 
 on:
   pull_request:
-    branches: [ master ]
+    branches: [ master, testing ]
 
 jobs:
   shellcheck:
