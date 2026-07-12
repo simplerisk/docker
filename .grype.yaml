@@ -1,11 +1,24 @@
 ignore:
   - vulnerability: CVE-2025-27558 # Not able to fix it at the moment
-  # False positive: Grype's binary classifier reads the PHP interpreter's own
-  # version string (PHP 8.3.32 — embedded in /usr/local/bin/php, libphp.so, and the
-  # bundled extensions) as a "curl" binary at 8.3.32, then flags curl CVEs
-  # (CVE-2026-11856/10536/8927/8924, fixed 8.21.0). The REAL curl in the image is
-  # the Debian package, patched (8.14.1-2+deb13u4) and correctly NOT flagged. Ignore
-  # binary-classified curl so this FP drops while the deb-packaged curl stays scanned.
-  - package:
+  # False positive: Grype's binary classifier reads the PHP interpreter's own version
+  # string (PHP 8.3.32 — embedded in /usr/local/bin/php, libphp.so, and the bundled
+  # extensions) as a "curl" binary at 8.3.32, then flags these curl CVEs (all fixed in
+  # curl 8.21.0). The REAL curl is the Debian package, patched (8.14.1-2+deb13u4) and
+  # correctly not flagged. Scoped per-CVE to binary-classified curl so a genuine future
+  # curl finding still surfaces instead of being blanket-ignored.
+  - vulnerability: CVE-2026-11856
+    package:
+      name: curl
+      type: binary
+  - vulnerability: CVE-2026-10536
+    package:
+      name: curl
+      type: binary
+  - vulnerability: CVE-2026-8927
+    package:
+      name: curl
+      type: binary
+  - vulnerability: CVE-2026-8924
+    package:
       name: curl
       type: binary
