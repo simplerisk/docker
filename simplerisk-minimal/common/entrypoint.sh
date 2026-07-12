@@ -59,6 +59,19 @@ validate_db_setup(){
 	esac
 }
 
+validate_db_upgrade(){
+	case "${DB_UPGRADE:-}" in
+		automatic)
+			print_log "initial_info:upgrade" "Database schema will be upgraded";;
+		automatic-only)
+			print_log "initial_info:upgrade" "Database schema will be upgraded and the container removed";;
+		"")
+			: ;;  # not set — no upgrade
+		*)
+			fatal_error "The provided option for DB_UPGRADE is invalid. It must be automatic or automatic-only.";;
+	esac
+}
+
 set_config(){
 	local CONFIG_PATH='/var/www/simplerisk/includes/config.php'
 	local CONFIG_SAMPLE_PATH='/var/www/simplerisk/includes/config.sample.php'
@@ -287,11 +300,31 @@ EOSQL" "Was not able to apply settings on database. Check error above. Exiting."
 	[ "${DB_SETUP:-}" = "automatic-only" ] && print_log "initial_setup:info" "Running setup only (automatic-only). Container will be discarded." && exit 0 || true
 }
 
+db_upgrade(){
+	# Headless schema upgrade: run SimpleRisk's core release-by-release schema
+	# upgrade (run_database_upgrade_structured) via /db-upgrade.php against the
+	# instance's own database. config.php is already rendered by set_config. For
+	# automatic-only (the one-shot Job), exit with the CLI's status so a failed
+	# upgrade fails the Job; otherwise continue to serve.
+	print_log "initial_info:upgrade" "Running headless database schema upgrade"
+	local rc=0
+	php /db-upgrade.php || rc=$?
+	if [ "${DB_UPGRADE:-}" = "automatic-only" ]; then
+		# shellcheck disable=SC2015
+		[ "$rc" -eq 0 ] \
+			&& print_log "initial_setup:info" "Upgrade only (automatic-only). Container will be discarded." \
+			|| print_log "initial_setup:error" "Schema upgrade failed (exit $rc). Container will be discarded."
+		exit "$rc"
+	fi
+	return "$rc"
+}
+
 unset_variables() {
 	unset DB_SETUP
 	unset DB_SETUP_USER
 	unset DB_SETUP_PASS
 	unset DB_SETUP_WAIT
+	unset DB_UPGRADE
 	unset SIMPLERISK_DB_HOSTNAME
 	unset SIMPLERISK_DB_PORT
 	unset SIMPLERISK_DB_USERNAME
@@ -338,6 +371,7 @@ _main() {
 
 	if [ "$docker_managed_config" = true ]; then
 		validate_db_setup
+		validate_db_upgrade
 		set_config
 	else
 		print_log "initial_setup:info" "No DB env vars provided; config.php will not be written. The SimpleRisk web installer will run at first request."
@@ -359,6 +393,8 @@ _main() {
 		[[ "${DB_SETUP:-}" == "delete" ]] && delete_db || true
 		# shellcheck disable=SC2015
 		[[ "${DB_SETUP:-}" = automatic* ]] && db_setup || true
+		# shellcheck disable=SC2015
+		[[ "${DB_UPGRADE:-}" = automatic* ]] && db_upgrade || true
 		set_mail_settings
 	fi
 
