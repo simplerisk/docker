@@ -4,11 +4,15 @@ ARG ubuntu_version_code=noble
 FROM alpine/curl:8.12.1 AS downloader
 
 ARG DB_LANG=en
+# CI-ONLY pre-GA switch (default false) — see common/download_and_verify_bundle.sh.
+ARG PREGA_BUNDLE_FALLBACK=false
 
 SHELL [ "/bin/ash", "-eo", "pipefail", "-c" ]
 
-RUN mkdir -p /var/www && \
-    curl -sL https://simplerisk-downloads.s3.amazonaws.com/public/bundles/simplerisk-20260519-001.tgz | tar xz -C /var/www && \
+# Download the prod bundle, verify its published sha256 (md5 fallback) from the
+# updates feed, then extract (fail-closed) -- then fetch the release SQL schema.
+COPY common/download_and_verify_bundle.sh /download_and_verify_bundle.sh
+RUN PREGA_BUNDLE_FALLBACK="$PREGA_BUNDLE_FALLBACK" sh /download_and_verify_bundle.sh 20260519-001 && \
     curl -sL "https://github.com/simplerisk/database/raw/master/simplerisk-$DB_LANG-20260519-001.sql" > /simplerisk.sql
 
 # Using Ubuntu image
