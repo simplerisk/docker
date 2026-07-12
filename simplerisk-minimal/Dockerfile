@@ -36,7 +36,11 @@ ARG TARGETARCH
 # NOTE: The MySQL key was taken from https://dev.mysql.com/doc/refman/8.4/en/checking-gpg-signature.html
 # amd64: mysql-community-client from MySQL's Debian repo
 # arm64: default-mysql-client from Debian (MySQL's apt repo has no arm64 packages)
+# apt-get upgrade patches base-image packages (apache2, curl, ...) with Debian
+# security updates — the pinned php:${php_version}-apache base ships them at its
+# own build-time versions, so without this they accumulate fixed CVEs (Grype gate).
 RUN apt-get update && \
+    apt-get -y upgrade && \
     apt-get install -y --no-install-recommends \
         libldap2-dev \
         libicu-dev \
