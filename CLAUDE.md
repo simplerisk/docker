@@ -91,6 +91,7 @@ The entrypoint script handles:
 |---|---|
 | `DB_SETUP` | `automatic`, `automatic-only`, `manual`, `delete` |
 | `DB_SETUP_PASS` | Password used when setting up the DB |
+| `DB_SSL_ENABLED` | Opt-in, **default off**. Set to exactly `true` to add `--ssl-mode=REQUIRED --enable-cleartext-plugin` to the privileged setup/delete MySQL client (for databases that require the cleartext auth plugin to be sent over TLS). Any other value / unset ⇒ unchanged plaintext-capable connection. |
 | `SIMPLERISK_DB_HOSTNAME` | External DB host |
 | `SIMPLERISK_DB_USERNAME/PASSWORD/DATABASE` | DB credentials |
 | `SIMPLERISK_CRON_SETUP` | Enable/disable PHP cron (default: enabled) |
