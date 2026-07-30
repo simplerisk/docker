@@ -252,13 +252,24 @@ set_mail_settings(){
 	[ -n "${MAIL_PASSWORD:-}" ] && apply_mail_setting phpmailer_password "$MAIL_PASSWORD" || true
 }
 
+set_db_ssl_flags(){
+	# Some databases require the privileged setup/delete mysql client to send
+	# its credential via the cleartext auth plugin, which the server only
+	# accepts over TLS (e.g. when DB_SETUP_PASS is a short-lived auth token
+	# rather than a static password). Set DB_SSL_ENABLED=true to opt in.
+	DB_SSL_FLAGS=""
+	if [ "${DB_SSL_ENABLED:-}" = "true" ]; then
+		DB_SSL_FLAGS="--ssl-mode=REQUIRED --enable-cleartext-plugin"
+	fi
+}
+
 delete_db(){
 	print_log "db_deletion: prepare" "Performing database deletion"
 
 	# Pass password via env var to avoid shell interpretation of special characters in the value
 	export MYSQL_PWD="$DB_SETUP_PASS"
 	# Needed to separate the GRANT statement from the rest because it was providing a syntax error
-	exec_cmd "mysql -u $DB_SETUP_USER -h$SIMPLERISK_DB_HOSTNAME -P$SIMPLERISK_DB_PORT <<EOSQL
+	exec_cmd "mysql ${DB_SSL_FLAGS:-} -u $DB_SETUP_USER -h$SIMPLERISK_DB_HOSTNAME -P$SIMPLERISK_DB_PORT <<EOSQL
 	SET sql_mode = 'ANSI_QUOTES';
 	DROP DATABASE \"${SIMPLERISK_DB_DATABASE}\";
 	USE mysql;
@@ -291,7 +302,7 @@ db_setup(){
 	# Pass password via env var to avoid shell interpretation of special characters in the value
 	export MYSQL_PWD="$DB_SETUP_PASS"
 	# Using sql_mode = ANSI_QUOTES to avoid using backticks
-	exec_cmd "mysql -u $DB_SETUP_USER -h$SIMPLERISK_DB_HOSTNAME -P$SIMPLERISK_DB_PORT <<EOSQL
+	exec_cmd "mysql ${DB_SSL_FLAGS:-} -u $DB_SETUP_USER -h$SIMPLERISK_DB_HOSTNAME -P$SIMPLERISK_DB_PORT <<EOSQL
 	SET sql_mode = 'ANSI_QUOTES';
 	CREATE DATABASE \"${SIMPLERISK_DB_DATABASE}\";
 	USE \"${SIMPLERISK_DB_DATABASE}\";
@@ -299,7 +310,7 @@ db_setup(){
 	CREATE USER \"${SIMPLERISK_DB_USERNAME}\"@\"%\" IDENTIFIED BY \"${SIMPLERISK_DB_PASSWORD}\";
 EOSQL" "Was not able to apply settings on database. Check error above. Exiting."
 	# Needed to separate the GRANT statement from the rest because it was providing a syntax error
-	exec_cmd "mysql -u $DB_SETUP_USER -h$SIMPLERISK_DB_HOSTNAME -P$SIMPLERISK_DB_PORT <<EOSQL
+	exec_cmd "mysql ${DB_SSL_FLAGS:-} -u $DB_SETUP_USER -h$SIMPLERISK_DB_HOSTNAME -P$SIMPLERISK_DB_PORT <<EOSQL
 	SET sql_mode = 'ANSI_QUOTES';
 	GRANT SELECT, INSERT, UPDATE, DELETE, CREATE, DROP, REFERENCES, INDEX, ALTER ON \"${SIMPLERISK_DB_DATABASE}\".* TO \"${SIMPLERISK_DB_USERNAME}\"@\"%\";
 EOSQL" "Was not able to apply settings on database. Check error above. Exiting."
@@ -323,6 +334,8 @@ unset_variables() {
 	unset DB_SETUP_USER
 	unset DB_SETUP_PASS
 	unset DB_SETUP_WAIT
+	unset DB_SSL_ENABLED
+	unset DB_SSL_FLAGS
 	unset SIMPLERISK_DB_HOSTNAME
 	unset SIMPLERISK_DB_PORT
 	unset SIMPLERISK_DB_USERNAME
@@ -379,6 +392,7 @@ _main() {
 	if [[ -n ${DB_SETUP:-} ]]; then
 	  DB_SETUP_USER="${DB_SETUP_USER:-root}"
 	  DB_SETUP_PASS="${DB_SETUP_PASS:-root}"
+	  set_db_ssl_flags
 	fi
 
 	if [[ -n ${SIMPLERISK_CSRF_SECRET:-} ]]; then

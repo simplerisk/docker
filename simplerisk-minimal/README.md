@@ -64,6 +64,7 @@ docker run -d --name simplerisk -e SIMPLERISK_DB_PASSWORD=pass -e SIMPLERISK_DB_
 | `DB_SETUP_USER` | `root` | Used when `DB_SETUP=automatic\|automatic-only\|delete`. User name of database privileged user to install SimpleRisk schema and other components |
 | `DB_SETUP_PASS` | `root` (the bundled `stack.yml` ships `simplerisk_setup`) | Used when `DB_SETUP=automatic\|automatic-only\|delete`. Password of the privileged MySQL user used **only** to install the SimpleRisk schema and create the app DB user. In `stack.yml` it is also the bundled MySQL root password; since that MySQL is not exposed outside the stack network, a documented default is used for the zero-config trial. Override it (and `MYSQL_ROOT_PASSWORD` in `stack.yml`) for any non-trial deployment. |
 | `DB_SETUP_WAIT` | 20 | Used when `DB_SETUP=automatic\|automatic-only`. Time, in seconds, the application is going to wait to set up the database. Useful if you are deploying the database and SimpleRisk at the same time |
+| `DB_SSL_ENABLED` | `false` (off) | Opt-in, used when `DB_SETUP=automatic\|automatic-only\|delete`. Set to exactly `true` to require TLS on the privileged setup/delete MySQL client connection (adds `--ssl-mode=REQUIRED --enable-cleartext-plugin`). Any other value, or unset, leaves the connection unchanged (plaintext-capable) |
 | `SIMPLERISK_DB_HOSTNAME` | `localhost` | Hostname of the database server |
 | `SIMPLERISK_DB_PORT` | 3306 | Port to contact the database |
 | `SIMPLERISK_DB_USERNAME` |`simplerisk` | User name to be used to access the SimpleRisk database |
