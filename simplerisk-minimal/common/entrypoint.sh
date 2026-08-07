@@ -117,6 +117,37 @@ set_config(){
 		escaped_ssl_path=$(sed_escape "$SIMPLERISK_DB_SSL_CERT_PATH")
 		sed -i "s|^[[:space:]]*\(//[[:space:]]*\)\{0,1\}define('DB_SSL_CERTIFICATE_PATH', '[^']*');|define('DB_SSL_CERTIFICATE_PATH', '${escaped_ssl_path}');|" "$CONFIG_PATH"
 	fi
+
+
+	# DEMO_MODE — restricts a public demo instance (uploads, password change,
+	# language change). Deliberately NOT a placeholder in config.sample.php: this
+	# is a hosting-platform concern, not a self-hosted option, so it is APPENDED
+	# only when asked for and is invisible to everyone else. config.sample.php has
+	# no closing "?>", so an appended define lands inside PHP.
+	#
+	# ONLY an explicitly true value activates it. PHP treats the STRING 'false' as
+	# truthy, so writing define('DEMO_MODE', 'false') would put EVERY customer into
+	# demo mode. The constant's PRESENCE is the signal — core checks
+	# defined('DEMO_MODE'), not its value.
+	#
+	# The grep guard matters for the fallback path above: when config.sample.php is
+	# absent the existing config.php is reused rather than regenerated, so an
+	# unguarded append would redefine the constant on every boot.
+	case "$(printf '%s' "${SIMPLERISK_DEMO_MODE:-}" | tr '[:upper:]' '[:lower:]')" in
+		true|1|yes|on)
+			if grep -q "define('DEMO_MODE'" "$CONFIG_PATH"; then
+				print_log "initial_setup:info" "DEMO_MODE already present in $CONFIG_PATH; leaving it alone."
+			else
+				printf "\n// Set by the hosting platform when demo_mode is enabled for this\n// instance. Not a self-hosted configuration option.\ndefine('DEMO_MODE', 'true');\n" >> "$CONFIG_PATH"
+				print_log "initial_setup:info" "DEMO_MODE enabled."
+			fi
+			;;
+		"")
+			;;
+		*)
+			print_log "initial_setup:info" "SIMPLERISK_DEMO_MODE is set to a non-true value; demo mode NOT enabled."
+			;;
+	esac
 }
 
 set_csrf_secret(){
