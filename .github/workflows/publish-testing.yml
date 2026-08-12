@@ -8,7 +8,7 @@ name: Publish simplerisk-minimal testing image + promote
 # `sync_docker_testing` workflow), or a manual dispatch.
 #
 # Build: the CURRENT testing bundle from bundles-test (the built testing-branch
-# code) + the database/testing schema, via `generate_dockerfile.sh testing`
+# code) + the database/master schema, via `generate_dockerfile.sh testing`
 # (COPYs the app from the context) — the same recipe the code-development
 # `test_docker_deploy` smoke uses, but pushed multi-arch to Docker Hub.
 #
@@ -81,9 +81,9 @@ jobs:
             echo "::error::bundle sha256 mismatch for $VERSION (expected $EXPECTED_SHA, got $ACTUAL_SHA)"; exit 1
           fi
           echo "bundle sha256 verified"
-          SQL_URL="https://raw.githubusercontent.com/simplerisk/database/testing/simplerisk-en-${VERSION}.sql"
+          SQL_URL="https://raw.githubusercontent.com/simplerisk/database/master/simplerisk-en-${VERSION}.sql"
           curl -fsSL -o /tmp/testing.sql "$SQL_URL" \
-            || { echo "::error::testing schema not found: $SQL_URL"; exit 1; }
+            || { echo "::error::release schema not found on database/master: $SQL_URL"; exit 1; }
           echo "version=$VERSION" >> "$GITHUB_OUTPUT"
 
       - name: Assemble the testing build context
