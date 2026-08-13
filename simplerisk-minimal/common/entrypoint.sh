@@ -148,6 +148,51 @@ set_config(){
 			print_log "initial_setup:info" "SIMPLERISK_DEMO_MODE is set to a non-true value; demo mode NOT enabled."
 			;;
 	esac
+
+	# Optional service endpoint overrides, for instances that must talk to the
+	# test estate rather than production. Same shape as DEMO_MODE above: no
+	# placeholder in config.sample.php, appended only when supplied, so an
+	# instance that says nothing keeps the code's built-in production defaults.
+	#
+	# All five are written when supplied, on purpose. LICENSING_URL superseded
+	# SERVICES_URL and PING_URL when registration and ping were merged into the
+	# licensing service (July 2026 release) — but the platform runs different
+	# images per release channel, and an instance on an older image still reads
+	# the legacy pair. Writing whichever ones are supplied keeps one config
+	# correct across both.
+	#
+	# Every consumer is defined()-guarded with a production fallback, so a
+	# constant that a given image does not know about is simply ignored.
+	for _url_const in SERVICES_URL UPDATES_URL PING_URL BUNDLES_URL LICENSING_URL; do
+		_url_env="SIMPLERISK_${_url_const}"
+		_url_val="${!_url_env:-}"
+
+		[ -z "$_url_val" ] && continue
+
+		# Only http(s), and no quote or backslash — the value is interpolated into
+		# a single-quoted PHP string, and this is config we generate, not input we
+		# need to be clever about.
+		case "$_url_val" in
+			https://*|http://*) ;;
+			*)
+				print_log "initial_setup:info" "$_url_env is not an http(s) URL; ignoring."
+				continue
+				;;
+		esac
+		case "$_url_val" in
+			*\'*|*\\*)
+				print_log "initial_setup:info" "$_url_env contains a quote or backslash; ignoring."
+				continue
+				;;
+		esac
+
+		if grep -q "define('${_url_const}'" "$CONFIG_PATH"; then
+			print_log "initial_setup:info" "${_url_const} already present in $CONFIG_PATH; leaving it alone."
+		else
+			printf "\ndefine('%s', '%s');\n" "$_url_const" "$_url_val" >> "$CONFIG_PATH"
+			print_log "initial_setup:info" "${_url_const} set to ${_url_val}."
+		fi
+	done
 }
 
 set_csrf_secret(){
