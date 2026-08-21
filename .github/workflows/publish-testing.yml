@@ -1,26 +1,36 @@
-name: Publish simplerisk-minimal testing image + promote
+name: Publish testing images + promote
 
-# Publishes a TESTING-channel simplerisk-minimal image and promotes it into the
-# dedicated-hosting (customers-cdk) account so tier=testing customers auto-update.
+# Publishes the TESTING-channel SimpleRisk images and promotes the minimal one
+# into the dedicated-hosting (customers-cdk) account so tier=testing customers
+# auto-update.
 #
 # Trigger: a push to this repo's `testing` branch (code-development mirrors the
 # current testing version here on each testing publish — see the code-development
 # `sync_docker_testing` workflow), or a manual dispatch.
 #
 # Build: the CURRENT testing bundle from bundles-test (the built testing-branch
-# code) + the database/master schema, via `generate_dockerfile.sh testing`
-# (COPYs the app from the context) — the same recipe the code-development
-# `test_docker_deploy` smoke uses, but pushed multi-arch to Docker Hub.
+# code) + the database/master schema, via `generate_dockerfile.sh "$VERSION"
+# context` (COPYs the app from the assembled context, real `ENV version`) — the
+# same recipe the code-development `test_docker_deploy` smoke uses, but pushed
+# to Docker Hub.
 #
-# Tags (see design 2026-07-01-testing-image-promote): an IMMUTABLE per-version
-# tag `<VERSION>-testing` plus the floating `:testing` alias. The bare `<VERSION>`
-# and `:latest` tags are RESERVED for the release build (master) and are NOT
-# touched here — the testing and release images are different builds (testing
-# bundle vs finalized public bundle), so they must not share the bare version tag.
+# Tags (see design code-development docs/superpowers/specs/2026-07-10-release-image-
+# promotion-design): every release image is built ONCE here from the testing
+# bundle and later PROMOTED (not rebuilt) to prod by promote-latest.yml on
+# master, which retags these same digests. Nothing is rebuilt at GA.
 #
-# Promote: writes SSM /simplerisk/customers/image-tag/testing = <VERSION>-testing
+#   simplerisk/simplerisk-minimal  <VERSION>-php83/-php84/-php85, bare <VERSION>
+#                                  (= php85, the default), and :testing
+#   simplerisk/simplerisk          <VERSION>-jammy/-noble, bare <VERSION>
+#                                  (= noble, the default), and :testing
+#
+# There is NO <VERSION>-testing tag. The floating :latest and the prod SSM tier
+# are moved only by the GA promote.
+#
+# Promote: writes SSM /simplerisk/customers/image-tag/testing = <VERSION>-php85
 # in the customers account via OIDC; the image-updater Lambda there rolls every
-# tier=testing service (new image + fresh extras together).
+# tier=testing service (new image + fresh extras together). The full-stack image
+# is not part of the managed fleet, so it has no SSM tier.
 
 on:
   push:
@@ -37,20 +47,22 @@ concurrency:
 
 env:
   IMAGE_NAME: simplerisk/simplerisk-minimal
+  FULL_IMAGE_NAME: simplerisk/simplerisk
   AWS_REGION: us-east-1
   SSM_PARAM: /simplerisk/customers/image-tag/testing
 
 jobs:
-  publish:
-    environment: testing
+  # Resolve the version ONCE so both publish jobs stamp the same release, even
+  # if the testing channel rotates mid-run. Each publish job then fetches that
+  # exact bundle by name and verifies its hash independently.
+  resolve:
+    name: Resolve the current testing version
     runs-on: ubuntu-latest
-    timeout-minutes: 40
+    outputs:
+      version: ${{ steps.ver.outputs.version }}
     steps:
-      - name: Checkout (docker@testing)
-        uses: actions/checkout@v6
-
-      - name: Resolve current testing version + fetch bundle/schema
-        id: fetch
+      - name: Derive VERSION from the testing channel
+        id: ver
         run: |
           set -euo pipefail
           # The testing channel keeps exactly one current bundle; list it and
@@ -67,10 +79,29 @@ jobs:
             echo "::error::could not derive VERSION from bundle '$BUNDLE'"; exit 1
           fi
           echo "testing bundle: $BUNDLE (version $VERSION)"
-          curl -fsSL -o /tmp/testing-bundle.tgz "https://bundles-test.simplerisk.com/$BUNDLE"
+          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
+
+  publish:
+    name: Publish simplerisk-minimal RC images
+    needs: resolve
+    environment: testing
+    runs-on: ubuntu-latest
+    # 3 sequential multi-arch (arm64 = QEMU-emulated, slow) variant builds run here.
+    timeout-minutes: 120
+    steps:
+      - name: Checkout (docker@testing)
+        uses: actions/checkout@v6
+
+      - name: Fetch + verify the testing bundle and schema
+        env:
+          VERSION: ${{ needs.resolve.outputs.version }}
+        run: |
+          set -euo pipefail
+          curl -fsSL -o /tmp/testing-bundle.tgz \
+            "https://bundles-test.simplerisk.com/simplerisk-${VERSION}.tgz"
           # Integrity: verify the bundle against the sha256 published in the served
           # updates-test feed (publish-bundle writes the hash on the same push).
-          # VERSION is regex-guarded, so it is safe in the sed pattern.
+          # VERSION is regex-guarded upstream, so it is safe in the sed pattern.
           EXPECTED_SHA=$(curl -fsSL "https://updates-test.simplerisk.com/releases.xml" \
             | sed -n "/<release version=\"${VERSION}\">/,/<\/release>/p" \
             | grep -oE '<bundle_sha256>[a-f0-9]{64}</bundle_sha256>' | head -1 | grep -oE '[a-f0-9]{64}')
@@ -85,17 +116,17 @@ jobs:
           SQL_URL="https://raw.githubusercontent.com/simplerisk/database/master/simplerisk-en-${VERSION}.sql"
           curl -fsSL -o /tmp/testing.sql "$SQL_URL" \
             || { echo "::error::release schema not found on database/master: $SQL_URL"; exit 1; }
-          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
 
       - name: Assemble the testing build context
         env:
-          VERSION: ${{ steps.fetch.outputs.version }}
+          VERSION: ${{ needs.resolve.outputs.version }}
         run: |
           set -euo pipefail
           cd simplerisk-minimal
-          # generate_dockerfile.sh testing -> a Dockerfile that COPYs simplerisk/
-          # (app) + common/simplerisk.sql (schema) from this context.
-          ./generate_dockerfile.sh testing
+          # generate_dockerfile.sh "$VERSION" context -> a Dockerfile that COPYs
+          # simplerisk/ (app) + common/simplerisk.sql (schema) from this context,
+          # with a real `ENV version=$VERSION` (no literal "testing").
+          ./generate_dockerfile.sh "$VERSION" context
           tar xzf /tmp/testing-bundle.tgz -C .
           cp /tmp/testing.sql common/simplerisk.sql
           test -d simplerisk || { echo "::error::bundle did not extract a simplerisk/ dir"; exit 1; }
@@ -112,18 +143,44 @@ jobs:
           username: ${{ secrets.DOCKER_USERNAME }}
           password: ${{ secrets.DOCKER_TOKEN }}
 
-      - name: Build and push (multi-arch) — <VERSION>-testing + :testing
+      - name: Build and push php83 — <VERSION>-php83
         uses: docker/build-push-action@v7
         with:
           context: simplerisk-minimal
           file: simplerisk-minimal/Dockerfile
           push: true
           platforms: linux/amd64,linux/arm64
+          build-args: php_version=8.3
+          tags: ${{ env.IMAGE_NAME }}:${{ needs.resolve.outputs.version }}-php83
+          cache-from: type=gha,scope=minimal-testing-php83
+          cache-to: type=gha,mode=max,scope=minimal-testing-php83
+
+      - name: Build and push php84 — <VERSION>-php84
+        uses: docker/build-push-action@v7
+        with:
+          context: simplerisk-minimal
+          file: simplerisk-minimal/Dockerfile
+          push: true
+          platforms: linux/amd64,linux/arm64
+          build-args: php_version=8.4
+          tags: ${{ env.IMAGE_NAME }}:${{ needs.resolve.outputs.version }}-php84
+          cache-from: type=gha,scope=minimal-testing-php84
+          cache-to: type=gha,mode=max,scope=minimal-testing-php84
+
+      - name: Build and push php85 (default) — <VERSION>-php85 + <VERSION> + :testing
+        uses: docker/build-push-action@v7
+        with:
+          context: simplerisk-minimal
+          file: simplerisk-minimal/Dockerfile
+          push: true
+          platforms: linux/amd64,linux/arm64
+          build-args: php_version=8.5
           tags: |
-            ${{ env.IMAGE_NAME }}:${{ steps.fetch.outputs.version }}-testing
+            ${{ env.IMAGE_NAME }}:${{ needs.resolve.outputs.version }}-php85
+            ${{ env.IMAGE_NAME }}:${{ needs.resolve.outputs.version }}
             ${{ env.IMAGE_NAME }}:testing
-          cache-from: type=gha,scope=minimal-testing
-          cache-to: type=gha,mode=max,scope=minimal-testing
+          cache-from: type=gha,scope=minimal-testing-php85
+          cache-to: type=gha,mode=max,scope=minimal-testing-php85
 
       - name: Configure AWS credentials (OIDC → customers account)
         uses: aws-actions/configure-aws-credentials@v4
@@ -131,12 +188,98 @@ jobs:
           role-to-assume: ${{ vars.IMAGE_PROMOTER_TESTING_ROLE_ARN }}
           aws-region: ${{ env.AWS_REGION }}
 
-      - name: Promote — SSM /image-tag/testing = <VERSION>-testing
+      - name: Promote — SSM /image-tag/testing = <VERSION>-php85
         env:
-          VERSION: ${{ steps.fetch.outputs.version }}
+          VERSION: ${{ needs.resolve.outputs.version }}
         run: |
           set -euo pipefail
           aws ssm put-parameter --name "$SSM_PARAM" \
-            --value "${VERSION}-testing" --type String --overwrite \
+            --value "${VERSION}-php85" --type String --overwrite \
             --region "$AWS_REGION"
-          echo "promoted $SSM_PARAM = ${VERSION}-testing" >> "$GITHUB_STEP_SUMMARY"
+          echo "promoted $SSM_PARAM = ${VERSION}-php85" >> "$GITHUB_STEP_SUMMARY"
+
+  # The full-stack image is built here for the same build-once reason as the
+  # minimal one: GA promotes this digest rather than rebuilding from the prod
+  # bundle. It is amd64-only, matching what the release build published before.
+  publish-full:
+    name: Publish simplerisk (full-stack) RC images
+    needs: resolve
+    environment: testing
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+    permissions:
+      contents: read
+    steps:
+      - name: Checkout (docker@testing)
+        uses: actions/checkout@v6
+
+      - name: Fetch + verify the testing bundle and schema
+        env:
+          VERSION: ${{ needs.resolve.outputs.version }}
+        run: |
+          set -euo pipefail
+          curl -fsSL -o /tmp/testing-bundle.tgz \
+            "https://bundles-test.simplerisk.com/simplerisk-${VERSION}.tgz"
+          EXPECTED_SHA=$(curl -fsSL "https://updates-test.simplerisk.com/releases.xml" \
+            | sed -n "/<release version=\"${VERSION}\">/,/<\/release>/p" \
+            | grep -oE '<bundle_sha256>[a-f0-9]{64}</bundle_sha256>' | head -1 | grep -oE '[a-f0-9]{64}')
+          if ! printf '%s' "$EXPECTED_SHA" | grep -qE '^[a-f0-9]{64}$'; then
+            echo "::error::no bundle_sha256 for $VERSION in updates-test releases.xml"; exit 1
+          fi
+          ACTUAL_SHA=$(sha256sum /tmp/testing-bundle.tgz | cut -d' ' -f1)
+          if [ "$ACTUAL_SHA" != "$EXPECTED_SHA" ]; then
+            echo "::error::bundle sha256 mismatch for $VERSION (expected $EXPECTED_SHA, got $ACTUAL_SHA)"; exit 1
+          fi
+          echo "bundle sha256 verified"
+          SQL_URL="https://raw.githubusercontent.com/simplerisk/database/master/simplerisk-en-${VERSION}.sql"
+          curl -fsSL -o /tmp/testing.sql "$SQL_URL" \
+            || { echo "::error::release schema not found on database/master: $SQL_URL"; exit 1; }
+
+      - name: Assemble the testing build context
+        env:
+          VERSION: ${{ needs.resolve.outputs.version }}
+        run: |
+          set -euo pipefail
+          cd simplerisk
+          # Same context recipe as the minimal image: COPY the app + schema from
+          # the build context, with a real `ENV version=$VERSION`.
+          ./generate_dockerfile.sh "$VERSION" context
+          tar xzf /tmp/testing-bundle.tgz -C .
+          cp /tmp/testing.sql common/simplerisk.sql
+          test -d simplerisk || { echo "::error::bundle did not extract a simplerisk/ dir"; exit 1; }
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v4
+
+      - name: Log in to Docker Hub
+        uses: docker/login-action@v4
+        with:
+          username: ${{ secrets.DOCKER_USERNAME }}
+          password: ${{ secrets.DOCKER_TOKEN }}
+
+      - name: Build and push jammy — <VERSION>-jammy
+        uses: docker/build-push-action@v7
+        with:
+          context: simplerisk
+          file: simplerisk/Dockerfile
+          push: true
+          platforms: linux/amd64
+          build-args: ubuntu_version_code=jammy
+          tags: ${{ env.FULL_IMAGE_NAME }}:${{ needs.resolve.outputs.version }}-jammy
+          cache-from: type=gha,scope=full-testing-jammy
+          cache-to: type=gha,mode=max,scope=full-testing-jammy
+
+      - name: Build and push noble (default) — <VERSION>-noble + <VERSION> + :testing
+        uses: docker/build-push-action@v7
+        with:
+          context: simplerisk
+          file: simplerisk/Dockerfile
+          push: true
+          platforms: linux/amd64
+          build-args: ubuntu_version_code=noble
+          tags: |
+            ${{ env.FULL_IMAGE_NAME }}:${{ needs.resolve.outputs.version }}-noble
+            ${{ env.FULL_IMAGE_NAME }}:${{ needs.resolve.outputs.version }}
+            ${{ env.FULL_IMAGE_NAME }}:testing
+          cache-from: type=gha,scope=full-testing-noble
+          cache-to: type=gha,mode=max,scope=full-testing-noble
