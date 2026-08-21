@@ -117,7 +117,9 @@ The entrypoint script handles:
 ### CI/CD
 
 - **PRs** trigger `container-validation.yml`: builds all 4 variants (jammy, noble, php81, php83), runs Dockle (Dockerfile linter) and Grype (CVE scanner, severity cutoff: critical, only-fixed).
-- **Pushes** trigger separate workflows to publish to Docker Hub and GitHub Container Registry (GHCR). GHCR images are signed with Cosign/sigstore. The `simplerisk-minimal` push builds target both `linux/amd64` and `linux/arm64`.
+- **Release images are built once, then promoted — never rebuilt.** A push to `testing` runs `publish-testing.yml`, which builds both images from the current testing bundle and publishes immutable tags: `simplerisk-minimal` gets `<VERSION>-php83/-php84/-php85` (multi-arch `linux/amd64,linux/arm64`) and `simplerisk` gets `<VERSION>-jammy/-noble` (amd64). Each image's default variant also takes the bare `<VERSION>` and the floating `:testing`.
+- **GA is a manual promote, not a build.** After the release merges to `master`, dispatch `promote-latest.yml`. It retags Docker Hub `:latest` to the existing RC digest (`buildx imagetools create`, multi-arch preserved), mirrors the same digests to GHCR cosign-signed, and writes SSM `/simplerisk/customers/image-tag/latest`. Nothing is rebuilt, so the bytes validated in testing are the bytes that ship. A currency guard refuses to promote a version whose digest is not the one `:testing` currently points at.
+- `push-to-dockerhub.yml` / `push-to-gh-pkgs.yml` are **legacy rebuild workflows, manual dispatch only** — they no longer run on a `master` push. See their headers; they are deletable once the first post-cutover RC has published full-stack RC digests.
 - The reusable workflow files (`*_rw.yml`) are called by the entry-point workflows.
 
 ### Vulnerability ignore list

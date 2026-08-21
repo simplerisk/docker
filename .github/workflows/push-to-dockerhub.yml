@@ -1,11 +1,23 @@
 name: Push images to DockerHub
 
+# LEGACY REBUILD -- manual dispatch only, retained as a transitional escape hatch.
+#
+# Release images are no longer built here. Under the build-once-promote model
+# (code-development docs/superpowers/specs/2026-07-10-release-image-promotion-design)
+# every release image is built ONCE as the RC by publish-testing.yml on the
+# `testing` branch, and promote-latest.yml retags that digest at GA. Rebuilding
+# from the prod bundle on a master push produced GA bytes that were never the
+# tested bytes, and raced the GA bundle upload: the release PR merges here
+# minutes before the bundle lands in S3, so the build failed fail-closed with a
+# bare 403.
+#
+# The `push: master` trigger is therefore gone. These jobs remain dispatchable
+# so a release cut BEFORE the full-stack RC build landed can still be produced
+# by hand. Delete this workflow once the first post-cutover RC has published
+# simplerisk/simplerisk <VERSION>-jammy/-noble digests.
+
 on:
   workflow_dispatch:
-  push:
-    branches: [ "master" ]
-    # Publish semver tags as releases.
-    #tags: [ '[2022]0701-001' ]
 
 # On a job that uses a reusable workflow, it seems you cannot
 # use env on a with block (https://github.com/actions/runner/issues/1189#issuecomment-1741672276)
@@ -35,29 +47,4 @@ jobs:
       os_version: "noble"
       main_image: true
       build_args: "ubuntu_version_code=noble"
-    secrets: inherit
-  simplerisk-minimal-php84:
-    name: 'Push simplerisk/simplerisk-minimal image based on PHP 8.3 with Apache'
-    uses: ./.github/workflows/push-to-dockerhub_rw.yml
-    with:
-      context_path: "simplerisk-minimal"
-      dockerfile_path: "simplerisk-minimal/Dockerfile"
-      image_name: "simplerisk/simplerisk-minimal"
-      version: "20260820-001"
-      os_version: "php83"
-      build_args: "php_version=8.3"
-      platforms: linux/amd64,linux/arm64
-    secrets: inherit
-  simplerisk-minimal-php85:
-    name: 'Push simplerisk/simplerisk-minimal image based on PHP 8.4 with Apache'
-    uses: ./.github/workflows/push-to-dockerhub_rw.yml
-    with:
-      context_path: "simplerisk-minimal"
-      dockerfile_path: "simplerisk-minimal/Dockerfile"
-      image_name: "simplerisk/simplerisk-minimal"
-      version: "20260820-001"
-      os_version: "php84"
-      main_image: true
-      build_args: "php_version=8.4"
-      platforms: linux/amd64,linux/arm64
     secrets: inherit
