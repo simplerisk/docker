@@ -23,10 +23,20 @@ if [ "$release" != "testing" ]; then
 	cat << EOF >> "${SCRIPT_LOCATION}/Dockerfile"
 FROM alpine/curl:8.12.1 AS downloader
 
+# PREGA_BUNDLE_FALLBACK is a CI-ONLY switch, default false. Pre-GA the prod bundle
+# for a new version does not exist yet (it lands in public/bundles/ only at GA). CI
+# sets this true so a pre-GA build can fall back to the testing bundle WITHOUT hash
+# verification (the release has no published hash yet). A released image is ALWAYS
+# built from the VERIFIED prod bundle and NEVER from unverified testing bytes.
+ARG PREGA_BUNDLE_FALLBACK=false
+
 SHELL [ "/bin/ash", "-eo", "pipefail", "-c" ]
 
-RUN mkdir -p /var/www && \\
-    curl -sL https://simplerisk-downloads.s3.amazonaws.com/public/bundles/simplerisk-$release.tgz | tar xz -C /var/www
+# Download the prod bundle, verify its published sha256 (md5 fallback) from the
+# updates feed, then extract -- fail-closed unless PREGA_BUNDLE_FALLBACK allows the
+# pre-GA path. See common/download_and_verify_bundle.sh.
+COPY common/download_and_verify_bundle.sh /download_and_verify_bundle.sh
+RUN PREGA_BUNDLE_FALLBACK="\$PREGA_BUNDLE_FALLBACK" sh /download_and_verify_bundle.sh $release
 
 EOF
 fi
