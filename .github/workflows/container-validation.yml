@@ -13,7 +13,7 @@ jobs:
       context_path: "simplerisk/"
       dockerfile_path: "simplerisk/Dockerfile"
       image_tag: "simplerisk/simplerisk:testing"
-      build_args: "ubuntu_version_code=jammy"
+      build_args: "ubuntu_version_code=jammy\nPREGA_BUNDLE_FALLBACK=true"
 
   simplerisk-noble:
     name: 'Verify simplerisk/simplerisk image based on Ubuntu 24.04 (Noble)'
@@ -22,7 +22,7 @@ jobs:
       context_path: "simplerisk/"
       dockerfile_path: "simplerisk/Dockerfile"
       image_tag: "simplerisk/simplerisk:testing"
-      build_args: "ubuntu_version_code=noble"
+      build_args: "ubuntu_version_code=noble\nPREGA_BUNDLE_FALLBACK=true"
 
   simplerisk-minimal-php84:
     name: 'Verify simplerisk/simplerisk-minimal image based on PHP 8.3 with Apache'
@@ -31,7 +31,7 @@ jobs:
       context_path: "simplerisk-minimal/"
       dockerfile_path: "simplerisk-minimal/Dockerfile"
       image_tag: "simplerisk/simplerisk-minimal:testing"
-      build_args: "php_version=8.3"
+      build_args: "php_version=8.3\nPREGA_BUNDLE_FALLBACK=true"
 
   simplerisk-minimal-php85:
     name: 'Verify simplerisk/simplerisk-minimal image based on PHP 8.4 with Apache'
@@ -40,4 +40,4 @@ jobs:
       context_path: "simplerisk-minimal/"
       dockerfile_path: "simplerisk-minimal/Dockerfile"
       image_tag: "simplerisk/simplerisk-minimal:testing"
-      build_args: "php_version=8.4"
+      build_args: "php_version=8.4\nPREGA_BUNDLE_FALLBACK=true"
