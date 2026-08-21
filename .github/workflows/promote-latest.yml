@@ -1,10 +1,22 @@
 name: Promote latest image tag (release)
 
-# GA promotion, run MANUALLY (workflow_dispatch) once the release has merged to
-# master. Build-once model: both release images were already built by
-# publish-testing.yml at the testing cut. GA does NOT rebuild anything -- it
-# repoints tags and parameters at those existing digests, so the bytes validated
-# in testing are byte-identical to the bytes that reach production.
+# GA promotion. Fires automatically when a release lands on master (the
+# testing -> master merge that code-development's GA opens), and is also
+# dispatchable for heals. Build-once model: both release images were already
+# built by publish-testing.yml at the testing cut. GA does NOT rebuild anything
+# -- it repoints tags and parameters at those existing digests, so the bytes
+# validated in testing are byte-identical to the bytes that reach production.
+#
+# Auto-firing is safe precisely BECAUSE nothing is rebuilt. The 20260820-001
+# failure came from rebuilding on a master push and racing the GA bundle upload;
+# a retag touches no bundle. The deliberate release gate now lives where the
+# release decision is actually made -- the code-development testing -> master
+# merge, restricted to release owners -- rather than in a second dispatch that
+# nobody is prompted to run.
+#
+# On a push the run is idempotent: if :latest already resolves to the digest we
+# would promote, every mutating step is skipped. A workflow_dispatch always runs
+# in full, so a heal can re-mirror or re-write SSM deliberately.
 #
 #   1. Docker Hub :latest -> the existing <VERSION> RC digest, for both
 #      simplerisk/simplerisk-minimal (<VERSION>-php85) and simplerisk/simplerisk
@@ -20,6 +32,15 @@ name: Promote latest image tag (release)
 # See design code-development docs/superpowers/specs/2026-07-10-release-image-promotion-design.
 
 on:
+  # The GA merge. Path-filtered to the minimal Dockerfile so a docs-only or
+  # workflow-only master push does not touch production; that file carries the
+  # `ENV version=` this job promotes, so it changes on exactly the pushes that
+  # matter. The idempotence guard below covers the case where it changes for
+  # some other reason (a CVE regeneration at an unchanged version).
+  push:
+    branches: [master]
+    paths:
+      - simplerisk-minimal/Dockerfile
   workflow_dispatch:
     inputs:
       skip_full_image:
@@ -86,7 +107,52 @@ jobs:
           fi
           echo "version=$VERSION" >> "$GITHUB_OUTPUT"
 
+      # Idempotence guard for the automatic path. A master push can touch the
+      # minimal Dockerfile without being a release (a CVE regeneration at an
+      # unchanged version), and re-promoting would re-mirror to GHCR, mint fresh
+      # cosign signatures, and rewrite SSM for no reason. If :latest already
+      # resolves to the digest we would promote for BOTH images, there is
+      # nothing to do. A workflow_dispatch always proceeds, so a heal can force
+      # the work deliberately.
+      - name: Decide whether anything needs promoting
+        id: guard
+        env:
+          VERSION: ${{ steps.ver.outputs.version }}
+          EVENT: ${{ github.event_name }}
+          SKIP_FULL: ${{ inputs.skip_full_image }}
+        run: |
+          set -euo pipefail
+          if [ "$EVENT" = "workflow_dispatch" ]; then
+            echo "manual dispatch — proceeding regardless of current tag state"
+            echo "needed=true" >> "$GITHUB_OUTPUT"; exit 0
+          fi
+          # `|| true` so a missing tag yields an empty string rather than aborting.
+          digest() { docker buildx imagetools inspect "$1" --format '{{.Manifest.Digest}}' 2>/dev/null || true; }
+          MIN_SRC=$(digest "${MINIMAL_IMAGE}:${VERSION}-php85")
+          MIN_CUR=$(digest "${MINIMAL_IMAGE}:latest")
+          # An ABSENT RC tag is not "nothing to do" -- it means this release has
+          # no images to promote, which is the loudest thing this workflow can
+          # tell you. Fail here rather than skipping into a green no-op run.
+          if [ -z "$MIN_SRC" ]; then
+            echo "::error::${MINIMAL_IMAGE}:${VERSION}-php85 not found on Docker Hub — the RC was never published, so there is nothing to promote"; exit 1
+          fi
+          NEEDED=false
+          [ "$MIN_SRC" != "$MIN_CUR" ] && NEEDED=true
+          if [ "$SKIP_FULL" != "true" ]; then
+            FULL_SRC=$(digest "${FULL_IMAGE}:${VERSION}-noble")
+            FULL_CUR=$(digest "${FULL_IMAGE}:latest")
+            # Missing full-stack RC tag: let the promote step run so it fails with
+            # its own message, which names the skip_full_image escape hatch.
+            [ -z "$FULL_SRC" ] || [ "$FULL_SRC" != "$FULL_CUR" ] && NEEDED=true
+          fi
+          echo "needed=$NEEDED" >> "$GITHUB_OUTPUT"
+          if [ "$NEEDED" != "true" ]; then
+            echo "${VERSION}: :latest already points at the RC digest for every image — nothing to promote." \
+              >> "$GITHUB_STEP_SUMMARY"
+          fi
+
       - name: Promote simplerisk-minimal — :latest → <VERSION>-php85
+        if: steps.guard.outputs.needed == 'true'
         env:
           VERSION: ${{ steps.ver.outputs.version }}
         run: |
@@ -113,7 +179,7 @@ jobs:
           echo "retagged ${MINIMAL_IMAGE}:latest -> ${VERSION}-php85 ($SRC_DIGEST)" >> "$GITHUB_STEP_SUMMARY"
 
       - name: Promote simplerisk (full-stack) — :latest → <VERSION>-noble
-        if: ${{ !inputs.skip_full_image }}
+        if: steps.guard.outputs.needed == 'true' && !inputs.skip_full_image
         env:
           VERSION: ${{ steps.ver.outputs.version }}
         run: |
@@ -132,6 +198,7 @@ jobs:
           echo "retagged ${FULL_IMAGE}:latest -> ${VERSION}-noble ($SRC_DIGEST)" >> "$GITHUB_STEP_SUMMARY"
 
       - name: Mirror the promoted digests to GHCR (cosign-signed)
+        if: steps.guard.outputs.needed == 'true'
         env:
           VERSION: ${{ steps.ver.outputs.version }}
           SKIP_FULL: ${{ inputs.skip_full_image }}
@@ -163,12 +230,14 @@ jobs:
           fi
 
       - name: Configure AWS credentials (OIDC → customers account)
+        if: steps.guard.outputs.needed == 'true'
         uses: aws-actions/configure-aws-credentials@v4
         with:
           role-to-assume: ${{ vars.IMAGE_PROMOTER_LATEST_ROLE_ARN }}
           aws-region: ${{ env.AWS_REGION }}
 
       - name: Promote — SSM /image-tag/latest = <VERSION>-php85
+        if: steps.guard.outputs.needed == 'true'
         env:
           VERSION: ${{ steps.ver.outputs.version }}
         run: |
