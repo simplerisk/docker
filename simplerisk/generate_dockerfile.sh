@@ -5,10 +5,24 @@ set -euo pipefail
 SCRIPT_LOCATION="$(dirname "$(readlink -f "$0")")"
 readonly SCRIPT_LOCATION
 
-if [ $# -eq 1 ]; then
+if [ $# -ge 1 ]; then
   release=$1
 else
   echo "No release version provided. Aborting." && exit 1
+fi
+# Source mode: `context` = COPY the app from the build context (no downloader
+# stage); `download` = COPY --from=downloader (curl + hash-verify the prod
+# bundle). Splitting this out of $release lets the RC build stamp a real
+# `ENV version=<VERSION>` while still sourcing bytes from the build context --
+# the build-once half of the promote model. Default preserves back-compat:
+# context when release==testing, else download.
+if [ $# -ge 2 ]; then
+  source_mode=$2
+else
+  if [ "$release" == "testing" ]; then source_mode="context"; else source_mode="download"; fi
+fi
+if [ "$source_mode" != "context" ] && [ "$source_mode" != "download" ]; then
+  echo "Invalid source mode '$source_mode' (expected context|download). Aborting." && exit 1
 fi
 
 cat << EOF > "${SCRIPT_LOCATION}/Dockerfile"
@@ -17,7 +31,7 @@ ARG ubuntu_version_code=noble
 
 EOF
 
-if [ "$release" != "testing" ]; then
+if [ "$source_mode" == "download" ]; then
         cat << EOF >> "${SCRIPT_LOCATION}/Dockerfile"
 FROM alpine/curl:8.12.1 AS downloader
 
@@ -29,9 +43,11 @@ SHELL [ "/bin/ash", "-eo", "pipefail", "-c" ]
 
 # Download the prod bundle, verify its published sha256 (md5 fallback) from the
 # updates feed, then extract (fail-closed) -- then fetch the release SQL schema.
+# -fsSL on the SQL fetch too: without --fail, curl writes the 404 body into
+# /simplerisk.sql and the image ships an HTML error page as its schema.
 COPY common/download_and_verify_bundle.sh /download_and_verify_bundle.sh
 RUN PREGA_BUNDLE_FALLBACK="\$PREGA_BUNDLE_FALLBACK" sh /download_and_verify_bundle.sh $release && \\
-    curl -sL "https://github.com/simplerisk/database/raw/master/simplerisk-\$DB_LANG-$release.sql" > /simplerisk.sql
+    curl -fsSL "https://github.com/simplerisk/database/raw/master/simplerisk-\$DB_LANG-$release.sql" > /simplerisk.sql
 
 EOF
 fi
@@ -96,7 +112,7 @@ RUN echo "\$(< /dev/urandom tr -dc _A-Z-a-z-0-9 | head -c\${1:-32})" > /password
 # Install common files
 COPY common/ /
 EOF
-if [ "$release" == "testing" ]; then
+if [ "$source_mode" == "context" ]; then
 	cat << EOF >> "${SCRIPT_LOCATION}/Dockerfile"
 COPY common/simplerisk.sql /simplerisk.sql
 COPY ./simplerisk/ /var/www/simplerisk

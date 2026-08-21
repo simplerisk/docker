@@ -50,3 +50,29 @@ jobs:
       dockerfile_path: "simplerisk-minimal/Dockerfile"
       image_tag: "simplerisk/simplerisk-minimal:testing"
       build_args: "php_version=8.5\nPREGA_BUNDLE_FALLBACK=true"
+
+  generator_checks:
+    name: 'Verify the Dockerfile generators (version/source-mode decoupling)'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v6
+
+      # Both generators take (version, source_mode). The RC build depends on
+      # `context` mode stamping a real ENV version while sourcing the app from
+      # the build context; the release build depends on `download` mode still
+      # emitting the hash-verifying downloader stage. These harnesses pin both.
+      - name: simplerisk-minimal generator
+        run: ./simplerisk-minimal/test_generate_dockerfile.sh
+
+      - name: simplerisk (full-stack) generator
+        run: ./simplerisk/test_generate_dockerfile.sh
+
+      - name: Fail if a generator left the committed Dockerfile modified
+        run: |
+          set -euo pipefail
+          if ! git diff --quiet -- simplerisk/Dockerfile simplerisk-minimal/Dockerfile; then
+            echo "::error::a generator harness left a committed Dockerfile modified"
+            git --no-pager diff -- simplerisk/Dockerfile simplerisk-minimal/Dockerfile
+            exit 1
+          fi
