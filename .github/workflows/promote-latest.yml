@@ -1,22 +1,36 @@
 name: Promote latest image tag (release)
 
-# GA promotion for simplerisk-minimal, run MANUALLY (workflow_dispatch) once the
-# release has merged to master. Build-once model: the RC image was already built
-# by publish-testing.yml at the testing cut (tags <VERSION>-php83/84/85 + bare
-# <VERSION>). GA does NOT rebuild — it (1) retags DockerHub :latest to the
-# existing <VERSION>-php85 digest via `buildx imagetools create` (multi-arch
-# preserved), and (2) writes SSM /simplerisk/customers/image-tag/latest =
-# <VERSION>-php85 in the customers account (OIDC), so the image-updater Lambda
-# rolls tier=latest (production) services onto the promoted digest.
+# GA promotion, run MANUALLY (workflow_dispatch) once the release has merged to
+# master. Build-once model: both release images were already built by
+# publish-testing.yml at the testing cut. GA does NOT rebuild anything -- it
+# repoints tags and parameters at those existing digests, so the bytes validated
+# in testing are byte-identical to the bytes that reach production.
+#
+#   1. Docker Hub :latest -> the existing <VERSION> RC digest, for both
+#      simplerisk/simplerisk-minimal (<VERSION>-php85) and simplerisk/simplerisk
+#      (<VERSION>-noble), via `buildx imagetools create` (multi-arch preserved).
+#   2. GHCR mirror -- copies the same digests to ghcr.io, cosign-signed, so the
+#      GHCR and Docker Hub images for a version are the same bytes. GHCR used to
+#      get its own rebuild from the prod bundle, which meant ghcr <V> and
+#      dockerhub <V> were different images sharing a name.
+#   3. SSM /simplerisk/customers/image-tag/latest = <VERSION>-php85 in the
+#      customers account (OIDC), so the image-updater Lambda rolls tier=latest
+#      (production) services onto the promoted digest.
 #
 # See design code-development docs/superpowers/specs/2026-07-10-release-image-promotion-design.
 
 on:
   workflow_dispatch:
+    inputs:
+      skip_full_image:
+        description: 'Transitional: skip simplerisk/simplerisk (no RC digest for releases cut before the full-stack RC build landed)'
+        type: boolean
+        default: false
 
 permissions:
   contents: read
-  id-token: write
+  id-token: write        # OIDC: AWS role + cosign/fulcio identity challenge
+  packages: write        # GHCR mirror
 
 concurrency:
   group: promote-latest
@@ -25,13 +39,23 @@ concurrency:
 env:
   AWS_REGION: us-east-1
   SSM_PARAM: /simplerisk/customers/image-tag/latest
+  MINIMAL_IMAGE: simplerisk/simplerisk-minimal
+  FULL_IMAGE: simplerisk/simplerisk
+  GHCR_MINIMAL: ghcr.io/simplerisk/simplerisk-minimal
+  GHCR_FULL: ghcr.io/simplerisk/simplerisk
 
 jobs:
   promote:
+    environment: release
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
         uses: actions/checkout@v6
+
+      - name: Install cosign
+        uses: sigstore/cosign-installer@v3.5.0
+        with:
+          cosign-release: 'v2.4.0'
 
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v4
@@ -41,6 +65,13 @@ jobs:
         with:
           username: ${{ secrets.DOCKER_USERNAME }}
           password: ${{ secrets.DOCKER_TOKEN }}
+
+      - name: Log in to GHCR
+        uses: docker/login-action@v4
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Read release version from the minimal Dockerfile
         id: ver
@@ -55,32 +86,81 @@ jobs:
           fi
           echo "version=$VERSION" >> "$GITHUB_OUTPUT"
 
-      - name: Verify the RC image exists, then retag :latest → <VERSION>-php85
+      - name: Promote simplerisk-minimal — :latest → <VERSION>-php85
         env:
           VERSION: ${{ steps.ver.outputs.version }}
-          IMAGE_NAME: simplerisk/simplerisk-minimal
         run: |
           set -euo pipefail
           # The php85 immutable tag MUST already exist (built by publish-testing
           # at the RC cut). Fail loudly rather than silently promoting nothing.
-          if ! docker buildx imagetools inspect "${IMAGE_NAME}:${VERSION}-php85" >/dev/null 2>&1; then
-            echo "::error::${IMAGE_NAME}:${VERSION}-php85 not found on Docker Hub — was the RC published (Plan 1)?"; exit 1
+          if ! docker buildx imagetools inspect "${MINIMAL_IMAGE}:${VERSION}-php85" >/dev/null 2>&1; then
+            echo "::error::${MINIMAL_IMAGE}:${VERSION}-php85 not found on Docker Hub — was the RC published?"; exit 1
           fi
           # Currency guard: only promote the version that is CURRENTLY in testing.
           # :testing floats to the current RC (publish-testing tags <V>-php85 and
           # :testing on the same build), so the digests match iff VERSION is the
           # current RC. Prevents a stale committed Dockerfile version (or a stale
           # dispatch ref) from promoting an old-but-existing release to prod :latest.
-          SRC_DIGEST=$(docker buildx imagetools inspect "${IMAGE_NAME}:${VERSION}-php85" --format '{{.Manifest.Digest}}')
-          TESTING_DIGEST=$(docker buildx imagetools inspect "${IMAGE_NAME}:testing" --format '{{.Manifest.Digest}}')
+          SRC_DIGEST=$(docker buildx imagetools inspect "${MINIMAL_IMAGE}:${VERSION}-php85" --format '{{.Manifest.Digest}}')
+          TESTING_DIGEST=$(docker buildx imagetools inspect "${MINIMAL_IMAGE}:testing" --format '{{.Manifest.Digest}}')
           if [ "$SRC_DIGEST" != "$TESTING_DIGEST" ]; then
-            echo "::error::${IMAGE_NAME}:${VERSION}-php85 ($SRC_DIGEST) is not the current testing RC ($TESTING_DIGEST) — refusing to promote a stale version to :latest"; exit 1
+            echo "::error::${MINIMAL_IMAGE}:${VERSION}-php85 ($SRC_DIGEST) is not the current testing RC ($TESTING_DIGEST) — refusing to promote a stale version to :latest"; exit 1
           fi
           # Retag (no rebuild): create :latest from the existing multi-arch digest.
           docker buildx imagetools create \
-            --tag "${IMAGE_NAME}:latest" \
-            "${IMAGE_NAME}:${VERSION}-php85"
-          echo "retagged ${IMAGE_NAME}:latest -> ${VERSION}-php85 digest" >> "$GITHUB_STEP_SUMMARY"
+            --tag "${MINIMAL_IMAGE}:latest" \
+            "${MINIMAL_IMAGE}:${VERSION}-php85"
+          echo "retagged ${MINIMAL_IMAGE}:latest -> ${VERSION}-php85 ($SRC_DIGEST)" >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Promote simplerisk (full-stack) — :latest → <VERSION>-noble
+        if: ${{ !inputs.skip_full_image }}
+        env:
+          VERSION: ${{ steps.ver.outputs.version }}
+        run: |
+          set -euo pipefail
+          if ! docker buildx imagetools inspect "${FULL_IMAGE}:${VERSION}-noble" >/dev/null 2>&1; then
+            echo "::error::${FULL_IMAGE}:${VERSION}-noble not found on Docker Hub — was the RC published? (re-run with skip_full_image for a release cut before the full-stack RC build landed)"; exit 1
+          fi
+          SRC_DIGEST=$(docker buildx imagetools inspect "${FULL_IMAGE}:${VERSION}-noble" --format '{{.Manifest.Digest}}')
+          TESTING_DIGEST=$(docker buildx imagetools inspect "${FULL_IMAGE}:testing" --format '{{.Manifest.Digest}}')
+          if [ "$SRC_DIGEST" != "$TESTING_DIGEST" ]; then
+            echo "::error::${FULL_IMAGE}:${VERSION}-noble ($SRC_DIGEST) is not the current testing RC ($TESTING_DIGEST) — refusing to promote a stale version to :latest"; exit 1
+          fi
+          docker buildx imagetools create \
+            --tag "${FULL_IMAGE}:latest" \
+            "${FULL_IMAGE}:${VERSION}-noble"
+          echo "retagged ${FULL_IMAGE}:latest -> ${VERSION}-noble ($SRC_DIGEST)" >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Mirror the promoted digests to GHCR (cosign-signed)
+        env:
+          VERSION: ${{ steps.ver.outputs.version }}
+          SKIP_FULL: ${{ inputs.skip_full_image }}
+        run: |
+          set -euo pipefail
+          # imagetools create copies the manifest (and blobs) across registries,
+          # so GHCR receives the identical digest rather than a rebuild. Each
+          # source digest is mirrored once, carrying every tag that points at it.
+          # cosign signs the digest (not the tag), so one signature per call.
+          mirror() {
+            local src="$1" dst="$2"; shift 2
+            local args=() t digest
+            for t in "$@"; do args+=(--tag "${dst}:${t}"); done
+            docker buildx imagetools create "${args[@]}" "$src"
+            digest=$(docker buildx imagetools inspect "${dst}:${1}" --format '{{.Manifest.Digest}}')
+            cosign sign --yes "${dst}@${digest}"
+            echo "mirrored $src -> ${dst} [$*] ($digest)" >> "$GITHUB_STEP_SUMMARY"
+          }
+
+          mirror "${MINIMAL_IMAGE}:${VERSION}-php83" "${GHCR_MINIMAL}" "${VERSION}-php83"
+          mirror "${MINIMAL_IMAGE}:${VERSION}-php84" "${GHCR_MINIMAL}" "${VERSION}-php84"
+          mirror "${MINIMAL_IMAGE}:${VERSION}-php85" "${GHCR_MINIMAL}" "${VERSION}-php85" "${VERSION}" "latest"
+
+          if [ "$SKIP_FULL" != "true" ]; then
+            mirror "${FULL_IMAGE}:${VERSION}-jammy" "${GHCR_FULL}" "${VERSION}-jammy"
+            mirror "${FULL_IMAGE}:${VERSION}-noble" "${GHCR_FULL}" "${VERSION}-noble" "${VERSION}" "latest"
+          else
+            echo "skip_full_image set — ${GHCR_FULL} not mirrored for ${VERSION}" >> "$GITHUB_STEP_SUMMARY"
+          fi
 
       - name: Configure AWS credentials (OIDC → customers account)
         uses: aws-actions/configure-aws-credentials@v4

@@ -19,7 +19,7 @@ Both images use multi-stage builds (Alpine curl downloader stage → main stage)
 # Full-stack (build args: ubuntu_version_code=jammy|noble)
 docker build -t simplerisk/simplerisk simplerisk/
 
-# Minimal (build args: php_version=8.3|8.4|8.5)
+# Minimal (build args: php_version=8.3|8.4|8.5; default 8.5)
 docker build -t simplerisk/simplerisk-minimal simplerisk-minimal/
 ```
 
@@ -48,11 +48,14 @@ shellcheck simplerisk/entrypoint.sh simplerisk-minimal/entrypoint.sh
 make update_version VERSION=YYYYMMDD-NNN
 ```
 
-This runs four scripts in sequence:
-1. `update_workflows.sh` — patches version in push workflow files
-2. `simplerisk/generate_dockerfile.sh` — regenerates the full-stack Dockerfile from a template
-3. `simplerisk-minimal/update_stack_and_workflows.sh` — regenerates `stack.yml` (with a fresh random password) and updates workflow files
-4. `simplerisk-minimal/generate_dockerfile.sh` — regenerates the minimal Dockerfile
+This runs three scripts in sequence:
+1. `simplerisk/generate_dockerfile.sh` — regenerates the full-stack Dockerfile from a template
+2. `simplerisk-minimal/update_stack_and_workflows.sh` — regenerates `stack.yml`
+3. `simplerisk-minimal/generate_dockerfile.sh` — regenerates the minimal Dockerfile
+
+The version now lives only in the two generated Dockerfiles (`ENV version=`), which is
+where `promote-latest.yml` and `create_new_tag.yml` read it from. No workflow carries a
+version pin any more.
 
 ### Nix dev environment
 
@@ -118,8 +121,9 @@ The entrypoint script handles:
 
 ### CI/CD
 
-- **PRs** trigger `container-validation.yml`: builds all 4 variants (jammy, noble, php83, php84, php85), runs Dockle (Dockerfile linter) and Grype (CVE scanner, severity cutoff: critical, only-fixed).
-- **Pushes** trigger separate workflows to publish to Docker Hub and GitHub Container Registry (GHCR). GHCR images are signed with Cosign/sigstore. The `simplerisk-minimal` push builds target both `linux/amd64` and `linux/arm64`.
+- **PRs** trigger `container-validation.yml`: builds all 5 variants (jammy, noble, php83, php84, php85), runs Dockle (Dockerfile linter) and Grype (CVE scanner, severity cutoff: critical, only-fixed), and runs `generator_checks` — the two `test_generate_dockerfile.sh` harnesses that pin the generators' version/source-mode behaviour.
+- **Release images are built once, then promoted — never rebuilt.** A push to `testing` runs `publish-testing.yml`, which builds both images from the current testing bundle and publishes immutable tags: `simplerisk-minimal` gets `<VERSION>-php83/-php84/-php85` (multi-arch `linux/amd64,linux/arm64`) and `simplerisk` gets `<VERSION>-jammy/-noble` (amd64). Each image's default variant also takes the bare `<VERSION>` and the floating `:testing`.
+- **GA is a manual promote, not a build.** After the release merges to `master`, dispatch `promote-latest.yml`. It retags Docker Hub `:latest` to the existing RC digest (`buildx imagetools create`, multi-arch preserved), mirrors the same digests to GHCR cosign-signed, and writes SSM `/simplerisk/customers/image-tag/latest`. Nothing is rebuilt, so the bytes validated in testing are the bytes that ship. A currency guard refuses to promote a version whose digest is not the one `:testing` currently points at.
 - The reusable workflow files (`*_rw.yml`) are called by the entry-point workflows.
 
 ### Vulnerability ignore list

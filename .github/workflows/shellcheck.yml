@@ -4,6 +4,9 @@ on:
   pull_request:
     branches: [ master, testing ]
 
+permissions:
+  contents: read
+
 jobs:
   shellcheck:
     name: ShellCheck

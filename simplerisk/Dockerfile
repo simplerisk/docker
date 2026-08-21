@@ -14,13 +14,13 @@ SHELL [ "/bin/ash", "-eo", "pipefail", "-c" ]
 # -fsSL on the SQL fetch too: without --fail, curl writes the 404 body into
 # /simplerisk.sql and the image ships an HTML error page as its schema.
 COPY common/download_and_verify_bundle.sh /download_and_verify_bundle.sh
-RUN PREGA_BUNDLE_FALLBACK="$PREGA_BUNDLE_FALLBACK" sh /download_and_verify_bundle.sh 20260519-001 && \
-    curl -fsSL "https://github.com/simplerisk/database/raw/master/simplerisk-$DB_LANG-20260519-001.sql" > /simplerisk.sql
+RUN PREGA_BUNDLE_FALLBACK="$PREGA_BUNDLE_FALLBACK" sh /download_and_verify_bundle.sh 20260820-001 && \
+    curl -fsSL "https://github.com/simplerisk/database/raw/master/simplerisk-$DB_LANG-20260820-001.sql" > /simplerisk.sql
 
 # Using Ubuntu image
 FROM ubuntu:${ubuntu_version_code}
 
-ENV version=20260519-001
+ENV version=20260820-001
 
 # Maintained by SimpleRisk
 LABEL maintainer="Simplerisk <support@simplerisk.com>"

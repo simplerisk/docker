@@ -84,6 +84,7 @@ jobs:
   publish:
     name: Publish simplerisk-minimal RC images
     needs: resolve
+    environment: testing
     runs-on: ubuntu-latest
     # 3 sequential multi-arch (arm64 = QEMU-emulated, slow) variant builds run here.
     timeout-minutes: 120
@@ -203,6 +204,7 @@ jobs:
   publish-full:
     name: Publish simplerisk (full-stack) RC images
     needs: resolve
+    environment: testing
     runs-on: ubuntu-latest
     timeout-minutes: 90
     permissions:
