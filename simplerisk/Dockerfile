@@ -4,8 +4,7 @@ ARG ubuntu_version_code=noble
 FROM alpine/curl:8.12.1 AS downloader
 
 ARG DB_LANG=en
-
-# CI-ONLY pre-GA switch (default false) -- see common/download_and_verify_bundle.sh.
+# CI-ONLY pre-GA switch (default false) — see common/download_and_verify_bundle.sh.
 ARG PREGA_BUNDLE_FALLBACK=false
 
 SHELL [ "/bin/ash", "-eo", "pipefail", "-c" ]
