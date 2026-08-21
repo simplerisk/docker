@@ -16,13 +16,13 @@ SHELL [ "/bin/ash", "-eo", "pipefail", "-c" ]
 # updates feed, then extract -- fail-closed unless PREGA_BUNDLE_FALLBACK allows the
 # pre-GA path. See common/download_and_verify_bundle.sh.
 COPY common/download_and_verify_bundle.sh /download_and_verify_bundle.sh
-RUN PREGA_BUNDLE_FALLBACK="$PREGA_BUNDLE_FALLBACK" sh /download_and_verify_bundle.sh 20260519-001
+RUN PREGA_BUNDLE_FALLBACK="$PREGA_BUNDLE_FALLBACK" sh /download_and_verify_bundle.sh 20260820-001
 
 FROM php:${php_version}-apache
 
 LABEL maintainer="SimpleRisk <support@simplerisk.com>"
 
-ENV version=20260519-001
+ENV version=20260820-001
 
 WORKDIR /var/www
 
