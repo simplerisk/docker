@@ -19,6 +19,9 @@ name: Push images to DockerHub
 on:
   workflow_dispatch:
 
+permissions:
+  contents: read
+
 # On a job that uses a reusable workflow, it seems you cannot
 # use env on a with block (https://github.com/actions/runner/issues/1189#issuecomment-1741672276)
 env:

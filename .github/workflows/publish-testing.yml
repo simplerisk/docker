@@ -42,6 +42,7 @@ env:
 
 jobs:
   publish:
+    environment: testing
     runs-on: ubuntu-latest
     timeout-minutes: 40
     steps:
