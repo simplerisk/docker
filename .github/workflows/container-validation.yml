@@ -5,6 +5,9 @@ on:
   pull_request:
     branches: [ master ]
 
+permissions:
+  contents: read
+
 jobs:
   simplerisk-jammy:
     name: 'Verify simplerisk/simplerisk image based on Ubuntu 22.04 (Jammy)'

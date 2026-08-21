@@ -15,6 +15,11 @@ name: Push images to GitHub Packages
 on:
   workflow_dispatch:
 
+permissions:
+  contents: read
+  packages: write   # callee push-to-gh-pkgs_rw pushes to ghcr.io
+  id-token: write   # callee cosign-signs via sigstore/fulcio
+
 # On a job that uses a reusable workflow, it seems you cannot
 # use env on a with block (https://github.com/actions/runner/issues/1189#issuecomment-1741672276)
 env:
