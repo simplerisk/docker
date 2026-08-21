@@ -37,7 +37,6 @@ help:
 	@echo -e "$$HELP_MESSAGE"
 
 update_version: 
-	./update_workflows.sh $(VERSION)
 	./simplerisk/generate_dockerfile.sh $(VERSION)
 	./simplerisk-minimal/update_stack_and_workflows.sh $(VERSION)
 	./simplerisk-minimal/generate_dockerfile.sh $(VERSION)
