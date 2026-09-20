@@ -202,6 +202,33 @@ set_csrf_secret(){
 	[ -n "${SIMPLERISK_CSRF_SECRET:-}" ] && echo "<?php \$secret = \"${SIMPLERISK_CSRF_SECRET}\"; ?>" > "$CSRF_SECRET_PATH";
 }
 
+set_ssl_certificate(){
+	# Generate Apache's self-signed TLS key pair at container startup rather
+	# than at image build time. A key baked into the image (the previous
+	# behavior) is identical in every copy of the image anyone pulls, and was
+	# additionally being registered as a trusted CA in the container's system
+	# trust store -- anyone who extracted that key could forge certs the
+	# container's own outbound curl calls would accept (HackerOne #3764027).
+	# Generating here means each deployment gets its own key, and idempotence
+	# (skip if already present) means an existing cert persisted in the
+	# /etc/apache2/ssl volume survives container restarts/recreation.
+	local ssl_dir='/etc/apache2/ssl/simplerisk'
+	local key="$ssl_dir/simplerisk.key"
+	local crt="$ssl_dir/simplerisk.crt"
+
+	if [ -f "$key" ] && [ -f "$crt" ]; then
+		return 0
+	fi
+
+	print_log "ssl_setup:info" "No Apache TLS certificate found; generating a self-signed one for this container."
+	exec_cmd "mkdir -p $ssl_dir" "Failed to create SSL certificate directory. Exiting."
+	# basicConstraints=CA:FALSE is explicit because openssl's own default
+	# x509 extensions otherwise mark a self-signed leaf cert as CA:TRUE,
+	# which Apache logs a warning about on every start.
+	exec_cmd "openssl req -x509 -newkey rsa:2048 -nodes -keyout $key -out $crt -days 365 -subj '/CN=localhost' -addext 'subjectAltName=DNS:localhost,DNS:simplerisk,IP:127.0.0.1,IP:0.0.0.0' -addext 'basicConstraints=critical,CA:FALSE' -addext 'keyUsage=critical,digitalSignature,keyEncipherment' -addext 'extendedKeyUsage=serverAuth'" "Failed to generate self-signed TLS certificate. Exiting."
+	exec_cmd "chmod 600 $key" "Failed to set permissions on TLS private key. Exiting."
+}
+
 set_cron(){
 	# If SIMPLERISK_CRON_SETUP was passed and it is set to disabled
 	if [[ -n "${SIMPLERISK_CRON_SETUP:-}" && "${SIMPLERISK_CRON_SETUP:-}" = disabled* ]]; then
@@ -443,6 +470,8 @@ unset_variables() {
 }
 
 _main() {
+	set_ssl_certificate
+
 	# Detect whether the operator has opted into Docker-managed config
 	# provisioning. If no DB env vars are set, leave config.php absent so
 	# SimpleRisk's web installer runs on first request.
