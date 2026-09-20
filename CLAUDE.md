@@ -85,7 +85,7 @@ The entrypoint script handles:
 - Writing `config.php` by substituting env vars via `sed`
 - Automatic database provisioning (`DB_SETUP=automatic|automatic-only|manual|delete`)
 - Headless schema upgrade of an already-installed database (`DB_UPGRADE=automatic|automatic-only`) — runs SimpleRisk's core release-by-release upgrade (`run_database_upgrade_structured`) as the app DB user via `/db-upgrade.php`, emitting the structured per-release JSON to the log; `automatic-only` exits with the upgrade status (used by the EKS release upgrade Job)
-- SSL certificate generation (minimal image generates a CA + signed cert; full-stack generates a self-signed cert)
+- SSL certificate generation: both images use a self-signed Apache cert, no CA. Full-stack generates it at build time; minimal generates it at container startup (`entrypoint.sh`'s `set_ssl_certificate`, skipped if a cert already exists) so the private key isn't baked into the shared image layer.
 - Cron setup (`SIMPLERISK_CRON_SETUP` in minimal; always-on in full-stack)
 - Supervisor start (full-stack) or `apache2-foreground` (minimal)
 
@@ -123,9 +123,12 @@ The entrypoint script handles:
 
 - **PRs** trigger `container-validation.yml`: builds all 5 variants (jammy, noble, php83, php84, php85), runs Dockle (Dockerfile linter) and Grype (CVE scanner, severity cutoff: critical, only-fixed), and runs `generator_checks` — the two `test_generate_dockerfile.sh` harnesses that pin the generators' version/source-mode behaviour.
 - **Release images are built once, then promoted — never rebuilt.** A push to `testing` runs `publish-testing.yml`, which builds both images from the current testing bundle and publishes immutable tags: `simplerisk-minimal` gets `<VERSION>-php83/-php84/-php85` (multi-arch `linux/amd64,linux/arm64`) and `simplerisk` gets `<VERSION>-jammy/-noble` (amd64). Each image's default variant also takes the bare `<VERSION>` and the floating `:testing`.
-- **GA is a manual promote, not a build.** After the release merges to `master`, dispatch `promote-latest.yml`. It retags Docker Hub `:latest` to the existing RC digest (`buildx imagetools create`, multi-arch preserved), mirrors the same digests to GHCR cosign-signed, and writes SSM `/simplerisk/customers/image-tag/latest`. Nothing is rebuilt, so the bytes validated in testing are the bytes that ship. A currency guard refuses to promote a version whose digest is not the one `:testing` currently points at.
+- **GA promotion fires automatically on merge to `master`, not on manual dispatch.** `promote-latest.yml` triggers on any push to `master` that touches `simplerisk-minimal/Dockerfile` (which carries `ENV version=`). It retags Docker Hub `:latest` to the existing RC digest (`buildx imagetools create`, multi-arch preserved), mirrors the same digests to GHCR cosign-signed, and writes SSM `/simplerisk/customers/image-tag/latest` — nothing is rebuilt. An idempotence guard skips the mutating steps if `:latest` already matches the target digest; `workflow_dispatch` remains available for a manual heal. `create_new_tag.yml` fires on the same push and tags the release. **There is no approval gate between the `testing`→`master` merge and production** — merging is the release.
 - The reusable workflow files (`*_rw.yml`) are called by the entry-point workflows.
+- `testing` requires 1 approving PR review to merge (repo ruleset, not classic branch protection — check via `gh api repos/simplerisk/docker/rulesets`). Admins can bypass with `gh pr merge --admin`.
 
 ### Vulnerability ignore list
 
 `.grype.yaml` tracks CVEs intentionally ignored (e.g., unfixable at time of release). Update this file when suppressing a new finding, always with a comment explaining why.
+
+**Recurring false positive (simplerisk-minimal):** Grype's binary classifier misreads the PHP interpreter's version string embedded in `curl.so` as curl's own version, so new curl CVEs periodically get flagged against a nonexistent `curl <PHP-version>`. Before assuming a curl CVE finding is real, check `grype -o json <image> | jq` for a match with `type: binary` at path `.../php/extensions/.../curl.so` — if that's the only match (the real Debian `curl` package is a separate, usually-legitimate match), it's this false positive. Add the CVE ID to `.grype.yaml` scoped to `package: {name: curl, type: binary}`.
