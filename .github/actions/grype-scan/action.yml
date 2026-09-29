@@ -1,0 +1,49 @@
+name: Grype scan
+description: >
+  Scan one container image with Grype, print the findings sorted by package then
+  severity, and upload the JSON report (1-day retention) for the run's digest.
+  Fails on a critical finding, but the report is always uploaded first.
+
+inputs:
+  image:
+    description: Image reference to scan (a local tag or a registry reference).
+    required: true
+  label:
+    description: Unique label for this scan; names the uploaded artifact grype-<label>.
+    required: true
+
+runs:
+  using: composite
+  steps:
+    - name: Install Grype
+      shell: bash
+      run: curl -sSfL https://raw.githubusercontent.com/anchore/grype/main/install.sh | sh -s -- -b /usr/local/bin
+    - name: Scan vulnerabilities with Grype
+      shell: bash
+      env:
+        IMAGE: ${{ inputs.image }}
+        LABEL: ${{ inputs.label }}
+      # Grype's --sort-by takes a single strategy (package OR severity), so scan to
+      # JSON and print the table ourselves: package name, then severity (worst first),
+      # then vulnerability ID. The exit code still comes from grype's --fail-on.
+      run: |
+        mkdir -p "grype-out/$LABEL"
+        rc=0
+        grype -o "json=grype-out/$LABEL/grype.json" --fail-on critical --only-fixed "$IMAGE" || rc=$?
+        if [ -s "grype-out/$LABEL/grype.json" ]; then
+          jq -r '
+            def rank: {"Critical":0,"High":1,"Medium":2,"Low":3,"Negligible":4}[.] // 5;
+            (["PACKAGE","INSTALLED","FIXED IN","TYPE","VULNERABILITY","SEVERITY"] | @tsv),
+            (.matches | sort_by([.artifact.name, (.vulnerability.severity | rank), .vulnerability.id])[]
+             | [.artifact.name, .artifact.version, ((.vulnerability.fix.versions // []) | join(", ")), .artifact.type, .vulnerability.id, .vulnerability.severity] | @tsv)
+          ' "grype-out/$LABEL/grype.json" | column -t -s "$(printf '\t')"
+        fi
+        exit "$rc"
+    - name: Upload Grype report
+      if: ${{ always() }}
+      uses: actions/upload-artifact@v4
+      with:
+        name: grype-${{ inputs.label }}
+        path: grype-out/${{ inputs.label }}/grype.json
+        if-no-files-found: ignore
+        retention-days: 1

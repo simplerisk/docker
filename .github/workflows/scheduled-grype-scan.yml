@@ -1,0 +1,56 @@
+name: Weekly Grype scan of the published testing images
+
+# Images do not change between publishes, but the vulnerability database does. This
+# scans the CURRENT published :testing images once a week so a CVE disclosed after
+# publish still reaches the Slack channel. It is the only scan that notices that.
+
+on:
+  schedule:
+    - cron: '0 13 * * 1'   # Mondays 13:00 UTC
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  scan-minimal:
+    name: 'Scan simplerisk/simplerisk-minimal:testing'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v6
+      - name: Scan vulnerabilities with Grype
+        uses: ./.github/actions/grype-scan
+        with:
+          image: simplerisk/simplerisk-minimal:testing
+          label: testing-minimal
+
+  scan-full:
+    name: 'Scan simplerisk/simplerisk:testing'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v6
+      - name: Scan vulnerabilities with Grype
+        uses: ./.github/actions/grype-scan
+        with:
+          image: simplerisk/simplerisk:testing
+          label: testing-full
+
+  report:
+    name: 'Report Grype results'
+    # always(): a critical finding fails a scan job, and that is when this matters.
+    if: ${{ always() }}
+    needs: [scan-minimal, scan-full]
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v6
+      - name: Report Grype results
+        uses: ./.github/actions/grype-report
+        with:
+          slack_webhook_url: ${{ secrets.SLACK_WEBHOOK_URL }}
+          context: ${{ github.workflow }} · testing
+          results: |
+            testing-minimal=${{ needs.scan-minimal.result }}
+            testing-full=${{ needs.scan-full.result }}
