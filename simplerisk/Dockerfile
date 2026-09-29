@@ -41,6 +41,7 @@ RUN mkdir -p /configurations \
 RUN dpkg-divert --local --rename /usr/bin/ischroot && \
     ln -sf /bin/true /usr/bin/ischroot && \
     apt-get update && \
+    DEBIAN_FRONTEND=noninteractive apt-get -y upgrade && \
     DEBIAN_FRONTEND=noninteractive apt-get -y install --no-install-recommends apache2 \
                                                                               php \
                                                                               php-mysql \
