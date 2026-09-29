@@ -14,13 +14,13 @@ SHELL [ "/bin/ash", "-eo", "pipefail", "-c" ]
 # -fsSL on the SQL fetch too: without --fail, curl writes the 404 body into
 # /simplerisk.sql and the image ships an HTML error page as its schema.
 COPY common/download_and_verify_bundle.sh /download_and_verify_bundle.sh
-RUN PREGA_BUNDLE_FALLBACK="$PREGA_BUNDLE_FALLBACK" sh /download_and_verify_bundle.sh 20260909-001 && \
-    curl -fsSL "https://github.com/simplerisk/database/raw/master/simplerisk-$DB_LANG-20260909-001.sql" > /simplerisk.sql
+RUN PREGA_BUNDLE_FALLBACK="$PREGA_BUNDLE_FALLBACK" sh /download_and_verify_bundle.sh 20260917-001 && \
+    curl -fsSL "https://github.com/simplerisk/database/raw/master/simplerisk-$DB_LANG-20260917-001.sql" > /simplerisk.sql
 
 # Using Ubuntu image
 FROM ubuntu:${ubuntu_version_code}
 
-ENV version=20260909-001
+ENV version=20260917-001
 
 # Maintained by SimpleRisk
 LABEL maintainer="Simplerisk <support@simplerisk.com>"
@@ -110,7 +110,13 @@ RUN chown -R www-data: /var/www/simplerisk
 RUN chown -R www-data: /var/log/simplerisk
 
 # Setting up cronjob
-RUN echo "* * * * * root /usr/bin/php -f /var/www/simplerisk/cron/cron.php > /dev/null 2>&1" >> /etc/cron.d/simplerisk-cron && \
+# Runs as www-data, not root: /var/www/simplerisk (including cron.php) is
+# chowned to www-data above, so a root cron entry over a www-data-writable
+# file would let any web-tier compromise escalate to root on the next tick
+# (the same class of bug as CWE-732 / HackerOne #3761952). cron.php only runs
+# application-level jobs that already execute as www-data under Apache, so it
+# doesn't need root.
+RUN echo "* * * * * www-data /usr/bin/php -f /var/www/simplerisk/cron/cron.php > /dev/null 2>&1" >> /etc/cron.d/simplerisk-cron && \
     chmod 0644 /etc/cron.d/simplerisk-cron
 RUN echo "0 0 * * * root /usr/sbin/logrotate /etc/logrotate.d/simplerisk.conf > /dev/null 2>&1" >> /etc/cron.d/logrotate-cron && \
     chmod 0644 /etc/cron.d/logrotate-cron

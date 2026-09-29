@@ -22,3 +22,18 @@ ignore:
     package:
       name: curl
       type: binary
+  # Same binary-classifier false positive as above, newly published CVE IDs.
+  # Verified against simplerisk-minimal (php 8.3/8.4/8.5): the only "curl"
+  # match is /usr/local/lib/php/extensions/.../curl.so reporting the PHP
+  # version (e.g. 8.5.10) as its own. The real Debian curl package
+  # (8.14.1-2+deb13u5) is also affected but Debian's tracker marks both IDs
+  # "wont-fix", so --only-fixed already excludes that (legitimate) match on
+  # its own; only the misclassified binary match needs ignoring here.
+  - vulnerability: CVE-2026-19931
+    package:
+      name: curl
+      type: binary
+  - vulnerability: CVE-2026-18924
+    package:
+      name: curl
+      type: binary

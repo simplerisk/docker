@@ -144,18 +144,15 @@ RUN echo 'upload_max_filesize = 5M' >> /usr/local/etc/php/conf.d/docker-php-uplo
 	echo 'log_errors = On' >> /usr/local/etc/php/conf.d/docker-php-error_logging.ini && \\
 	echo 'error_log = /dev/stderr' >> /usr/local/etc/php/conf.d/docker-php-error_logging.ini && \\
 	echo 'display_errors = Off' >> /usr/local/etc/php/conf.d/docker-php-error_logging.ini && \\
-# Create SSL Certificates for Apache SSL
-	mkdir -p /etc/apache2/ssl/ca /etc/apache2/ssl/simplerisk && \\
-# Generate CA
-	openssl genrsa -out /etc/apache2/ssl/ca/ca.key 4096 && \\
-	openssl req -x509 -new -nodes -key /etc/apache2/ssl/ca/ca.key -sha256 -days 3650 -out /etc/apache2/ssl/ca/ca.crt -subj "/CN=SimpleRisk CA" && \\
-# Generate certs
-	openssl genrsa -out /etc/apache2/ssl/simplerisk/simplerisk.key 2048 && \\
-	openssl req -new -key /etc/apache2/ssl/simplerisk/simplerisk.key -out /etc/apache2/ssl/simplerisk/simplerisk.csr -subj "/CN=localhost" -addext "subjectAltName=DNS:localhost,DNS:simplerisk,IP:127.0.0.1,IP:0.0.0.0" && \\
-	openssl x509 -req -days 365 -in /etc/apache2/ssl/simplerisk/simplerisk.csr -CA /etc/apache2/ssl/ca/ca.crt -CAkey /etc/apache2/ssl/ca/ca.key -CAcreateserial -out /etc/apache2/ssl/simplerisk/simplerisk.crt -copy_extensions copyall && \\
-	cp /etc/apache2/ssl/ca/ca.crt /usr/local/share/ca-certificates/simplerisk.crt && \\
-	chmod 644 /usr/local/share/ca-certificates/simplerisk.crt && \\
-	update-ca-certificates && \\
+# SSL certificate directory for Apache. The actual key pair is generated at
+# container startup by entrypoint.sh (see set_ssl_certificate), not here at
+# build time: a key baked into this RUN would be identical in every pulled
+# copy of the image and, combined with registering it as a trusted CA, would
+# let anyone who pulls the image forge certs the container trusts (HackerOne
+# #3764027). No custom CA is created or installed into the system trust
+# store -- Apache's cert is self-signed directly, matching the simplerisk
+# (non-minimal) image.
+	mkdir -p /etc/apache2/ssl/simplerisk && \\
 # Activate Apache modules
 	a2enmod headers rewrite ssl && \\
 	a2enconf security && \\
