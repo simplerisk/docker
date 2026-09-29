@@ -182,6 +182,37 @@ jobs:
           cache-from: type=gha,scope=minimal-testing-php85
           cache-to: type=gha,mode=max,scope=minimal-testing-php85
 
+      # Scan the images exactly as published, BEFORE the SSM promote below rolls them
+      # out to tier=testing customers. Each scan is continue-on-error so all three
+      # reports are produced and uploaded; the gate step then fails the job (and so
+      # skips the promote) if any of them hit a critical finding.
+      - name: Scan php83 (published)
+        id: scan83
+        continue-on-error: true
+        uses: ./.github/actions/grype-scan
+        with:
+          image: ${{ env.IMAGE_NAME }}:${{ needs.resolve.outputs.version }}-php83
+          label: published-minimal-php83
+      - name: Scan php84 (published)
+        id: scan84
+        continue-on-error: true
+        uses: ./.github/actions/grype-scan
+        with:
+          image: ${{ env.IMAGE_NAME }}:${{ needs.resolve.outputs.version }}-php84
+          label: published-minimal-php84
+      - name: Scan php85 (published)
+        id: scan85
+        continue-on-error: true
+        uses: ./.github/actions/grype-scan
+        with:
+          image: ${{ env.IMAGE_NAME }}:${{ needs.resolve.outputs.version }}-php85
+          label: published-minimal-php85
+      - name: Block the promote on critical findings
+        if: ${{ steps.scan83.outcome == 'failure' || steps.scan84.outcome == 'failure' || steps.scan85.outcome == 'failure' }}
+        run: |
+          echo "::error::Grype found critical vulnerabilities in the published images; not promoting to the testing tier. See the scan steps above."
+          exit 1
+
       - name: Configure AWS credentials (OIDC → customers account)
         uses: aws-actions/configure-aws-credentials@v4
         with:
@@ -283,3 +314,47 @@ jobs:
             ${{ env.FULL_IMAGE_NAME }}:testing
           cache-from: type=gha,scope=full-testing-noble
           cache-to: type=gha,mode=max,scope=full-testing-noble
+
+      - name: Scan jammy (published)
+        id: scanjammy
+        continue-on-error: true
+        uses: ./.github/actions/grype-scan
+        with:
+          image: ${{ env.FULL_IMAGE_NAME }}:${{ needs.resolve.outputs.version }}-jammy
+          label: published-full-jammy
+      - name: Scan noble (published)
+        id: scannoble
+        continue-on-error: true
+        uses: ./.github/actions/grype-scan
+        with:
+          image: ${{ env.FULL_IMAGE_NAME }}:${{ needs.resolve.outputs.version }}-noble
+          label: published-full-noble
+      - name: Fail on critical findings
+        if: ${{ steps.scanjammy.outcome == 'failure' || steps.scannoble.outcome == 'failure' }}
+        run: |
+          echo "::error::Grype found critical vulnerabilities in the published full-stack images."
+          exit 1
+
+  grype_report:
+    name: Report Grype results for the published images
+    # always(): a critical finding fails a publish job (and blocks the promote), and
+    # that is exactly when the report matters.
+    if: ${{ always() }}
+    needs: [publish, publish-full]
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - name: Checkout (docker@testing)
+        uses: actions/checkout@v6
+      - name: Report Grype results
+        uses: ./.github/actions/grype-report
+        with:
+          slack_webhook_url: ${{ secrets.SLACK_WEBHOOK_URL }}
+          context: ${{ github.workflow }} · ${{ github.ref_name }}
+          results: |
+            published-minimal-php83=${{ needs.publish.result }}
+            published-minimal-php84=${{ needs.publish.result }}
+            published-minimal-php85=${{ needs.publish.result }}
+            published-full-jammy=${{ needs.publish-full.result }}
+            published-full-noble=${{ needs.publish-full.result }}

@@ -71,32 +71,20 @@ jobs:
       - simplerisk-minimal-php84
       - simplerisk-minimal-php85
     runs-on: ubuntu-latest
-    env:
-      SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
     steps:
       - name: Checkout repository
         uses: actions/checkout@v6
-      - name: Download Grype reports
-        if: ${{ env.SLACK_WEBHOOK_URL != '' }}
-        uses: actions/download-artifact@v4
+      - name: Report Grype results
+        uses: ./.github/actions/grype-report
         with:
-          pattern: grype-*
-          path: grype-reports
-      - name: Post digest to Slack
-        if: ${{ env.SLACK_WEBHOOK_URL != '' }}
-        env:
-          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
-          REF: ${{ github.head_ref || github.ref_name }}
-        run: |
-          payload="$(./.github/scripts/grype-slack-digest.sh grype-reports)"
-          if [ -z "$payload" ]; then
-            echo "No Grype findings in any image; nothing to post."
-            exit 0
-          fi
-          curl -sSf -X POST -H 'Content-type: application/json' --data "$payload" "$SLACK_WEBHOOK_URL"
-      - name: Note skipped post
-        if: ${{ env.SLACK_WEBHOOK_URL == '' }}
-        run: echo "::notice::SLACK_WEBHOOK_URL is not available (unset, or a fork PR); skipping the Slack digest."
+          slack_webhook_url: ${{ secrets.SLACK_WEBHOOK_URL }}
+          context: ${{ github.workflow }} · ${{ github.head_ref || github.ref_name }}
+          results: |
+            jammy=${{ needs.simplerisk-jammy.result }}
+            noble=${{ needs.simplerisk-noble.result }}
+            minimal-php83=${{ needs.simplerisk-minimal-php83.result }}
+            minimal-php84=${{ needs.simplerisk-minimal-php84.result }}
+            minimal-php85=${{ needs.simplerisk-minimal-php85.result }}
 
   generator_checks:
     name: 'Verify the Dockerfile generators (version/source-mode decoupling)'
