@@ -9,6 +9,10 @@ on:
       dockerfile_path:
         required: true
         type: string
+      scan_label:
+        required: true
+        type: string
+        description: Unique label for this scan; names the uploaded grype report artifact.
       image_tag:
         required: true
         type: string
@@ -37,4 +41,26 @@ jobs:
       - name: Install Grype
         run: curl -sSfL https://raw.githubusercontent.com/anchore/grype/main/install.sh | sh -s -- -b /usr/local/bin
       - name: Scan vulnerabilities with Grype
-        run: grype -o table --fail-on critical --only-fixed ${{ inputs.image_tag }}
+        # Grype's --sort-by takes a single strategy (package OR severity), so scan to
+        # JSON and print the table ourselves: package name, then severity (worst first),
+        # then vulnerability ID. The exit code still comes from grype's --fail-on.
+        run: |
+          rc=0
+          grype -o json=grype.json --fail-on critical --only-fixed ${{ inputs.image_tag }} || rc=$?
+          if [ -s grype.json ]; then
+            jq -r '
+              def rank: {"Critical":0,"High":1,"Medium":2,"Low":3,"Negligible":4}[.] // 5;
+              (["PACKAGE","INSTALLED","FIXED IN","TYPE","VULNERABILITY","SEVERITY"] | @tsv),
+              (.matches | sort_by([.artifact.name, (.vulnerability.severity | rank), .vulnerability.id])[]
+               | [.artifact.name, .artifact.version, ((.vulnerability.fix.versions // []) | join(", ")), .artifact.type, .vulnerability.id, .vulnerability.severity] | @tsv)
+            ' grype.json | column -t -s "$(printf '\t')"
+          fi
+          exit "$rc"
+      - name: Upload Grype report
+        if: ${{ always() }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: grype-${{ inputs.scan_label }}
+          path: grype.json
+          if-no-files-found: ignore
+          retention-days: 1

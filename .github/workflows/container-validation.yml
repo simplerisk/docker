@@ -13,6 +13,7 @@ jobs:
     name: 'Verify simplerisk/simplerisk image based on Ubuntu 22.04 (Jammy)'
     uses: ./.github/workflows/verify-image_rw.yml
     with:
+      scan_label: "jammy"
       context_path: "simplerisk/"
       dockerfile_path: "simplerisk/Dockerfile"
       image_tag: "simplerisk/simplerisk:testing"
@@ -22,6 +23,7 @@ jobs:
     name: 'Verify simplerisk/simplerisk image based on Ubuntu 24.04 (Noble)'
     uses: ./.github/workflows/verify-image_rw.yml
     with:
+      scan_label: "noble"
       context_path: "simplerisk/"
       dockerfile_path: "simplerisk/Dockerfile"
       image_tag: "simplerisk/simplerisk:testing"
@@ -31,6 +33,7 @@ jobs:
     name: 'Verify simplerisk/simplerisk-minimal image based on PHP 8.3 with Apache'
     uses: ./.github/workflows/verify-image_rw.yml
     with:
+      scan_label: "minimal-php83"
       context_path: "simplerisk-minimal/"
       dockerfile_path: "simplerisk-minimal/Dockerfile"
       image_tag: "simplerisk/simplerisk-minimal:testing"
@@ -40,6 +43,7 @@ jobs:
     name: 'Verify simplerisk/simplerisk-minimal image based on PHP 8.4 with Apache'
     uses: ./.github/workflows/verify-image_rw.yml
     with:
+      scan_label: "minimal-php84"
       context_path: "simplerisk-minimal/"
       dockerfile_path: "simplerisk-minimal/Dockerfile"
       image_tag: "simplerisk/simplerisk-minimal:testing"
@@ -49,10 +53,50 @@ jobs:
     name: 'Verify simplerisk/simplerisk-minimal image based on PHP 8.5 with Apache'
     uses: ./.github/workflows/verify-image_rw.yml
     with:
+      scan_label: "minimal-php85"
       context_path: "simplerisk-minimal/"
       dockerfile_path: "simplerisk-minimal/Dockerfile"
       image_tag: "simplerisk/simplerisk-minimal:testing"
       build_args: "php_version=8.5\nPREGA_BUNDLE_FALLBACK=true"
+
+  grype_slack_digest:
+    name: 'Post Grype findings digest to Slack'
+    # always(): a critical finding fails its scan job, and that is exactly when the
+    # digest matters. Fork PRs get no secrets, so the post is skipped for them.
+    if: ${{ always() }}
+    needs:
+      - simplerisk-jammy
+      - simplerisk-noble
+      - simplerisk-minimal-php83
+      - simplerisk-minimal-php84
+      - simplerisk-minimal-php85
+    runs-on: ubuntu-latest
+    env:
+      SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v6
+      - name: Download Grype reports
+        if: ${{ env.SLACK_WEBHOOK_URL != '' }}
+        uses: actions/download-artifact@v4
+        with:
+          pattern: grype-*
+          path: grype-reports
+      - name: Post digest to Slack
+        if: ${{ env.SLACK_WEBHOOK_URL != '' }}
+        env:
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+          REF: ${{ github.head_ref || github.ref_name }}
+        run: |
+          payload="$(./.github/scripts/grype-slack-digest.sh grype-reports)"
+          if [ -z "$payload" ]; then
+            echo "No Grype findings in any image; nothing to post."
+            exit 0
+          fi
+          curl -sSf -X POST -H 'Content-type: application/json' --data "$payload" "$SLACK_WEBHOOK_URL"
+      - name: Note skipped post
+        if: ${{ env.SLACK_WEBHOOK_URL == '' }}
+        run: echo "::notice::SLACK_WEBHOOK_URL is not available (unset, or a fork PR); skipping the Slack digest."
 
   generator_checks:
     name: 'Verify the Dockerfile generators (version/source-mode decoupling)'
