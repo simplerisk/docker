@@ -77,11 +77,24 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v6
       - name: Download Grype reports
-        if: ${{ env.SLACK_WEBHOOK_URL != '' }}
         uses: actions/download-artifact@v4
         with:
           pattern: grype-*
           path: grype-reports
+          # A scan that never produced a report has no artifact; the summary reports
+          # that as "did not complete" rather than failing here.
+        continue-on-error: true
+      - name: Summarize scan results
+        # One row per image, so an all-clear run still shows every scan finished.
+        run: |
+          mkdir -p grype-reports
+          ./.github/scripts/grype-scan-summary.sh grype-reports \
+            "jammy=${{ needs.simplerisk-jammy.result }}" \
+            "noble=${{ needs.simplerisk-noble.result }}" \
+            "minimal-php83=${{ needs.simplerisk-minimal-php83.result }}" \
+            "minimal-php84=${{ needs.simplerisk-minimal-php84.result }}" \
+            "minimal-php85=${{ needs.simplerisk-minimal-php85.result }}" \
+            | tee -a "$GITHUB_STEP_SUMMARY"
       - name: Post digest to Slack
         if: ${{ env.SLACK_WEBHOOK_URL != '' }}
         env:
