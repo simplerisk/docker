@@ -8,7 +8,11 @@
 # Env (all optional, used only for the message header/links):
 #   RUN_URL  link to the workflow run      REF  branch or PR ref
 #
-# Prints the JSON payload on stdout, or nothing when there are no findings.
+#   SUMMARY  optional per-image status lines (from grype-scan-summary.sh, slack format).
+#            When set, a payload is produced even with no findings (the all-clear
+#            table), so a quiet run still shows that its scans ran.
+#
+# Prints the JSON payload on stdout, or nothing when there are no findings and no SUMMARY.
 # Findings are de-duplicated across images (one line per package + vulnerability,
 # listing every image it affects), sorted by package, then severity (worst first),
 # then vulnerability ID, so the message reads as "what is vulnerable right now".
@@ -17,11 +21,12 @@ set -euo pipefail
 dir="${1:?usage: $0 <dir>}"
 shopt -s nullglob
 files=("$dir"/*/grype.json)
-[ "${#files[@]}" -gt 0 ] || exit 0
+[ "${#files[@]}" -gt 0 ] || [ -n "${SUMMARY:-}" ] || exit 0
 
 jq -n \
   --arg run_url "${RUN_URL:-}" \
   --arg ref "${REF:-}" \
+  --arg summary "${SUMMARY:-}" \
   --argjson max_blocks 45 \
   --argjson max_chars 2900 '
   def rank: {"Critical":0,"High":1,"Medium":2,"Low":3,"Negligible":4}[.] // 5;
@@ -39,7 +44,17 @@ jq -n \
       fixed: ((.vulnerability.fix.versions // []) | join(", ")),
       id: .vulnerability.id, sev: .vulnerability.severity,
       url: (.vulnerability.dataSource // ""), label: $label}] as $rows
-  | if ($rows | length) == 0 then empty else
+  | ($summary | if . == "" then [] else [{type: "section", text: {type: "mrkdwn", text: .}}] end) as $summary_blocks
+  | if ($rows | length) == 0 then
+      (if $summary == "" then empty else {
+        text: "Grype scan results",
+        blocks: (
+          [{type: "header", text: {type: "plain_text", text: "Grype scan results"}},
+           {type: "context", elements: [{type: "mrkdwn",
+             text: ("`\($ref)`" + (if $run_url != "" then " · <\($run_url)|workflow run>" else "" end))}]}]
+          + $summary_blocks)
+      } end)
+    else
     ($rows | group_by([.pkg, .id]) | map(. + [] | {
         pkg: .[0].pkg, id: .[0].id, sev: .[0].sev, url: .[0].url,
         ver: ([.[].ver] | unique | join(", ")),
@@ -60,6 +75,7 @@ jq -n \
              text: "Grype findings: \($vulns | length) unique (\($summary))"}},
            {type: "context", elements: [{type: "mrkdwn",
              text: ("`\($ref)`" + (if $run_url != "" then " · <\($run_url)|workflow run>" else "" end))}]}]
+          + $summary_blocks
           + ($chunks[:$max_blocks] | map({type: "section", text: {type: "mrkdwn", text: .}}))
           + (if ($chunks | length) > $max_blocks
              then [{type: "context", elements: [{type: "mrkdwn",
@@ -67,4 +83,4 @@ jq -n \
              else [] end))
       }
     end
-' "${files[@]}"
+' ${files[@]+"${files[@]}"}

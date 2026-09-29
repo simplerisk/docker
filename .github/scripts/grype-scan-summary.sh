@@ -15,10 +15,14 @@ set -euo pipefail
 dir="${1:?usage: $0 <dir> <label>=<result>...}"
 shift
 
-echo "### Grype scan results"
-echo
-echo "| Image | Result |"
-echo "| --- | --- |"
+# SUMMARY_FORMAT=slack prints mrkdwn lines for the Slack digest instead of a table.
+format="${SUMMARY_FORMAT:-markdown}"
+if [ "$format" != "slack" ]; then
+  echo "### Grype scan results"
+  echo
+  echo "| Image | Result |"
+  echo "| --- | --- |"
+fi
 for pair in "$@"; do
   label="${pair%%=*}"
   result="${pair#*=}"
@@ -37,5 +41,9 @@ for pair in "$@"; do
       status="⚠️ ${count} findings (${detail})"
     fi
   fi
-  echo "| \`${label}\` | ${status} |"
+  if [ "$format" = "slack" ]; then
+    echo "\`${label}\`  ${status}"
+  else
+    echo "| \`${label}\` | ${status} |"
+  fi
 done

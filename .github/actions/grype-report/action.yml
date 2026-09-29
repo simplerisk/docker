@@ -13,6 +13,12 @@ inputs:
     description: Slack incoming webhook. When empty, the Slack post is skipped.
     required: false
     default: ''
+  always_post:
+    description: >
+      'true' posts the per-image table to Slack even when there are no findings, so a
+      quiet run still shows that its scans ran. Otherwise Slack only hears about findings.
+    required: false
+    default: 'false'
   context:
     description: Text shown in the Slack message (workflow name and branch).
     required: false
@@ -45,7 +51,15 @@ runs:
         SLACK_WEBHOOK_URL: ${{ inputs.slack_webhook_url }}
         RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
         REF: ${{ inputs.context }}
+        RESULTS: ${{ inputs.results }}
+        ALWAYS_POST: ${{ inputs.always_post }}
       run: |
+        if [ "$ALWAYS_POST" = "true" ]; then
+          mkdir -p grype-reports
+          mapfile -t pairs < <(printf '%s\n' "$RESULTS" | sed '/^[[:space:]]*$/d')
+          SUMMARY="$(SUMMARY_FORMAT=slack "${{ github.action_path }}/../../scripts/grype-scan-summary.sh" grype-reports "${pairs[@]}")"
+          export SUMMARY
+        fi
         payload="$("${{ github.action_path }}/../../scripts/grype-slack-digest.sh" grype-reports)"
         if [ -z "$payload" ]; then
           echo "No Grype findings in any image; nothing to post."
