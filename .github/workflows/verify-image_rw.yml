@@ -9,6 +9,10 @@ on:
       dockerfile_path:
         required: true
         type: string
+      scan_label:
+        required: true
+        type: string
+        description: Unique label for this scan; names the uploaded grype report artifact.
       image_tag:
         required: true
         type: string
@@ -52,3 +56,11 @@ jobs:
             ' grype.json | column -t -s "$(printf '\t')"
           fi
           exit "$rc"
+      - name: Upload Grype report
+        if: ${{ always() }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: grype-${{ inputs.scan_label }}
+          path: grype.json
+          if-no-files-found: ignore
+          retention-days: 1
