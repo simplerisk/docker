@@ -79,6 +79,7 @@ jobs:
         with:
           slack_webhook_url: ${{ secrets.SLACK_WEBHOOK_URL }}
           context: ${{ github.workflow }} · ${{ github.head_ref || github.ref_name }}
+          always_post: 'true'
           results: |
             jammy=${{ needs.simplerisk-jammy.result }}
             noble=${{ needs.simplerisk-noble.result }}

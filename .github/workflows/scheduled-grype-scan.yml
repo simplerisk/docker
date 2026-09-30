@@ -51,6 +51,7 @@ jobs:
         with:
           slack_webhook_url: ${{ secrets.SLACK_WEBHOOK_URL }}
           context: ${{ github.workflow }} · testing
+          always_post: 'true'
           results: |
             testing-minimal=${{ needs.scan-minimal.result }}
             testing-full=${{ needs.scan-full.result }}
