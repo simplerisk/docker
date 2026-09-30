@@ -101,6 +101,7 @@ RUN dpkg-divert --local --rename /usr/bin/ischroot && \\
                                                                               ufw \\
                                                                               rsyslog \\
                                                                               logrotate \\
+                                                                              iputils-ping \\
                                                                               curl \\
                                                                               ca-certificates \\
                                                                               supervisor && \\
