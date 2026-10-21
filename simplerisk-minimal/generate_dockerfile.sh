@@ -86,6 +86,7 @@ RUN apt-get update && \\
         ca-certificates \\
         rsyslog \\
         logrotate \\
+        iputils-ping \\
         curl && \\
     if [ "\$TARGETARCH" = "arm64" ]; then \\
         apt-get install -y --no-install-recommends default-mysql-client; \\

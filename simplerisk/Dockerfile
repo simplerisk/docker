@@ -14,13 +14,13 @@ SHELL [ "/bin/ash", "-eo", "pipefail", "-c" ]
 # -fsSL on the SQL fetch too: without --fail, curl writes the 404 body into
 # /simplerisk.sql and the image ships an HTML error page as its schema.
 COPY common/download_and_verify_bundle.sh /download_and_verify_bundle.sh
-RUN PREGA_BUNDLE_FALLBACK="$PREGA_BUNDLE_FALLBACK" sh /download_and_verify_bundle.sh 20260917-001 && \
-    curl -fsSL "https://github.com/simplerisk/database/raw/master/simplerisk-$DB_LANG-20260917-001.sql" > /simplerisk.sql
+RUN PREGA_BUNDLE_FALLBACK="$PREGA_BUNDLE_FALLBACK" sh /download_and_verify_bundle.sh 20261020-001 && \
+    curl -fsSL "https://github.com/simplerisk/database/raw/master/simplerisk-$DB_LANG-20261020-001.sql" > /simplerisk.sql
 
 # Using Ubuntu image
 FROM ubuntu:${ubuntu_version_code}
 
-ENV version=20260917-001
+ENV version=20261020-001
 
 # Maintained by SimpleRisk
 LABEL maintainer="Simplerisk <support@simplerisk.com>"
@@ -41,6 +41,7 @@ RUN mkdir -p /configurations \
 RUN dpkg-divert --local --rename /usr/bin/ischroot && \
     ln -sf /bin/true /usr/bin/ischroot && \
     apt-get update && \
+    DEBIAN_FRONTEND=noninteractive apt-get -y upgrade && \
     DEBIAN_FRONTEND=noninteractive apt-get -y install --no-install-recommends apache2 \
                                                                               php \
                                                                               php-mysql \
@@ -64,6 +65,7 @@ RUN dpkg-divert --local --rename /usr/bin/ischroot && \
                                                                               ufw \
                                                                               rsyslog \
                                                                               logrotate \
+                                                                              iputils-ping \
                                                                               curl \
                                                                               ca-certificates \
                                                                               supervisor && \

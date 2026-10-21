@@ -9,6 +9,10 @@ on:
       dockerfile_path:
         required: true
         type: string
+      scan_label:
+        required: true
+        type: string
+        description: Unique label for this scan; names the uploaded grype report artifact.
       image_tag:
         required: true
         type: string
@@ -34,7 +38,8 @@ jobs:
           image: ${{ inputs.image_tag }}
           failure-threshold: FATAL
           dockle-host: "unix:///var/run/docker.sock"
-      - name: Install Grype
-        run: curl -sSfL https://raw.githubusercontent.com/anchore/grype/main/install.sh | sh -s -- -b /usr/local/bin
       - name: Scan vulnerabilities with Grype
-        run: grype -o table --fail-on critical --only-fixed ${{ inputs.image_tag }}
+        uses: ./.github/actions/grype-scan
+        with:
+          image: ${{ inputs.image_tag }}
+          label: ${{ inputs.scan_label }}
