@@ -44,6 +44,13 @@ else
   echo "skip: php not installed (PHP round-trip checks)"
 fi
 
+# --- apply_mail_setting must not force a non-TLS connection (breaks caching_sha2_password)
+if sed -n '/^apply_mail_setting(){/,/^}/p' common/entrypoint.sh | grep -q -- '--ssl-mode=DISABLED'; then
+  bad "apply_mail_setting forces --ssl-mode=DISABLED"
+else
+  ok "apply_mail_setting does not force --ssl-mode=DISABLED"
+fi
+
 # --- nothing in the nasty value may have been executed
 [ ! -e "$work/PWNED" ] && [ ! -e "$work/PWNED2" ] && ok "no command substitution executed" || bad "injected command executed"
 

@@ -332,13 +332,15 @@ set_cron(){
 
 apply_mail_setting(){
 	local db_key="$1" value="$2"
-	# Escape backslashes then single quotes for a MySQL single-quoted string literal
 	local escaped
-	escaped=$(printf '%s' "$value" | sed 's/\\/\\\\/g' | sed "s/'/\\\\'/g")
+	escaped=$(sql_str_escape "$value")
+	# No --ssl-mode override: the client's default (PREFERRED) negotiates TLS when the
+	# server offers it. Forcing DISABLED made MySQL 8's caching_sha2_password refuse the
+	# first login ("Authentication requires secure connection"), silently skipping
+	# every mail setting that needs the app user's password.
 	MYSQL_PWD="$SIMPLERISK_DB_PASSWORD" mysql -u "$SIMPLERISK_DB_USERNAME" \
 	      -h "$SIMPLERISK_DB_HOSTNAME" \
 	      -P "$SIMPLERISK_DB_PORT" \
-	      --ssl-mode=DISABLED \
 	      "$SIMPLERISK_DB_DATABASE" \
 	      -e "UPDATE settings SET value='${escaped}' WHERE name='${db_key}';" \
 	    || print_log "mail_settings:warn" "Failed to update ${db_key}"
