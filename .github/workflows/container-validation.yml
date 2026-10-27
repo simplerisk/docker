@@ -104,6 +104,9 @@ jobs:
       - name: simplerisk (full-stack) generator
         run: ./simplerisk/test_generate_dockerfile.sh
 
+      - name: simplerisk-minimal Apache worker setting
+        run: ./simplerisk-minimal/test_set_apache_workers.sh
+
       - name: Fail if a generator left the committed Dockerfile modified
         run: |
           set -euo pipefail

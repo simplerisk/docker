@@ -101,6 +101,7 @@ The entrypoint script handles:
 | `SIMPLERISK_DB_USERNAME/PASSWORD/DATABASE` | DB credentials |
 | `SIMPLERISK_CRON_SETUP` | Enable/disable PHP cron (default: enabled) |
 | `SIMPLERISK_CSRF_SECRET` | Override auto-generated CSRF secret |
+| `APACHE_MAX_REQUEST_WORKERS` | Optional cap (1-2000) on simultaneous Apache workers, written by the entrypoint's `set_apache_workers`; unset keeps Apache's default of 150. Each request holds a database connection, so size it against the database's `max_connections` and the replica count |
 | `ADMIN_USERNAME` | Username for initial admin user (only during `DB_SETUP`; idempotent) |
 | `ADMIN_PASSWORD` | Password for initial admin user |
 | `ADMIN_EMAIL` | Email for initial admin user |
