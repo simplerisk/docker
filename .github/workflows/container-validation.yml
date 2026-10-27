@@ -104,6 +104,12 @@ jobs:
       - name: simplerisk (full-stack) generator
         run: ./simplerisk/test_generate_dockerfile.sh
 
+      - name: simplerisk-minimal *_FILE secrets support
+        run: ./simplerisk-minimal/test_file_env.sh
+
+      - name: simplerisk-minimal credential escaping
+        run: ./simplerisk-minimal/test_escaping.sh
+
       - name: simplerisk-minimal Apache worker setting
         run: ./simplerisk-minimal/test_set_apache_workers.sh
 
