@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # Regression checks for the *_FILE secrets support in common/entrypoint.sh.
 set -uo pipefail
-cd "$(dirname "$(readlink -f "$0")")"
+cd "$(dirname "$(readlink -f "$0")")" || exit 1
 
 fail=0
 ok()   { echo "ok: $1"; }

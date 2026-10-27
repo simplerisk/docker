@@ -104,6 +104,9 @@ jobs:
       - name: simplerisk (full-stack) generator
         run: ./simplerisk/test_generate_dockerfile.sh
 
+      - name: simplerisk-minimal *_FILE secrets support
+        run: ./simplerisk-minimal/test_file_env.sh
+
       - name: Fail if a generator left the committed Dockerfile modified
         run: |
           set -euo pipefail
