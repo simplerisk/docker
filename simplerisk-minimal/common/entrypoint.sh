@@ -247,23 +247,34 @@ set_apache_workers(){
 		return 0
 	fi
 
-	if ! [[ "$workers" =~ ^[0-9]+$ ]] || [ "$((10#$workers))" -lt 1 ] || [ "$((10#$workers))" -gt 2000 ]; then
+	# Strip leading zeros and bound the length before any arithmetic: bash
+	# arithmetic wraps at 64 bits, so a very long digit string could otherwise
+	# wrap into the valid range
+	local digits="${workers#"${workers%%[!0]*}"}"
+
+	if ! [[ "$workers" =~ ^[0-9]+$ ]] || [ -z "$digits" ] || [ "${#digits}" -gt 4 ] || [ "$digits" -gt 2000 ]; then
 		print_log "apache_setup:warn" "APACHE_MAX_REQUEST_WORKERS must be a whole number between 1 and 2000 -- leaving Apache's default."
 		return 0
 	fi
 
-	workers=$((10#$workers))
+	workers="$digits"
 
-	{
-		echo "# Written by the container entrypoint from APACHE_MAX_REQUEST_WORKERS"
-		echo "<IfModule mpm_prefork_module>"
-		# ServerLimit defaults to 256 and silently caps MaxRequestWorkers
-		if [ "$workers" -gt 256 ]; then
-			echo "	ServerLimit ${workers}"
-		fi
-		echo "	MaxRequestWorkers ${workers}"
-		echo "</IfModule>"
-	} > "$conf"
+	local content="# Written by the container entrypoint from APACHE_MAX_REQUEST_WORKERS"$'\n'"<IfModule mpm_prefork_module>"$'\n'
+	# ServerLimit defaults to 256 and silently caps MaxRequestWorkers
+	if [ "$workers" -gt 256 ]; then
+		content+=$'\t'"ServerLimit ${workers}"$'\n'
+	fi
+	content+=$'\t'"MaxRequestWorkers ${workers}"$'\n'"</IfModule>"
+
+	# Do not claim a cap that was not applied: if the file cannot be written
+	# (for example a read-only root filesystem), say so and keep the default.
+	# A single printf is used because a failed redirect on a { } group does not
+	# reliably report failure.
+	if ! printf '%s\n' "$content" > "$conf"; then
+		print_log "apache_setup:error" "Could not write ${conf} -- leaving Apache's default."
+		rm -f "$conf" || true
+		return 0
+	fi
 
 	print_log "apache_setup:info" "Apache will serve at most ${workers} requests at once."
 }
