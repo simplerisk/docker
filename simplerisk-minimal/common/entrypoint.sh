@@ -20,11 +20,59 @@ generate_random_password() {
 }
 
 # Escape a value for use as the replacement in a sed s|...|VALUE|... command.
-# Escapes \, &, and | so they aren't interpreted as sed metacharacters.
-# Required for any env-var-derived value that may contain / (which would
-# otherwise terminate the / delimiter the sed substitution used to use).
+# Escapes \, &, | and newlines so they aren't interpreted as sed metacharacters
+# or terminate the s command. Required for any env-var-derived value that may
+# contain / (which would otherwise terminate the / delimiter the sed
+# substitution used to use). Done with parameter expansion (not a sed pipe) so
+# embedded newlines survive.
 sed_escape() {
-	printf '%s' "$1" | sed -e 's/[\\&|]/\\&/g'
+	local v="$1"
+	v="${v//\\/\\\\}"
+	v="${v//&/\\&}"
+	v="${v//|/\\|}"
+	v="${v//$'\n'/\\$'\n'}"
+	printf '%s' "$v"
+}
+
+# Escape a value for a PHP single-quoted string literal ('...'): only \ and '
+# are special there, so a value can neither close the string nor inject code.
+php_sq_escape() {
+	local v="$1"
+	v="${v//\\/\\\\}"
+	v="${v//\'/\\\'}"
+	printf '%s' "$v"
+}
+
+# Escape a value for a MySQL single-quoted string literal ('...').
+sql_str_escape() {
+	local v="$1"
+	v="${v//\\/\\\\}"
+	v="${v//\'/\\\'}"
+	printf '%s' "$v"
+}
+
+# Escape a value for a MySQL ANSI_QUOTES identifier ("...").
+sql_ident_escape() {
+	local v="$1"
+	printf '%s' "${v//\"/\"\"}"
+}
+
+# Rewrite define('NAME', '...'); in $CONFIG_PATH. The value is PHP-escaped first
+# (so it cannot break out of the string in config.php) and then sed-escaped.
+config_define() {
+	local name="$1" value="$2"
+	sed -i "s|\('${name}', '\).*\(');\)|\1$(sed_escape "$(php_sq_escape "$value")")\2|g" "$CONFIG_PATH"
+}
+
+# Run the mysql client as the privileged setup user, reading SQL from stdin.
+# Arguments are passed as an argv array (never through a shell string), and the
+# password via MYSQL_PWD, so no value is subject to shell interpretation.
+mysql_setup() {
+	local -a flags=()
+	# DB_SSL_FLAGS is an internal constant ("--ssl-mode=... --enable-cleartext-plugin")
+	[ -n "${DB_SSL_FLAGS:-}" ] && read -ra flags <<< "$DB_SSL_FLAGS"
+	MYSQL_PWD="$DB_SETUP_PASS" mysql ${flags[@]+"${flags[@]}"} \
+		-u "$DB_SETUP_USER" -h "$SIMPLERISK_DB_HOSTNAME" -P "$SIMPLERISK_DB_PORT"
 }
 
 fatal_error(){
@@ -74,7 +122,7 @@ set_db_password(){
 	else
 		SIMPLERISK_DB_PASSWORD=${SIMPLERISK_DB_PASSWORD:-simplerisk}
 	fi
-	sed -i "s|\('DB_PASSWORD', '\).*\(');\)|\1$(sed_escape "$SIMPLERISK_DB_PASSWORD")\2|g" "$CONFIG_PATH"
+	config_define DB_PASSWORD "$SIMPLERISK_DB_PASSWORD"
 }
 
 validate_db_setup(){
@@ -128,28 +176,28 @@ set_config(){
 	# Replacing config variables. Values are run through sed_escape so paths
 	# or other inputs containing \, &, or | don't break the substitution.
 	SIMPLERISK_DB_HOSTNAME=${SIMPLERISK_DB_HOSTNAME:-localhost}
-	sed -i "s|\('DB_HOSTNAME', '\).*\(');\)|\1$(sed_escape "$SIMPLERISK_DB_HOSTNAME")\2|g" "$CONFIG_PATH"
+	config_define DB_HOSTNAME "$SIMPLERISK_DB_HOSTNAME"
 
 	SIMPLERISK_DB_PORT=${SIMPLERISK_DB_PORT:-3306}
-	sed -i "s|\('DB_PORT', '\).*\(');\)|\1$(sed_escape "$SIMPLERISK_DB_PORT")\2|g" "$CONFIG_PATH"
+	config_define DB_PORT "$SIMPLERISK_DB_PORT"
 
 	SIMPLERISK_DB_USERNAME=${SIMPLERISK_DB_USERNAME:-simplerisk}
-	sed -i "s|\('DB_USERNAME', '\).*\(');\)|\1$(sed_escape "$SIMPLERISK_DB_USERNAME")\2|g" "$CONFIG_PATH"
+	config_define DB_USERNAME "$SIMPLERISK_DB_USERNAME"
 
 	set_db_password
 
 	SIMPLERISK_DB_DATABASE=${SIMPLERISK_DB_DATABASE:-simplerisk}
-	sed -i "s|\('DB_DATABASE', '\).*\(');\)|\1$(sed_escape "$SIMPLERISK_DB_DATABASE")\2|g" "$CONFIG_PATH"
+	config_define DB_DATABASE "$SIMPLERISK_DB_DATABASE"
 
 	SIMPLERISK_DB_FOR_SESSIONS=${SIMPLERISK_DB_FOR_SESSIONS:-true}
-	sed -i "s|\('USE_DATABASE_FOR_SESSIONS', '\).*\(');\)|\1$(sed_escape "$SIMPLERISK_DB_FOR_SESSIONS")\2|g" "$CONFIG_PATH"
+	config_define USE_DATABASE_FOR_SESSIONS "$SIMPLERISK_DB_FOR_SESSIONS"
 
 	if [ -n "${SIMPLERISK_DB_SSL_CERT_PATH:-}" ]; then
 		# The sample ships DB_SSL_CERTIFICATE_PATH as a commented-out line so
 		# that operators who don't set the env var don't end up requesting SSL
 		# against a non-existent cert path. When a path is supplied, rewrite
 		# the whole line (commented or not) as an active define.
-		escaped_ssl_path=$(sed_escape "$SIMPLERISK_DB_SSL_CERT_PATH")
+		escaped_ssl_path=$(sed_escape "$(php_sq_escape "$SIMPLERISK_DB_SSL_CERT_PATH")")
 		sed -i "s|^[[:space:]]*\(//[[:space:]]*\)\{0,1\}define('DB_SSL_CERTIFICATE_PATH', '[^']*');|define('DB_SSL_CERTIFICATE_PATH', '${escaped_ssl_path}');|" "$CONFIG_PATH"
 	fi
 
@@ -234,7 +282,9 @@ set_csrf_secret(){
 	CSRF_SECRET_PATH='/var/www/simplerisk/vendor/simplerisk/csrf-magic/csrf-secret.php'
 
 	# If a SIMPLERISK_CSRF_SECRET value was specified create the csrf-secret.php file with that value
-	[ -n "${SIMPLERISK_CSRF_SECRET:-}" ] && echo "<?php \$secret = \"${SIMPLERISK_CSRF_SECRET}\"; ?>" > "$CSRF_SECRET_PATH";
+	# (single-quoted PHP string, escaped, so the value cannot inject code or be interpolated)
+	# shellcheck disable=SC2015
+	[ -n "${SIMPLERISK_CSRF_SECRET:-}" ] && printf "<?php \$secret = '%s'; ?>\n" "$(php_sq_escape "$SIMPLERISK_CSRF_SECRET")" > "$CSRF_SECRET_PATH" || true
 }
 
 set_ssl_certificate(){
@@ -285,8 +335,7 @@ apply_mail_setting(){
 	# Escape backslashes then single quotes for a MySQL single-quoted string literal
 	local escaped
 	escaped=$(printf '%s' "$value" | sed 's/\\/\\\\/g' | sed "s/'/\\\\'/g")
-	mysql -u "$SIMPLERISK_DB_USERNAME" \
-	      -p"$SIMPLERISK_DB_PASSWORD" \
+	MYSQL_PWD="$SIMPLERISK_DB_PASSWORD" mysql -u "$SIMPLERISK_DB_USERNAME" \
 	      -h "$SIMPLERISK_DB_HOSTNAME" \
 	      -P "$SIMPLERISK_DB_PORT" \
 	      --ssl-mode=DISABLED \
@@ -387,16 +436,13 @@ delete_db(){
 	print_log "db_deletion: prepare" "Performing database deletion"
 
 	# Pass password via env var to avoid shell interpretation of special characters in the value
-	export MYSQL_PWD="$DB_SETUP_PASS"
-	# Needed to separate the GRANT statement from the rest because it was providing a syntax error
-	exec_cmd "mysql ${DB_SSL_FLAGS:-} -u $DB_SETUP_USER -h$SIMPLERISK_DB_HOSTNAME -P$SIMPLERISK_DB_PORT <<EOSQL
+	mysql_setup <<EOSQL || fatal_error "Was not able to apply settings on database. Check error above. Exiting."
 	SET sql_mode = 'ANSI_QUOTES';
-	DROP DATABASE \"${SIMPLERISK_DB_DATABASE}\";
+	DROP DATABASE "$(sql_ident_escape "$SIMPLERISK_DB_DATABASE")";
 	USE mysql;
-	DROP USER '${SIMPLERISK_DB_USERNAME}'@'%';
+	DROP USER '$(sql_str_escape "$SIMPLERISK_DB_USERNAME")'@'%';
 	FLUSH PRIVILEGES;
-EOSQL" "Was not able to apply settings on database. Check error above. Exiting."
-	unset MYSQL_PWD
+EOSQL
 
 	print_log "db_deletion: done" "Database deletion performed. Exiting."
 	exit 0
@@ -419,22 +465,24 @@ db_setup(){
 	fi
 
 	print_log "initial_setup:info" "Applying changes to MySQL database... (MySQL error will be printed to console as guidance)"
-	# Pass password via env var to avoid shell interpretation of special characters in the value
-	export MYSQL_PWD="$DB_SETUP_PASS"
-	# Using sql_mode = ANSI_QUOTES to avoid using backticks
-	exec_cmd "mysql ${DB_SSL_FLAGS:-} -u $DB_SETUP_USER -h$SIMPLERISK_DB_HOSTNAME -P$SIMPLERISK_DB_PORT <<EOSQL
+	# Using sql_mode = ANSI_QUOTES for identifiers; string values are single-quoted
+	# and escaped, so no value is interpreted by a shell or by the SQL parser.
+	local db_ident user_str pass_str
+	db_ident=$(sql_ident_escape "$SIMPLERISK_DB_DATABASE")
+	user_str=$(sql_str_escape "$SIMPLERISK_DB_USERNAME")
+	pass_str=$(sql_str_escape "$SIMPLERISK_DB_PASSWORD")
+	mysql_setup <<EOSQL || fatal_error "Was not able to apply settings on database. Check error above. Exiting."
 	SET sql_mode = 'ANSI_QUOTES';
-	CREATE DATABASE \"${SIMPLERISK_DB_DATABASE}\";
-	USE \"${SIMPLERISK_DB_DATABASE}\";
+	CREATE DATABASE "${db_ident}";
+	USE "${db_ident}";
 	\. ${SCHEMA_FILE}
-	CREATE USER \"${SIMPLERISK_DB_USERNAME}\"@\"%\" IDENTIFIED BY \"${SIMPLERISK_DB_PASSWORD}\";
-EOSQL" "Was not able to apply settings on database. Check error above. Exiting."
+	CREATE USER '${user_str}'@'%' IDENTIFIED BY '${pass_str}';
+EOSQL
 	# Needed to separate the GRANT statement from the rest because it was providing a syntax error
-	exec_cmd "mysql ${DB_SSL_FLAGS:-} -u $DB_SETUP_USER -h$SIMPLERISK_DB_HOSTNAME -P$SIMPLERISK_DB_PORT <<EOSQL
+	mysql_setup <<EOSQL || fatal_error "Was not able to apply settings on database. Check error above. Exiting."
 	SET sql_mode = 'ANSI_QUOTES';
-	GRANT SELECT, INSERT, UPDATE, DELETE, CREATE, DROP, REFERENCES, INDEX, ALTER ON \"${SIMPLERISK_DB_DATABASE}\".* TO \"${SIMPLERISK_DB_USERNAME}\"@\"%\";
-EOSQL" "Was not able to apply settings on database. Check error above. Exiting."
-	unset MYSQL_PWD
+	GRANT SELECT, INSERT, UPDATE, DELETE, CREATE, DROP, REFERENCES, INDEX, ALTER ON "${db_ident}".* TO '${user_str}'@'%';
+EOSQL
 
 	print_log "initial_setup:info" "Setup has been applied successfully!"
 	print_log "initial_setup:info" "Removing schema file..."
