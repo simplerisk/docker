@@ -314,6 +314,56 @@ set_ssl_certificate(){
 	exec_cmd "chmod 600 $key" "Failed to set permissions on TLS private key. Exiting."
 }
 
+set_apache_workers(){
+	# Optional cap on how many requests Apache serves at once. Every request
+	# holds a database connection, so the default of 150 workers can exceed a
+	# small database's max_connections (a db.t3.micro allows about 60), and
+	# several containers sharing one database multiply it. The right number
+	# depends on the database and the replica count, which the image cannot
+	# know, so it is left to the operator. Unset keeps Apache's default.
+	local workers="${APACHE_MAX_REQUEST_WORKERS:-}"
+	local conf="${APACHE_MPM_CONF_PATH:-/etc/apache2/conf-enabled/simplerisk-mpm.conf}"
+
+	# Remove what a previous start wrote, so unsetting the variable on a
+	# restarted container goes back to Apache's default
+	rm -f "$conf"
+
+	if [ -z "$workers" ]; then
+		return 0
+	fi
+
+	# Strip leading zeros and bound the length before any arithmetic: bash
+	# arithmetic wraps at 64 bits, so a very long digit string could otherwise
+	# wrap into the valid range
+	local digits="${workers#"${workers%%[!0]*}"}"
+
+	if ! [[ "$workers" =~ ^[0-9]+$ ]] || [ -z "$digits" ] || [ "${#digits}" -gt 4 ] || [ "$digits" -gt 2000 ]; then
+		print_log "apache_setup:warn" "APACHE_MAX_REQUEST_WORKERS must be a whole number between 1 and 2000 -- leaving Apache's default."
+		return 0
+	fi
+
+	workers="$digits"
+
+	local content="# Written by the container entrypoint from APACHE_MAX_REQUEST_WORKERS"$'\n'"<IfModule mpm_prefork_module>"$'\n'
+	# ServerLimit defaults to 256 and silently caps MaxRequestWorkers
+	if [ "$workers" -gt 256 ]; then
+		content+=$'\t'"ServerLimit ${workers}"$'\n'
+	fi
+	content+=$'\t'"MaxRequestWorkers ${workers}"$'\n'"</IfModule>"
+
+	# Do not claim a cap that was not applied: if the file cannot be written
+	# (for example a read-only root filesystem), say so and keep the default.
+	# A single printf is used because a failed redirect on a { } group does not
+	# reliably report failure.
+	if ! printf '%s\n' "$content" > "$conf"; then
+		print_log "apache_setup:error" "Could not write ${conf} -- leaving Apache's default."
+		rm -f "$conf" || true
+		return 0
+	fi
+
+	print_log "apache_setup:info" "Apache will serve at most ${workers} requests at once."
+}
+
 set_cron(){
 	# If SIMPLERISK_CRON_SETUP was passed and it is set to disabled
 	if [[ -n "${SIMPLERISK_CRON_SETUP:-}" && "${SIMPLERISK_CRON_SETUP:-}" = disabled* ]]; then
@@ -581,6 +631,8 @@ _main() {
 	else
 		print_log "initial_setup:info" "No DB env vars provided; config.php will not be written. The SimpleRisk web installer will run at first request."
 	fi
+
+	set_apache_workers
 
 	set_cron
 
