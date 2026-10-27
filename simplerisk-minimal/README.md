@@ -75,6 +75,7 @@ docker run -d --name simplerisk -e SIMPLERISK_DB_PASSWORD=pass -e SIMPLERISK_DB_
 | `SIMPLERISK_DB_SSL_CERT_PATH` | Empty string (`''`) | Path where SSL certificates, to contact the database, are located |
 | `SIMPLERISK_CRON_SETUP` | `enabled` | Install the cron job to run in this Docker container |
 | `SIMPLERISK_CSRF_SECRET` | Auto-generated | Override the auto-generated CSRF secret |
+| `APACHE_MAX_REQUEST_WORKERS` | Apache default (150) | Maximum number of requests Apache serves at once (a whole number from 1 to 2000). Each request holds a database connection, so set this so that `replicas x APACHE_MAX_REQUEST_WORKERS` stays under the database's `max_connections`, leaving room for the cron jobs and for the second connection used when `SIMPLERISK_DB_FOR_SESSIONS` is `true`. Each worker is a full PHP process, so also keep it within the container's memory limit. It applies to the Apache prefork MPM the image ships with. An invalid value is ignored with a warning in the container log |
 | `ADMIN_USERNAME` | — | Username for an initial admin user created once during `DB_SETUP`. Requires `ADMIN_PASSWORD` and `ADMIN_EMAIL`. Skipped if the username already exists |
 | `ADMIN_PASSWORD` | — | Password for the initial admin user |
 | `ADMIN_EMAIL` | — | Email address for the initial admin user |
