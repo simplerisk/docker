@@ -80,6 +80,33 @@ docker run -d --name simplerisk -e SIMPLERISK_DB_PASSWORD=pass -e SIMPLERISK_DB_
 | `ADMIN_EMAIL` | — | Email address for the initial admin user |
 | `ADMIN_NAME` | `Administrator` | Display name for the initial admin user |
 
+## Secrets (`_FILE` variables)
+
+To keep credentials out of the container environment (and out of compose files), the following variables can instead be supplied as a path to a file, by appending `_FILE` to the name. This works with Docker secrets (`/run/secrets/<name>`), Kubernetes secret mounts, or any mounted file. The entrypoint reads the file, trailing newlines are stripped, and the `_FILE` variable is removed before Apache starts.
+
+`DB_SETUP_USER`, `DB_SETUP_PASS`, `SIMPLERISK_DB_HOSTNAME`, `SIMPLERISK_DB_PORT`, `SIMPLERISK_DB_USERNAME`, `SIMPLERISK_DB_PASSWORD`, `SIMPLERISK_DB_DATABASE`, `SIMPLERISK_CSRF_SECRET`, `MAIL_USERNAME`, `MAIL_PASSWORD`, `ADMIN_USERNAME`, `ADMIN_PASSWORD`
+
+Setting both `VAR` and `VAR_FILE` is an error, as is a `_FILE` path that is not a readable file; the container exits with a message.
+
+```yaml
+services:
+  simplerisk:
+    image: simplerisk/simplerisk-minimal
+    environment:
+      - DB_SETUP=automatic
+      - DB_SETUP_PASS_FILE=/run/secrets/dbms_root_pass
+      - SIMPLERISK_DB_PASSWORD_FILE=/run/secrets/db_pass
+    secrets:
+      - dbms_root_pass
+      - db_pass
+
+secrets:
+  dbms_root_pass:
+    file: ./dbms_root_pass.txt
+  db_pass:
+    file: ./db_pass.txt
+```
+
 ## Mail settings
 
 The following environment variables configure the outbound mail settings stored in the SimpleRisk database (`settings` table). They are applied on every container start, so changing a value and restarting the container is all that is needed to update the configuration. Invalid values are silently skipped with a warning in the container logs.

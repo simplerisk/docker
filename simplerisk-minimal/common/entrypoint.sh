@@ -32,6 +32,41 @@ fatal_error(){
 	exit 1
 }
 
+# Docker/Kubernetes secrets support: if VAR_FILE is set, read VAR from the file it
+# points to (typically /run/secrets/<name>), so credentials need not live in the
+# container's environment. Setting both VAR and VAR_FILE is an error. The _FILE
+# variable is unset afterwards so it is not inherited by child processes.
+file_env() {
+	local var="$1"
+	local file_var="${var}_FILE"
+	local var_val="${!var:-}"
+	local file_val="${!file_var:-}"
+
+	if [ -n "$var_val" ] && [ -n "$file_val" ]; then
+		fatal_error "Both $var and $file_var are set (but are exclusive)."
+	fi
+
+	if [ -n "$file_val" ]; then
+		[ -r "$file_val" ] || fatal_error "$file_var points to '$file_val', which is not a readable file."
+		# $(< file) strips trailing newlines, which secret files commonly end with
+		export "$var=$(< "$file_val")"
+	fi
+	unset "$file_var"
+}
+
+load_file_envs() {
+	local var
+	for var in \
+		DB_SETUP_USER DB_SETUP_PASS \
+		SIMPLERISK_DB_HOSTNAME SIMPLERISK_DB_PORT SIMPLERISK_DB_USERNAME \
+		SIMPLERISK_DB_PASSWORD SIMPLERISK_DB_DATABASE \
+		SIMPLERISK_CSRF_SECRET \
+		MAIL_USERNAME MAIL_PASSWORD \
+		ADMIN_USERNAME ADMIN_PASSWORD; do
+		file_env "$var"
+	done
+}
+
 set_db_password(){
 	if [[ "${DB_SETUP:-}" = automatic* ]]; then
 		# shellcheck disable=SC2015
@@ -470,6 +505,8 @@ unset_variables() {
 }
 
 _main() {
+	load_file_envs
+
 	set_ssl_certificate
 
 	# Detect whether the operator has opted into Docker-managed config
