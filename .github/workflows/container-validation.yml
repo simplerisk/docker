@@ -110,6 +110,9 @@ jobs:
       - name: simplerisk-minimal credential escaping
         run: ./simplerisk-minimal/test_escaping.sh
 
+      - name: simplerisk-minimal DB TLS flags per mysql client
+        run: ./simplerisk-minimal/test_db_ssl_flags.sh
+
       - name: simplerisk-minimal Apache worker setting
         run: ./simplerisk-minimal/test_set_apache_workers.sh
 
