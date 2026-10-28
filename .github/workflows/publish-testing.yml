@@ -14,6 +14,22 @@ name: Publish testing images + promote
 # same recipe the code-development `test_docker_deploy` smoke uses, but pushed
 # to Docker Hub.
 #
+# The minimal image is built NATIVELY per architecture: a matrix of
+# {php83, php84, php85} x {amd64 on ubuntu-latest, arm64 on ubuntu-24.04-arm}
+# pushes each by digest, then merge-minimal stitches the two digests of each PHP
+# variant into one multi-arch tag with `docker buildx imagetools create`. The
+# arm64 half used to be QEMU-emulated in one job (about 27 min per variant, 88 min
+# total, 24 of every 27 minutes being the PHP extension compile); natively it is
+# about the amd64 time (about 2.5 min of build work per variant). The published
+# tags, their multi-arch shape (amd64 + arm64 + attestations), the Grype gate and
+# the single SSM promote are unchanged.
+#
+# Dry run: dispatch this workflow from `testing` with dry_run=true to build,
+# merge and scan under <VERSION>-nativetest-php8x tags. It moves no real tag (no
+# bare <VERSION>, no :testing) and does not promote. The `testing` environment
+# only admits the `testing` branch, so a dry run cannot be dispatched from a
+# feature branch.
+#
 # Tags (see design code-development docs/superpowers/specs/2026-07-10-release-image-
 # promotion-design): every release image is built ONCE here from the testing
 # bundle and later PROMOTED (not rebuilt) to prod by promote-latest.yml on
@@ -36,6 +52,13 @@ on:
   push:
     branches: [testing]
   workflow_dispatch:
+    inputs:
+      dry_run:
+        description: >
+          Build, merge and scan under <VERSION>-nativetest-php8x tags only: no bare
+          <VERSION>, no :testing, no SSM promote.
+        type: boolean
+        default: false
 
 permissions:
   contents: read
@@ -60,8 +83,14 @@ jobs:
     runs-on: ubuntu-latest
     outputs:
       version: ${{ steps.ver.outputs.version }}
+      # "" for a real publish, "-nativetest" for a dry run: tags are
+      # <VERSION><infix>-php8x, so a dry run can never collide with a real tag.
+      infix: ${{ steps.ver.outputs.infix }}
+      dry_run: ${{ steps.ver.outputs.dry_run }}
     steps:
       - name: Derive VERSION from the testing channel
+        env:
+          DRY_RUN: ${{ inputs.dry_run }}
         id: ver
         run: |
           set -euo pipefail
@@ -80,14 +109,35 @@ jobs:
           fi
           echo "testing bundle: $BUNDLE (version $VERSION)"
           echo "version=$VERSION" >> "$GITHUB_OUTPUT"
+          if [ "${DRY_RUN:-}" = "true" ]; then
+            echo "infix=-nativetest" >> "$GITHUB_OUTPUT"
+            echo "dry_run=true" >> "$GITHUB_OUTPUT"
+            echo "::notice::DRY RUN: tags will be ${VERSION}-nativetest-php8x; no real tag moves and nothing is promoted"
+          else
+            echo "infix=" >> "$GITHUB_OUTPUT"
+            echo "dry_run=false" >> "$GITHUB_OUTPUT"
+          fi
 
-  publish:
-    name: Publish simplerisk-minimal RC images
+  # One leg per {PHP variant} x {architecture}, each on a runner of that architecture, so
+  # nothing is emulated. Each leg pushes its image BY DIGEST (no tag) and uploads the digest;
+  # merge-minimal below turns the two digests of a variant into the multi-arch tag.
+  build-minimal:
+    name: Build minimal php${{ matrix.php }} ${{ matrix.arch }}
     needs: resolve
     environment: testing
-    runs-on: ubuntu-latest
-    # 3 sequential multi-arch (arm64 = QEMU-emulated, slow) variant builds run here.
-    timeout-minutes: 120
+    runs-on: ${{ matrix.runner }}
+    timeout-minutes: 60
+    strategy:
+      # One failed leg means there is no complete release; do not spend the rest.
+      fail-fast: true
+      matrix:
+        php: ['83', '84', '85']
+        arch: [amd64, arm64]
+        include:
+          - arch: amd64
+            runner: ubuntu-latest
+          - arch: arm64
+            runner: ubuntu-24.04-arm
     steps:
       - name: Checkout (docker@testing)
         uses: actions/checkout@v6
@@ -131,8 +181,71 @@ jobs:
           cp /tmp/testing.sql common/simplerisk.sql
           test -d simplerisk || { echo "::error::bundle did not extract a simplerisk/ dir"; exit 1; }
 
-      - name: Set up QEMU
-        uses: docker/setup-qemu-action@v4
+      # No QEMU: this leg builds only its own architecture, on a runner of that architecture.
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v4
+
+      - name: Log in to Docker Hub
+        uses: docker/login-action@v4
+        with:
+          username: ${{ secrets.DOCKER_USERNAME }}
+          password: ${{ secrets.DOCKER_TOKEN }}
+
+      - name: Derive the PHP version (8.3 from 83)
+        id: php
+        env:
+          PHP: ${{ matrix.php }}
+        run: echo "version=${PHP:0:1}.${PHP:1}" >> "$GITHUB_OUTPUT"
+
+      - name: Build and push by digest — php${{ matrix.php }} ${{ matrix.arch }}
+        id: build
+        uses: docker/build-push-action@v7
+        with:
+          context: simplerisk-minimal
+          file: simplerisk-minimal/Dockerfile
+          platforms: linux/${{ matrix.arch }}
+          build-args: php_version=${{ steps.php.outputs.version }}
+          # No tag: the digest is merged into the tags by merge-minimal.
+          outputs: type=image,name=${{ env.IMAGE_NAME }},push-by-digest=true,name-canonical=true,push=true
+          cache-from: type=gha,scope=minimal-testing-php${{ matrix.php }}-${{ matrix.arch }}
+          cache-to: type=gha,mode=max,scope=minimal-testing-php${{ matrix.php }}-${{ matrix.arch }}
+
+      - name: Record the digest
+        env:
+          DIGEST: ${{ steps.build.outputs.digest }}
+        run: |
+          set -euo pipefail
+          printf '%s' "$DIGEST" | grep -qE '^sha256:[a-f0-9]{64}$' \
+            || { echo "::error::build produced no image digest (got '$DIGEST')"; exit 1; }
+          mkdir -p /tmp/digests
+          touch "/tmp/digests/${DIGEST#sha256:}"
+
+      - name: Upload the digest
+        uses: actions/upload-artifact@v4
+        with:
+          name: digests-php${{ matrix.php }}-${{ matrix.arch }}
+          path: /tmp/digests/*
+          if-no-files-found: error
+          retention-days: 1
+
+  # Stitch the amd64 and arm64 digests of each PHP variant into the published tags.
+  merge-minimal:
+    name: Merge minimal php${{ matrix.php }} (amd64 + arm64)
+    needs: [resolve, build-minimal]
+    environment: testing
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    strategy:
+      fail-fast: true
+      matrix:
+        php: ['83', '84', '85']
+    steps:
+      - name: Download the digests
+        uses: actions/download-artifact@v4
+        with:
+          path: /tmp/digests
+          pattern: digests-php${{ matrix.php }}-*
+          merge-multiple: true
 
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v4
@@ -143,76 +256,69 @@ jobs:
           username: ${{ secrets.DOCKER_USERNAME }}
           password: ${{ secrets.DOCKER_TOKEN }}
 
-      - name: Build and push php83 — <VERSION>-php83
-        uses: docker/build-push-action@v7
-        with:
-          context: simplerisk-minimal
-          file: simplerisk-minimal/Dockerfile
-          push: true
-          platforms: linux/amd64,linux/arm64
-          build-args: php_version=8.3
-          tags: ${{ env.IMAGE_NAME }}:${{ needs.resolve.outputs.version }}-php83
-          cache-from: type=gha,scope=minimal-testing-php83
-          cache-to: type=gha,mode=max,scope=minimal-testing-php83
-
-      - name: Build and push php84 — <VERSION>-php84
-        uses: docker/build-push-action@v7
-        with:
-          context: simplerisk-minimal
-          file: simplerisk-minimal/Dockerfile
-          push: true
-          platforms: linux/amd64,linux/arm64
-          build-args: php_version=8.4
-          tags: ${{ env.IMAGE_NAME }}:${{ needs.resolve.outputs.version }}-php84
-          cache-from: type=gha,scope=minimal-testing-php84
-          cache-to: type=gha,mode=max,scope=minimal-testing-php84
-
-      - name: Build and push php85 (default) — <VERSION>-php85 + <VERSION> + :testing
-        uses: docker/build-push-action@v7
-        with:
-          context: simplerisk-minimal
-          file: simplerisk-minimal/Dockerfile
-          push: true
-          platforms: linux/amd64,linux/arm64
-          build-args: php_version=8.5
-          tags: |
-            ${{ env.IMAGE_NAME }}:${{ needs.resolve.outputs.version }}-php85
-            ${{ env.IMAGE_NAME }}:${{ needs.resolve.outputs.version }}
-            ${{ env.IMAGE_NAME }}:testing
-          cache-from: type=gha,scope=minimal-testing-php85
-          cache-to: type=gha,mode=max,scope=minimal-testing-php85
-
-      # Scan the images exactly as published, BEFORE the SSM promote below rolls them
-      # out to tier=testing customers. Each scan is continue-on-error so all three
-      # reports are produced and uploaded; the gate step then fails the job (and so
-      # skips the promote) if any of them hit a critical finding.
-      - name: Scan php83 (published)
-        id: scan83
-        continue-on-error: true
-        uses: ./.github/actions/grype-scan
-        with:
-          image: ${{ env.IMAGE_NAME }}:${{ needs.resolve.outputs.version }}-php83
-          label: published-minimal-php83
-      - name: Scan php84 (published)
-        id: scan84
-        continue-on-error: true
-        uses: ./.github/actions/grype-scan
-        with:
-          image: ${{ env.IMAGE_NAME }}:${{ needs.resolve.outputs.version }}-php84
-          label: published-minimal-php84
-      - name: Scan php85 (published)
-        id: scan85
-        continue-on-error: true
-        uses: ./.github/actions/grype-scan
-        with:
-          image: ${{ env.IMAGE_NAME }}:${{ needs.resolve.outputs.version }}-php85
-          label: published-minimal-php85
-      - name: Block the promote on critical findings
-        if: ${{ steps.scan83.outcome == 'failure' || steps.scan84.outcome == 'failure' || steps.scan85.outcome == 'failure' }}
+      - name: Create the multi-arch tags
+        env:
+          VERSION: ${{ needs.resolve.outputs.version }}
+          INFIX: ${{ needs.resolve.outputs.infix }}
+          PHP: ${{ matrix.php }}
         run: |
-          echo "::error::Grype found critical vulnerabilities in the published images; not promoting to the testing tier. See the scan steps above."
-          exit 1
+          set -euo pipefail
+          cd /tmp/digests
+          mapfile -t digests < <(ls)
+          if [ "${#digests[@]}" -ne 2 ]; then
+            echo "::error::php${PHP}: expected 2 digests (amd64, arm64), found ${#digests[@]}: ${digests[*]:-none}"; exit 1
+          fi
+          refs=()
+          for d in "${digests[@]}"; do refs+=("${IMAGE_NAME}@sha256:${d}"); done
 
+          # <VERSION>-php8x always; php85 (the default) also carries the bare <VERSION> and
+          # :testing. A dry run (INFIX=-nativetest) never touches the bare tag or :testing.
+          tags=("${IMAGE_NAME}:${VERSION}${INFIX}-php${PHP}")
+          if [ "$PHP" = "85" ] && [ -z "$INFIX" ]; then
+            tags+=("${IMAGE_NAME}:${VERSION}" "${IMAGE_NAME}:testing")
+          fi
+          args=(); for t in "${tags[@]}"; do args+=(-t "$t"); done
+          docker buildx imagetools create "${args[@]}" "${refs[@]}"
+
+          # Do not publish a half-built release: every tag must carry BOTH architectures.
+          for t in "${tags[@]}"; do
+            plats=$(docker buildx imagetools inspect "$t" --format '{{json .Manifest}}' \
+              | jq -r '[.manifests[].platform | select(.os == "linux") | "\(.os)/\(.architecture)"] | unique | join(",")')
+            echo "$t -> $plats"
+            [ "$plats" = "linux/amd64,linux/arm64" ] \
+              || { echo "::error::$t is missing an architecture (got '$plats')"; exit 1; }
+          done
+
+  # Scan the images exactly as published, BEFORE the SSM promote rolls them out to
+  # tier=testing customers. Every leg uploads its report; any critical finding fails the
+  # leg, and promote needs all three legs, so a critical finding blocks the promote.
+  scan-minimal:
+    name: Scan minimal php${{ matrix.php }} (published)
+    needs: [resolve, merge-minimal]
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    strategy:
+      fail-fast: false
+      matrix:
+        php: ['83', '84', '85']
+    steps:
+      - name: Checkout (docker@testing)
+        uses: actions/checkout@v6
+      - name: Scan php${{ matrix.php }} (published)
+        uses: ./.github/actions/grype-scan
+        with:
+          image: ${{ env.IMAGE_NAME }}:${{ needs.resolve.outputs.version }}${{ needs.resolve.outputs.infix }}-php${{ matrix.php }}
+          label: published-minimal-php${{ matrix.php }}
+
+  promote:
+    name: Promote — SSM /image-tag/testing
+    needs: [resolve, scan-minimal]
+    # A dry run publishes under -nativetest tags only; nothing may roll out to tier=testing.
+    if: ${{ needs.resolve.outputs.dry_run != 'true' }}
+    environment: testing
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
       - name: Configure AWS credentials (OIDC → customers account)
         uses: aws-actions/configure-aws-credentials@v4
         with:
@@ -340,7 +446,7 @@ jobs:
     # always(): a critical finding fails a publish job (and blocks the promote), and
     # that is exactly when the report matters.
     if: ${{ always() }}
-    needs: [publish, publish-full]
+    needs: [scan-minimal, publish-full]
     runs-on: ubuntu-latest
     permissions:
       contents: read
@@ -353,8 +459,8 @@ jobs:
           slack_webhook_url: ${{ secrets.SLACK_WEBHOOK_URL }}
           context: ${{ github.workflow }} · ${{ github.ref_name }}
           results: |
-            published-minimal-php83=${{ needs.publish.result }}
-            published-minimal-php84=${{ needs.publish.result }}
-            published-minimal-php85=${{ needs.publish.result }}
+            published-minimal-php83=${{ needs.scan-minimal.result }}
+            published-minimal-php84=${{ needs.scan-minimal.result }}
+            published-minimal-php85=${{ needs.scan-minimal.result }}
             published-full-jammy=${{ needs.publish-full.result }}
             published-full-noble=${{ needs.publish-full.result }}
