@@ -69,7 +69,7 @@ config_define() {
 # password via MYSQL_PWD, so no value is subject to shell interpretation.
 mysql_setup() {
 	local -a flags=()
-	# DB_SSL_FLAGS is an internal constant ("--ssl-mode=... --enable-cleartext-plugin")
+	# DB_SSL_FLAGS is an internal value from set_db_ssl_flags (client-specific TLS flags)
 	[ -n "${DB_SSL_FLAGS:-}" ] && read -ra flags <<< "$DB_SSL_FLAGS"
 	MYSQL_PWD="$DB_SETUP_PASS" mysql ${flags[@]+"${flags[@]}"} \
 		-u "$DB_SETUP_USER" -h "$SIMPLERISK_DB_HOSTNAME" -P "$SIMPLERISK_DB_PORT"
@@ -473,6 +473,17 @@ set_mail_settings(){
 	[ -n "${MAIL_PASSWORD:-}" ] && apply_mail_setting phpmailer_password "$MAIL_PASSWORD" || true
 }
 
+# True when the mysql client understands --ssl-mode. Oracle's client does (amd64 image). MariaDB's
+# does not, and it is the only client packaged for arm64 (MySQL's apt repo has no arm64 builds), so
+# there `mysql` rejects it with "unknown variable 'ssl-mode=REQUIRED'". If the client cannot be asked,
+# assume Oracle's, which is what these flags were written for.
+mysql_client_supports_ssl_mode() {
+	local help
+	help=$(mysql --help 2>/dev/null) || return 0
+	[ -n "$help" ] || return 0
+	grep -q -- '--ssl-mode' <<< "$help"
+}
+
 set_db_ssl_flags(){
 	# Some databases require the privileged setup/delete mysql client to send
 	# its credential via the cleartext auth plugin, which the server only
@@ -480,7 +491,14 @@ set_db_ssl_flags(){
 	# rather than a static password). Set DB_SSL_ENABLED=true to opt in.
 	DB_SSL_FLAGS=""
 	if [ "${DB_SSL_ENABLED:-}" = "true" ]; then
-		DB_SSL_FLAGS="--ssl-mode=REQUIRED --enable-cleartext-plugin"
+		if mysql_client_supports_ssl_mode; then
+			DB_SSL_FLAGS="--ssl-mode=REQUIRED --enable-cleartext-plugin"
+		else
+			# MariaDB client: --ssl makes TLS mandatory and --skip-ssl-verify-server-cert matches
+			# REQUIRED (encrypt, do not verify the certificate). The cleartext plugin is built in;
+			# --enable-cleartext-plugin is obsolete there and only prints a warning.
+			DB_SSL_FLAGS="--ssl --skip-ssl-verify-server-cert"
+		fi
 	fi
 }
 
