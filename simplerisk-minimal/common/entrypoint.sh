@@ -384,13 +384,15 @@ apply_mail_setting(){
 	local db_key="$1" value="$2"
 	local escaped
 	escaped=$(sql_str_escape "$value")
-	# No --ssl-mode override: the client's default (PREFERRED) negotiates TLS when the
-	# server offers it. Forcing DISABLED made MySQL 8's caching_sha2_password refuse the
-	# first login ("Authentication requires secure connection"), silently skipping
-	# every mail setting that needs the app user's password.
+	# Never force a non-TLS connection: it made MySQL 8's caching_sha2_password refuse the first login
+	# ("Authentication requires secure connection"), silently skipping every mail setting that needs the app
+	# user's password. TLS flags come from app_db_tls_flags.
+	local -a tls=()
+	read -ra tls <<< "$(app_db_tls_flags)"
 	MYSQL_PWD="$SIMPLERISK_DB_PASSWORD" mysql -u "$SIMPLERISK_DB_USERNAME" \
 	      -h "$SIMPLERISK_DB_HOSTNAME" \
 	      -P "$SIMPLERISK_DB_PORT" \
+	      ${tls[@]+"${tls[@]}"} \
 	      "$SIMPLERISK_DB_DATABASE" \
 	      -e "UPDATE settings SET value='${escaped}' WHERE name='${db_key}';" \
 	    || print_log "mail_settings:warn" "Failed to update ${db_key}"
@@ -484,13 +486,55 @@ mysql_client_supports_ssl_mode() {
 	grep -q -- '--ssl-mode' <<< "$help"
 }
 
+# AWS's RDS CA bundle (all regions), vendored in this image from
+# https://truststore.pki.rds.amazonaws.com/global/global-bundle.pem and pinned by rds-global-bundle.sha256.
+# It is what lets the mysql client and the app verify the database server's certificate.
+RDS_CA_BUNDLE="${RDS_CA_BUNDLE:-/etc/ssl/rds/global-bundle.pem}"
+
+# TLS flags that make the mysql client verify the server certificate (chain and host name) against the CA
+# file $1, spelled for whichever client is installed.
+mysql_verify_flags() {
+	if mysql_client_supports_ssl_mode; then
+		printf '%s' "--ssl-mode=VERIFY_IDENTITY --ssl-ca=$1"
+	else
+		# MariaDB's client: giving it a CA makes it verify the chain, --ssl-verify-server-cert adds the host name.
+		printf '%s' "--ssl-ca=$1 --ssl-verify-server-cert"
+	fi
+}
+
+# TLS flags for the mysql calls made with the app's own credentials (apply_mail_setting). They follow what the
+# app's PHP connection does: with SIMPLERISK_DB_SSL_CERT_PATH set the app verifies against that CA, so this does
+# too (and, like the app, does not fall back to plaintext if the file is missing: the call fails loudly).
+app_db_tls_flags() {
+	if [ -n "${SIMPLERISK_DB_SSL_CERT_PATH:-}" ]; then
+		mysql_verify_flags "$SIMPLERISK_DB_SSL_CERT_PATH"
+	elif ! mysql_client_supports_ssl_mode; then
+		# MariaDB's client verifies by default and cannot chain RDS without a CA; Oracle's default does not
+		# verify. Keep both the same: encrypt if the server offers it, do not verify.
+		printf '%s' "--skip-ssl-verify-server-cert"
+	fi
+}
+
 set_db_ssl_flags(){
 	# Some databases require the privileged setup/delete mysql client to send
 	# its credential via the cleartext auth plugin, which the server only
 	# accepts over TLS (e.g. when DB_SETUP_PASS is a short-lived auth token
 	# rather than a static password). Set DB_SSL_ENABLED=true to opt in.
+	#
+	# With the RDS CA bundle present the connection is also VERIFIED (chain and host name). Set
+	# DB_SSL_VERIFY=false to go back to encrypt-without-verify without rebuilding the image; if the bundle is
+	# missing it falls back the same way, and says so.
 	DB_SSL_FLAGS=""
 	if [ "${DB_SSL_ENABLED:-}" = "true" ]; then
+		if [ "${DB_SSL_VERIFY:-true}" != "false" ] && [ -r "$RDS_CA_BUNDLE" ]; then
+			DB_SSL_FLAGS="$(mysql_verify_flags "$RDS_CA_BUNDLE")"
+			# The cleartext plugin is built into MariaDB's client; the option is obsolete there.
+			if mysql_client_supports_ssl_mode; then DB_SSL_FLAGS="$DB_SSL_FLAGS --enable-cleartext-plugin"; fi
+			return 0
+		fi
+		if [ "${DB_SSL_VERIFY:-true}" != "false" ]; then
+			print_log "db_tls:warn" "RDS CA bundle not readable at $RDS_CA_BUNDLE; connecting with TLS but NOT verifying the server certificate"
+		fi
 		if mysql_client_supports_ssl_mode; then
 			DB_SSL_FLAGS="--ssl-mode=REQUIRED --enable-cleartext-plugin"
 		else

@@ -1,0 +1,63 @@
+name: RDS CA bundle drift
+
+# The image ships AWS's RDS CA bundle (simplerisk-minimal/common/etc/ssl/rds/global-bundle.pem) so the setup client
+# and the app can verify the database server's certificate. AWS publishes the bundle without a checksum, and adds
+# certificates when it launches a region or replaces a root. This compares the vendored copy with the file AWS
+# serves today once a week: a mismatch does not mean anything is broken (a bundle that lacks a NEW region's root
+# only matters if we run RDS there), it means someone should refresh the file and its pin deliberately.
+#
+# Refresh: download https://truststore.pki.rds.amazonaws.com/global/global-bundle.pem over the vendored file,
+# update simplerisk-minimal/rds-global-bundle.sha256 (`sha256sum`), run simplerisk-minimal/test_rds_bundle.sh.
+
+on:
+  schedule:
+    - cron: '0 14 * * 1'   # Mondays 14:00 UTC
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  drift:
+    name: Compare the vendored RDS CA bundle with AWS's
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v6
+
+      - name: Compare
+        id: compare
+        run: |
+          set -euo pipefail
+          vendored=simplerisk-minimal/common/etc/ssl/rds/global-bundle.pem
+          curl -fsSL --retry 3 --max-time 60 -o /tmp/aws-bundle.pem https://truststore.pki.rds.amazonaws.com/global/global-bundle.pem
+          grep -q 'BEGIN CERTIFICATE' /tmp/aws-bundle.pem || { echo "::error::AWS returned something that is not a certificate bundle"; exit 1; }
+          have=$(sha256sum "$vendored" | cut -d' ' -f1); now=$(sha256sum /tmp/aws-bundle.pem | cut -d' ' -f1)
+          subjects() { awk '/BEGIN CERTIFICATE/{n++} {print > ("/tmp/c" n ".pem")}' "$1"; for f in /tmp/c[0-9]*.pem; do openssl x509 -in "$f" -noout -subject -enddate | tr '\n' ' '; echo; rm -f "$f"; done | sort; }
+          if [ "$have" = "$now" ]; then
+            echo "vendored bundle is current ($(grep -c 'BEGIN CERTIFICATE' "$vendored") certificates, sha256 ${have:0:16}...)" >> "$GITHUB_STEP_SUMMARY"
+            exit 0
+          fi
+          subjects "$vendored" > /tmp/have.txt; subjects /tmp/aws-bundle.pem > /tmp/now.txt
+          added=$(comm -13 /tmp/have.txt /tmp/now.txt | wc -l | tr -d ' '); removed=$(comm -23 /tmp/have.txt /tmp/now.txt | wc -l | tr -d ' ')
+          {
+            echo "### The vendored RDS CA bundle differs from AWS's"
+            echo "- vendored: sha256 \`${have:0:16}...\` ($(grep -c 'BEGIN CERTIFICATE' "$vendored") certificates)"
+            echo "- AWS now:  sha256 \`${now:0:16}...\` ($(grep -c 'BEGIN CERTIFICATE' /tmp/aws-bundle.pem) certificates)"
+            echo "- certificates only in AWS's: $added; only in ours: $removed"
+            echo ""; echo "Certificates only in AWS's file:"; comm -13 /tmp/have.txt /tmp/now.txt | sed 's/^/- /' | cut -c1-200 | head -20
+            echo ""; echo "Refresh deliberately: see the header of .github/workflows/rds-bundle-drift.yml."
+          } >> "$GITHUB_STEP_SUMMARY"
+          echo "::error::The vendored RDS CA bundle differs from AWS's ($added certificate(s) only in AWS's, $removed only in ours). See the job summary."
+          exit 1
+
+      - name: Tell Slack
+        if: failure() && steps.compare.outcome == 'failure'
+        env:
+          SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+        run: |
+          [ -n "${SLACK_WEBHOOK_URL:-}" ] || exit 0
+          curl -fsS -X POST -H 'Content-type: application/json' \
+            --data "{\"text\":\"The RDS CA bundle vendored in simplerisk/docker differs from AWS's. Refresh it deliberately: ${RUN_URL}\"}" \
+            "$SLACK_WEBHOOK_URL" >/dev/null || true
