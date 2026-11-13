@@ -65,20 +65,50 @@ docker run -d --name simplerisk -e SIMPLERISK_DB_PASSWORD=pass -e SIMPLERISK_DB_
 | `DB_SETUP_PASS` | `root` (the bundled `stack.yml` ships `simplerisk_setup`) | Used when `DB_SETUP=automatic\|automatic-only\|delete`. Password of the privileged MySQL user used **only** to install the SimpleRisk schema and create the app DB user. In `stack.yml` it is also the bundled MySQL root password; since that MySQL is not exposed outside the stack network, a documented default is used for the zero-config trial. Override it (and `MYSQL_ROOT_PASSWORD` in `stack.yml`) for any non-trial deployment. |
 | `DB_SETUP_WAIT` | 20 | Used when `DB_SETUP=automatic\|automatic-only`. Time, in seconds, the application is going to wait to set up the database. Useful if you are deploying the database and SimpleRisk at the same time |
 | `DB_UPGRADE` | `null` (Accepts any value) | Run SimpleRisk's release-by-release database **schema upgrade** against an already-installed database (as opposed to `DB_SETUP`, which installs a fresh one), then continue running (`automatic`) or stop the container (`automatic-only`, for a one-shot upgrade job). Uses the `SIMPLERISK_DB_*` application credentials — no privileged user. The structured per-release JSON result is written to the container log, and the container exits non-zero if the upgrade fails. Idempotent — a no-op when the schema is already current |
-| `DB_SSL_ENABLED` | `false` (off) | Opt-in, used when `DB_SETUP=automatic\|automatic-only\|delete`. Set to exactly `true` to require TLS on the privileged setup/delete MySQL client connection (adds `--ssl-mode=REQUIRED --enable-cleartext-plugin`). Any other value, or unset, leaves the connection unchanged (plaintext-capable) |
+| `DB_SSL_ENABLED` | `false` (off) | Opt-in, used when `DB_SETUP=automatic\|automatic-only\|delete`. Set to exactly `true` to require TLS on the privileged setup/delete MySQL client connection. When the RDS CA bundle is present (`/etc/ssl/rds/global-bundle.pem`, shipped in the image) the server certificate is also **verified**, chain and host name: `--ssl-mode=VERIFY_IDENTITY --ssl-ca=<bundle> --enable-cleartext-plugin` with Oracle's client, `--ssl-ca=<bundle> --ssl-verify-server-cert` with MariaDB's (the arm64 image: Debian has no MySQL client and Oracle's apt repository has no arm64 packages). Without the bundle, or with `DB_SSL_VERIFY=false`, it encrypts without verifying (`--ssl-mode=REQUIRED --enable-cleartext-plugin`, or `--ssl --skip-ssl-verify-server-cert`). Any other value, or unset, leaves the connection unchanged (plaintext-capable) |
+| `DB_SSL_VERIFY` | `true` | Only with `DB_SSL_ENABLED=true`. Set to exactly `false` to stop verifying the server certificate and only encrypt, without rebuilding the image (a rollback switch, not a setting to leave on) |
+| `RDS_CA_BUNDLE` | `/etc/ssl/rds/global-bundle.pem` | CA file the setup/delete client verifies the server against. The image ships AWS's RDS global bundle there (114 certificates for every region, pinned by `rds-global-bundle.sha256`; see `.github/workflows/rds-bundle-drift.yml`) |
 | `SIMPLERISK_DB_HOSTNAME` | `localhost` | Hostname of the database server |
 | `SIMPLERISK_DB_PORT` | 3306 | Port to contact the database |
 | `SIMPLERISK_DB_USERNAME` |`simplerisk` | User name to be used to access the SimpleRisk database |
 | `SIMPLERISK_DB_PASSWORD` | `simplerisk` | Password to be used to access the SimpleRisk database. If not provided while setting up the database, a random password will be generated and shown on the container logs |
 | `SIMPLERISK_DB_DATABASE` | `simplerisk` | Database name where all SimpleRisk objects are stored |
 | `SIMPLERISK_DB_FOR_SESSIONS` | `true` | Indicator that the application will store all sessions on the configured database |
-| `SIMPLERISK_DB_SSL_CERT_PATH` | Empty string (`''`) | Path where SSL certificates, to contact the database, are located |
+| `SIMPLERISK_DB_SSL_CERT_PATH` | Empty string (`''`) | Path to the CA file the app uses to contact the database. **Empty means the app connects without TLS** (PDO is given no TLS option). Set it, for example to `/etc/ssl/rds/global-bundle.pem` for RDS, and PDO uses TLS and verifies the chain and the host name; calls the entrypoint makes with the app's own credentials (`MAIL_*` settings) use the same CA |
 | `SIMPLERISK_CRON_SETUP` | `enabled` | Install the cron job to run in this Docker container |
 | `SIMPLERISK_CSRF_SECRET` | Auto-generated | Override the auto-generated CSRF secret |
+| `APACHE_MAX_REQUEST_WORKERS` | Apache default (150) | Maximum number of requests Apache serves at once (a whole number from 1 to 2000). Each request holds a database connection, so set this so that `replicas x APACHE_MAX_REQUEST_WORKERS` stays under the database's `max_connections`, leaving room for the cron jobs and for the second connection used when `SIMPLERISK_DB_FOR_SESSIONS` is `true`. Each worker is a full PHP process, so also keep it within the container's memory limit. It applies to the Apache prefork MPM the image ships with. An invalid value is ignored with a warning in the container log |
 | `ADMIN_USERNAME` | — | Username for an initial admin user created once during `DB_SETUP`. Requires `ADMIN_PASSWORD` and `ADMIN_EMAIL`. Skipped if the username already exists |
 | `ADMIN_PASSWORD` | — | Password for the initial admin user |
 | `ADMIN_EMAIL` | — | Email address for the initial admin user |
 | `ADMIN_NAME` | `Administrator` | Display name for the initial admin user |
+
+## Secrets (`_FILE` variables)
+
+To keep credentials out of the container environment (and out of compose files), the following variables can instead be supplied as a path to a file, by appending `_FILE` to the name. This works with Docker secrets (`/run/secrets/<name>`), Kubernetes secret mounts, or any mounted file. The entrypoint reads the file, trailing newlines are stripped, and the `_FILE` variable is removed before Apache starts.
+
+`DB_SETUP_USER`, `DB_SETUP_PASS`, `SIMPLERISK_DB_HOSTNAME`, `SIMPLERISK_DB_PORT`, `SIMPLERISK_DB_USERNAME`, `SIMPLERISK_DB_PASSWORD`, `SIMPLERISK_DB_DATABASE`, `SIMPLERISK_CSRF_SECRET`, `MAIL_USERNAME`, `MAIL_PASSWORD`, `ADMIN_USERNAME`, `ADMIN_PASSWORD`
+
+Setting both `VAR` and `VAR_FILE` is an error, as is a `_FILE` path that is not a readable file; the container exits with a message.
+
+```yaml
+services:
+  simplerisk:
+    image: simplerisk/simplerisk-minimal
+    environment:
+      - DB_SETUP=automatic
+      - DB_SETUP_PASS_FILE=/run/secrets/dbms_root_pass
+      - SIMPLERISK_DB_PASSWORD_FILE=/run/secrets/db_pass
+    secrets:
+      - dbms_root_pass
+      - db_pass
+
+secrets:
+  dbms_root_pass:
+    file: ./dbms_root_pass.txt
+  db_pass:
+    file: ./db_pass.txt
+```
 
 ## Mail settings
 

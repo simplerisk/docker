@@ -20,16 +20,99 @@ generate_random_password() {
 }
 
 # Escape a value for use as the replacement in a sed s|...|VALUE|... command.
-# Escapes \, &, and | so they aren't interpreted as sed metacharacters.
-# Required for any env-var-derived value that may contain / (which would
-# otherwise terminate the / delimiter the sed substitution used to use).
+# Escapes \, &, | and newlines so they aren't interpreted as sed metacharacters
+# or terminate the s command. Required for any env-var-derived value that may
+# contain / (which would otherwise terminate the / delimiter the sed
+# substitution used to use). Done with parameter expansion (not a sed pipe) so
+# embedded newlines survive.
 sed_escape() {
-	printf '%s' "$1" | sed -e 's/[\\&|]/\\&/g'
+	local v="$1"
+	v="${v//\\/\\\\}"
+	v="${v//&/\\&}"
+	v="${v//|/\\|}"
+	v="${v//$'\n'/\\$'\n'}"
+	printf '%s' "$v"
+}
+
+# Escape a value for a PHP single-quoted string literal ('...'): only \ and '
+# are special there, so a value can neither close the string nor inject code.
+php_sq_escape() {
+	local v="$1"
+	v="${v//\\/\\\\}"
+	v="${v//\'/\\\'}"
+	printf '%s' "$v"
+}
+
+# Escape a value for a MySQL single-quoted string literal ('...').
+sql_str_escape() {
+	local v="$1"
+	v="${v//\\/\\\\}"
+	v="${v//\'/\\\'}"
+	printf '%s' "$v"
+}
+
+# Escape a value for a MySQL ANSI_QUOTES identifier ("...").
+sql_ident_escape() {
+	local v="$1"
+	printf '%s' "${v//\"/\"\"}"
+}
+
+# Rewrite define('NAME', '...'); in $CONFIG_PATH. The value is PHP-escaped first
+# (so it cannot break out of the string in config.php) and then sed-escaped.
+config_define() {
+	local name="$1" value="$2"
+	sed -i "s|\('${name}', '\).*\(');\)|\1$(sed_escape "$(php_sq_escape "$value")")\2|g" "$CONFIG_PATH"
+}
+
+# Run the mysql client as the privileged setup user, reading SQL from stdin.
+# Arguments are passed as an argv array (never through a shell string), and the
+# password via MYSQL_PWD, so no value is subject to shell interpretation.
+mysql_setup() {
+	local -a flags=()
+	# DB_SSL_FLAGS is an internal value from set_db_ssl_flags (client-specific TLS flags)
+	[ -n "${DB_SSL_FLAGS:-}" ] && read -ra flags <<< "$DB_SSL_FLAGS"
+	MYSQL_PWD="$DB_SETUP_PASS" mysql ${flags[@]+"${flags[@]}"} \
+		-u "$DB_SETUP_USER" -h "$SIMPLERISK_DB_HOSTNAME" -P "$SIMPLERISK_DB_PORT"
 }
 
 fatal_error(){
 	print_log "error" "$1"
 	exit 1
+}
+
+# Docker/Kubernetes secrets support: if VAR_FILE is set, read VAR from the file it
+# points to (typically /run/secrets/<name>), so credentials need not live in the
+# container's environment. Setting both VAR and VAR_FILE is an error. The _FILE
+# variable is unset afterwards so it is not inherited by child processes.
+file_env() {
+	local var="$1"
+	local file_var="${var}_FILE"
+	local var_val="${!var:-}"
+	local file_val="${!file_var:-}"
+
+	if [ -n "$var_val" ] && [ -n "$file_val" ]; then
+		fatal_error "Both $var and $file_var are set (but are exclusive)."
+	fi
+
+	if [ -n "$file_val" ]; then
+		[ -r "$file_val" ] || fatal_error "$file_var points to '$file_val', which is not a readable file."
+		# $(< file) strips trailing newlines, which secret files commonly end with
+		export "$var=$(< "$file_val")"
+	fi
+	unset "$file_var"
+}
+
+load_file_envs() {
+	local var
+	for var in \
+		DB_SETUP_USER DB_SETUP_PASS \
+		SIMPLERISK_DB_HOSTNAME SIMPLERISK_DB_PORT SIMPLERISK_DB_USERNAME \
+		SIMPLERISK_DB_PASSWORD SIMPLERISK_DB_DATABASE \
+		SIMPLERISK_CSRF_SECRET \
+		MAIL_USERNAME MAIL_PASSWORD \
+		ADMIN_USERNAME ADMIN_PASSWORD; do
+		file_env "$var"
+	done
 }
 
 set_db_password(){
@@ -39,7 +122,7 @@ set_db_password(){
 	else
 		SIMPLERISK_DB_PASSWORD=${SIMPLERISK_DB_PASSWORD:-simplerisk}
 	fi
-	sed -i "s|\('DB_PASSWORD', '\).*\(');\)|\1$(sed_escape "$SIMPLERISK_DB_PASSWORD")\2|g" "$CONFIG_PATH"
+	config_define DB_PASSWORD "$SIMPLERISK_DB_PASSWORD"
 }
 
 validate_db_setup(){
@@ -93,28 +176,28 @@ set_config(){
 	# Replacing config variables. Values are run through sed_escape so paths
 	# or other inputs containing \, &, or | don't break the substitution.
 	SIMPLERISK_DB_HOSTNAME=${SIMPLERISK_DB_HOSTNAME:-localhost}
-	sed -i "s|\('DB_HOSTNAME', '\).*\(');\)|\1$(sed_escape "$SIMPLERISK_DB_HOSTNAME")\2|g" "$CONFIG_PATH"
+	config_define DB_HOSTNAME "$SIMPLERISK_DB_HOSTNAME"
 
 	SIMPLERISK_DB_PORT=${SIMPLERISK_DB_PORT:-3306}
-	sed -i "s|\('DB_PORT', '\).*\(');\)|\1$(sed_escape "$SIMPLERISK_DB_PORT")\2|g" "$CONFIG_PATH"
+	config_define DB_PORT "$SIMPLERISK_DB_PORT"
 
 	SIMPLERISK_DB_USERNAME=${SIMPLERISK_DB_USERNAME:-simplerisk}
-	sed -i "s|\('DB_USERNAME', '\).*\(');\)|\1$(sed_escape "$SIMPLERISK_DB_USERNAME")\2|g" "$CONFIG_PATH"
+	config_define DB_USERNAME "$SIMPLERISK_DB_USERNAME"
 
 	set_db_password
 
 	SIMPLERISK_DB_DATABASE=${SIMPLERISK_DB_DATABASE:-simplerisk}
-	sed -i "s|\('DB_DATABASE', '\).*\(');\)|\1$(sed_escape "$SIMPLERISK_DB_DATABASE")\2|g" "$CONFIG_PATH"
+	config_define DB_DATABASE "$SIMPLERISK_DB_DATABASE"
 
 	SIMPLERISK_DB_FOR_SESSIONS=${SIMPLERISK_DB_FOR_SESSIONS:-true}
-	sed -i "s|\('USE_DATABASE_FOR_SESSIONS', '\).*\(');\)|\1$(sed_escape "$SIMPLERISK_DB_FOR_SESSIONS")\2|g" "$CONFIG_PATH"
+	config_define USE_DATABASE_FOR_SESSIONS "$SIMPLERISK_DB_FOR_SESSIONS"
 
 	if [ -n "${SIMPLERISK_DB_SSL_CERT_PATH:-}" ]; then
 		# The sample ships DB_SSL_CERTIFICATE_PATH as a commented-out line so
 		# that operators who don't set the env var don't end up requesting SSL
 		# against a non-existent cert path. When a path is supplied, rewrite
 		# the whole line (commented or not) as an active define.
-		escaped_ssl_path=$(sed_escape "$SIMPLERISK_DB_SSL_CERT_PATH")
+		escaped_ssl_path=$(sed_escape "$(php_sq_escape "$SIMPLERISK_DB_SSL_CERT_PATH")")
 		sed -i "s|^[[:space:]]*\(//[[:space:]]*\)\{0,1\}define('DB_SSL_CERTIFICATE_PATH', '[^']*');|define('DB_SSL_CERTIFICATE_PATH', '${escaped_ssl_path}');|" "$CONFIG_PATH"
 	fi
 
@@ -199,7 +282,9 @@ set_csrf_secret(){
 	CSRF_SECRET_PATH='/var/www/simplerisk/vendor/simplerisk/csrf-magic/csrf-secret.php'
 
 	# If a SIMPLERISK_CSRF_SECRET value was specified create the csrf-secret.php file with that value
-	[ -n "${SIMPLERISK_CSRF_SECRET:-}" ] && echo "<?php \$secret = \"${SIMPLERISK_CSRF_SECRET}\"; ?>" > "$CSRF_SECRET_PATH";
+	# (single-quoted PHP string, escaped, so the value cannot inject code or be interpolated)
+	# shellcheck disable=SC2015
+	[ -n "${SIMPLERISK_CSRF_SECRET:-}" ] && printf "<?php \$secret = '%s'; ?>\n" "$(php_sq_escape "$SIMPLERISK_CSRF_SECRET")" > "$CSRF_SECRET_PATH" || true
 }
 
 set_ssl_certificate(){
@@ -229,6 +314,56 @@ set_ssl_certificate(){
 	exec_cmd "chmod 600 $key" "Failed to set permissions on TLS private key. Exiting."
 }
 
+set_apache_workers(){
+	# Optional cap on how many requests Apache serves at once. Every request
+	# holds a database connection, so the default of 150 workers can exceed a
+	# small database's max_connections (a db.t3.micro allows about 60), and
+	# several containers sharing one database multiply it. The right number
+	# depends on the database and the replica count, which the image cannot
+	# know, so it is left to the operator. Unset keeps Apache's default.
+	local workers="${APACHE_MAX_REQUEST_WORKERS:-}"
+	local conf="${APACHE_MPM_CONF_PATH:-/etc/apache2/conf-enabled/simplerisk-mpm.conf}"
+
+	# Remove what a previous start wrote, so unsetting the variable on a
+	# restarted container goes back to Apache's default
+	rm -f "$conf"
+
+	if [ -z "$workers" ]; then
+		return 0
+	fi
+
+	# Strip leading zeros and bound the length before any arithmetic: bash
+	# arithmetic wraps at 64 bits, so a very long digit string could otherwise
+	# wrap into the valid range
+	local digits="${workers#"${workers%%[!0]*}"}"
+
+	if ! [[ "$workers" =~ ^[0-9]+$ ]] || [ -z "$digits" ] || [ "${#digits}" -gt 4 ] || [ "$digits" -gt 2000 ]; then
+		print_log "apache_setup:warn" "APACHE_MAX_REQUEST_WORKERS must be a whole number between 1 and 2000 -- leaving Apache's default."
+		return 0
+	fi
+
+	workers="$digits"
+
+	local content="# Written by the container entrypoint from APACHE_MAX_REQUEST_WORKERS"$'\n'"<IfModule mpm_prefork_module>"$'\n'
+	# ServerLimit defaults to 256 and silently caps MaxRequestWorkers
+	if [ "$workers" -gt 256 ]; then
+		content+=$'\t'"ServerLimit ${workers}"$'\n'
+	fi
+	content+=$'\t'"MaxRequestWorkers ${workers}"$'\n'"</IfModule>"
+
+	# Do not claim a cap that was not applied: if the file cannot be written
+	# (for example a read-only root filesystem), say so and keep the default.
+	# A single printf is used because a failed redirect on a { } group does not
+	# reliably report failure.
+	if ! printf '%s\n' "$content" > "$conf"; then
+		print_log "apache_setup:error" "Could not write ${conf} -- leaving Apache's default."
+		rm -f "$conf" || true
+		return 0
+	fi
+
+	print_log "apache_setup:info" "Apache will serve at most ${workers} requests at once."
+}
+
 set_cron(){
 	# If SIMPLERISK_CRON_SETUP was passed and it is set to disabled
 	if [[ -n "${SIMPLERISK_CRON_SETUP:-}" && "${SIMPLERISK_CRON_SETUP:-}" = disabled* ]]; then
@@ -247,14 +382,17 @@ set_cron(){
 
 apply_mail_setting(){
 	local db_key="$1" value="$2"
-	# Escape backslashes then single quotes for a MySQL single-quoted string literal
 	local escaped
-	escaped=$(printf '%s' "$value" | sed 's/\\/\\\\/g' | sed "s/'/\\\\'/g")
-	mysql -u "$SIMPLERISK_DB_USERNAME" \
-	      -p"$SIMPLERISK_DB_PASSWORD" \
+	escaped=$(sql_str_escape "$value")
+	# Never force a non-TLS connection: it made MySQL 8's caching_sha2_password refuse the first login
+	# ("Authentication requires secure connection"), silently skipping every mail setting that needs the app
+	# user's password. TLS flags come from app_db_tls_flags.
+	local -a tls=()
+	read -ra tls <<< "$(app_db_tls_flags)"
+	MYSQL_PWD="$SIMPLERISK_DB_PASSWORD" mysql -u "$SIMPLERISK_DB_USERNAME" \
 	      -h "$SIMPLERISK_DB_HOSTNAME" \
 	      -P "$SIMPLERISK_DB_PORT" \
-	      --ssl-mode=DISABLED \
+	      ${tls[@]+"${tls[@]}"} \
 	      "$SIMPLERISK_DB_DATABASE" \
 	      -e "UPDATE settings SET value='${escaped}' WHERE name='${db_key}';" \
 	    || print_log "mail_settings:warn" "Failed to update ${db_key}"
@@ -337,14 +475,74 @@ set_mail_settings(){
 	[ -n "${MAIL_PASSWORD:-}" ] && apply_mail_setting phpmailer_password "$MAIL_PASSWORD" || true
 }
 
+# True when the mysql client understands --ssl-mode. Oracle's client does (amd64 image). MariaDB's
+# does not, and it is the only client packaged for arm64 (MySQL's apt repo has no arm64 builds), so
+# there `mysql` rejects it with "unknown variable 'ssl-mode=REQUIRED'". If the client cannot be asked,
+# assume Oracle's, which is what these flags were written for.
+mysql_client_supports_ssl_mode() {
+	local help
+	help=$(mysql --help 2>/dev/null) || return 0
+	[ -n "$help" ] || return 0
+	grep -q -- '--ssl-mode' <<< "$help"
+}
+
+# AWS's RDS CA bundle (all regions), vendored in this image from
+# https://truststore.pki.rds.amazonaws.com/global/global-bundle.pem and pinned by rds-global-bundle.sha256.
+# It is what lets the mysql client and the app verify the database server's certificate.
+RDS_CA_BUNDLE="${RDS_CA_BUNDLE:-/etc/ssl/rds/global-bundle.pem}"
+
+# TLS flags that make the mysql client verify the server certificate (chain and host name) against the CA
+# file $1, spelled for whichever client is installed.
+mysql_verify_flags() {
+	if mysql_client_supports_ssl_mode; then
+		printf '%s' "--ssl-mode=VERIFY_IDENTITY --ssl-ca=$1"
+	else
+		# MariaDB's client: giving it a CA makes it verify the chain, --ssl-verify-server-cert adds the host name.
+		printf '%s' "--ssl-ca=$1 --ssl-verify-server-cert"
+	fi
+}
+
+# TLS flags for the mysql calls made with the app's own credentials (apply_mail_setting). They follow what the
+# app's PHP connection does: with SIMPLERISK_DB_SSL_CERT_PATH set the app verifies against that CA, so this does
+# too (and, like the app, does not fall back to plaintext if the file is missing: the call fails loudly).
+app_db_tls_flags() {
+	if [ -n "${SIMPLERISK_DB_SSL_CERT_PATH:-}" ]; then
+		mysql_verify_flags "$SIMPLERISK_DB_SSL_CERT_PATH"
+	elif ! mysql_client_supports_ssl_mode; then
+		# MariaDB's client verifies by default and cannot chain RDS without a CA; Oracle's default does not
+		# verify. Keep both the same: encrypt if the server offers it, do not verify.
+		printf '%s' "--skip-ssl-verify-server-cert"
+	fi
+}
+
 set_db_ssl_flags(){
 	# Some databases require the privileged setup/delete mysql client to send
 	# its credential via the cleartext auth plugin, which the server only
 	# accepts over TLS (e.g. when DB_SETUP_PASS is a short-lived auth token
 	# rather than a static password). Set DB_SSL_ENABLED=true to opt in.
+	#
+	# With the RDS CA bundle present the connection is also VERIFIED (chain and host name). Set
+	# DB_SSL_VERIFY=false to go back to encrypt-without-verify without rebuilding the image; if the bundle is
+	# missing it falls back the same way, and says so.
 	DB_SSL_FLAGS=""
 	if [ "${DB_SSL_ENABLED:-}" = "true" ]; then
-		DB_SSL_FLAGS="--ssl-mode=REQUIRED --enable-cleartext-plugin"
+		if [ "${DB_SSL_VERIFY:-true}" != "false" ] && [ -r "$RDS_CA_BUNDLE" ]; then
+			DB_SSL_FLAGS="$(mysql_verify_flags "$RDS_CA_BUNDLE")"
+			# The cleartext plugin is built into MariaDB's client; the option is obsolete there.
+			if mysql_client_supports_ssl_mode; then DB_SSL_FLAGS="$DB_SSL_FLAGS --enable-cleartext-plugin"; fi
+			return 0
+		fi
+		if [ "${DB_SSL_VERIFY:-true}" != "false" ]; then
+			print_log "db_tls:warn" "RDS CA bundle not readable at $RDS_CA_BUNDLE; connecting with TLS but NOT verifying the server certificate"
+		fi
+		if mysql_client_supports_ssl_mode; then
+			DB_SSL_FLAGS="--ssl-mode=REQUIRED --enable-cleartext-plugin"
+		else
+			# MariaDB client: --ssl makes TLS mandatory and --skip-ssl-verify-server-cert matches
+			# REQUIRED (encrypt, do not verify the certificate). The cleartext plugin is built in;
+			# --enable-cleartext-plugin is obsolete there and only prints a warning.
+			DB_SSL_FLAGS="--ssl --skip-ssl-verify-server-cert"
+		fi
 	fi
 }
 
@@ -352,16 +550,13 @@ delete_db(){
 	print_log "db_deletion: prepare" "Performing database deletion"
 
 	# Pass password via env var to avoid shell interpretation of special characters in the value
-	export MYSQL_PWD="$DB_SETUP_PASS"
-	# Needed to separate the GRANT statement from the rest because it was providing a syntax error
-	exec_cmd "mysql ${DB_SSL_FLAGS:-} -u $DB_SETUP_USER -h$SIMPLERISK_DB_HOSTNAME -P$SIMPLERISK_DB_PORT <<EOSQL
+	mysql_setup <<EOSQL || fatal_error "Was not able to apply settings on database. Check error above. Exiting."
 	SET sql_mode = 'ANSI_QUOTES';
-	DROP DATABASE \"${SIMPLERISK_DB_DATABASE}\";
+	DROP DATABASE "$(sql_ident_escape "$SIMPLERISK_DB_DATABASE")";
 	USE mysql;
-	DROP USER '${SIMPLERISK_DB_USERNAME}'@'%';
+	DROP USER '$(sql_str_escape "$SIMPLERISK_DB_USERNAME")'@'%';
 	FLUSH PRIVILEGES;
-EOSQL" "Was not able to apply settings on database. Check error above. Exiting."
-	unset MYSQL_PWD
+EOSQL
 
 	print_log "db_deletion: done" "Database deletion performed. Exiting."
 	exit 0
@@ -384,22 +579,24 @@ db_setup(){
 	fi
 
 	print_log "initial_setup:info" "Applying changes to MySQL database... (MySQL error will be printed to console as guidance)"
-	# Pass password via env var to avoid shell interpretation of special characters in the value
-	export MYSQL_PWD="$DB_SETUP_PASS"
-	# Using sql_mode = ANSI_QUOTES to avoid using backticks
-	exec_cmd "mysql ${DB_SSL_FLAGS:-} -u $DB_SETUP_USER -h$SIMPLERISK_DB_HOSTNAME -P$SIMPLERISK_DB_PORT <<EOSQL
+	# Using sql_mode = ANSI_QUOTES for identifiers; string values are single-quoted
+	# and escaped, so no value is interpreted by a shell or by the SQL parser.
+	local db_ident user_str pass_str
+	db_ident=$(sql_ident_escape "$SIMPLERISK_DB_DATABASE")
+	user_str=$(sql_str_escape "$SIMPLERISK_DB_USERNAME")
+	pass_str=$(sql_str_escape "$SIMPLERISK_DB_PASSWORD")
+	mysql_setup <<EOSQL || fatal_error "Was not able to apply settings on database. Check error above. Exiting."
 	SET sql_mode = 'ANSI_QUOTES';
-	CREATE DATABASE \"${SIMPLERISK_DB_DATABASE}\";
-	USE \"${SIMPLERISK_DB_DATABASE}\";
+	CREATE DATABASE "${db_ident}";
+	USE "${db_ident}";
 	\. ${SCHEMA_FILE}
-	CREATE USER \"${SIMPLERISK_DB_USERNAME}\"@\"%\" IDENTIFIED BY \"${SIMPLERISK_DB_PASSWORD}\";
-EOSQL" "Was not able to apply settings on database. Check error above. Exiting."
+	CREATE USER '${user_str}'@'%' IDENTIFIED BY '${pass_str}';
+EOSQL
 	# Needed to separate the GRANT statement from the rest because it was providing a syntax error
-	exec_cmd "mysql ${DB_SSL_FLAGS:-} -u $DB_SETUP_USER -h$SIMPLERISK_DB_HOSTNAME -P$SIMPLERISK_DB_PORT <<EOSQL
+	mysql_setup <<EOSQL || fatal_error "Was not able to apply settings on database. Check error above. Exiting."
 	SET sql_mode = 'ANSI_QUOTES';
-	GRANT SELECT, INSERT, UPDATE, DELETE, CREATE, DROP, REFERENCES, INDEX, ALTER ON \"${SIMPLERISK_DB_DATABASE}\".* TO \"${SIMPLERISK_DB_USERNAME}\"@\"%\";
-EOSQL" "Was not able to apply settings on database. Check error above. Exiting."
-	unset MYSQL_PWD
+	GRANT SELECT, INSERT, UPDATE, DELETE, CREATE, DROP, REFERENCES, INDEX, ALTER ON "${db_ident}".* TO '${user_str}'@'%';
+EOSQL
 
 	print_log "initial_setup:info" "Setup has been applied successfully!"
 	print_log "initial_setup:info" "Removing schema file..."
@@ -470,6 +667,8 @@ unset_variables() {
 }
 
 _main() {
+	load_file_envs
+
 	set_ssl_certificate
 
 	# Detect whether the operator has opted into Docker-managed config
@@ -494,6 +693,8 @@ _main() {
 	else
 		print_log "initial_setup:info" "No DB env vars provided; config.php will not be written. The SimpleRisk web installer will run at first request."
 	fi
+
+	set_apache_workers
 
 	set_cron
 
