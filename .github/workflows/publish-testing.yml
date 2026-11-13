@@ -320,7 +320,7 @@ jobs:
     timeout-minutes: 10
     steps:
       - name: Configure AWS credentials (OIDC → customers account)
-        uses: aws-actions/configure-aws-credentials@v4
+        uses: aws-actions/configure-aws-credentials@v6
         with:
           role-to-assume: ${{ vars.IMAGE_PROMOTER_TESTING_ROLE_ARN }}
           aws-region: ${{ env.AWS_REGION }}

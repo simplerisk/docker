@@ -231,7 +231,7 @@ jobs:
 
       - name: Configure AWS credentials (OIDC → customers account)
         if: steps.guard.outputs.needed == 'true'
-        uses: aws-actions/configure-aws-credentials@v4
+        uses: aws-actions/configure-aws-credentials@v6
         with:
           role-to-assume: ${{ vars.IMAGE_PROMOTER_LATEST_ROLE_ARN }}
           aws-region: ${{ env.AWS_REGION }}
