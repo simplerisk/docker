@@ -47,6 +47,10 @@ name: Publish testing images + promote
 # in the customers account via OIDC; the image-updater Lambda there rolls every
 # tier=testing service (new image + fresh extras together). The full-stack image
 # is not part of the managed fleet, so it has no SSM tier.
+#
+# Notify EKS: after the same scan gate, sends `testing-image-published` to
+# simplerisk/kubernetes, where the EKS dev tier merges its release PR and rolls.
+# Skipped until the `testing` environment has EKS_DISPATCH_CLIENT_ID.
 
 on:
   push:
@@ -334,6 +338,52 @@ jobs:
             --value "${VERSION}-php85" --type String --overwrite \
             --region "$AWS_REGION"
           echo "promoted $SSM_PARAM = ${VERSION}-php85" >> "$GITHUB_STEP_SUMMARY"
+
+  notify-eks:
+    name: Notify EKS — release published
+    needs: [resolve, scan-minimal]
+    # NOTE: same gate as promote: never for a dry run, never past a failed scan.
+    if: ${{ needs.resolve.outputs.dry_run != 'true' }}
+    environment: testing
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions: {}
+    steps:
+      - name: Check the dispatch app is configured
+        id: wired
+        env:
+          CLIENT_ID: ${{ vars.EKS_DISPATCH_CLIENT_ID }}
+        run: |
+          if [ -n "$CLIENT_ID" ]; then
+            echo "wired=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "::notice::EKS_DISPATCH_CLIENT_ID is not set; EKS is not notified"
+            echo "wired=false" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Mint a token scoped to simplerisk/kubernetes
+        if: steps.wired.outputs.wired == 'true'
+        id: token
+        uses: actions/create-github-app-token@64ab729a6294000f5aa4a4bc0b73d1f32bc45510 # v3.3.0
+        with:
+          client-id: ${{ vars.EKS_DISPATCH_CLIENT_ID }}
+          private-key: ${{ secrets.EKS_DISPATCH_PRIVATE_KEY }}
+          owner: simplerisk
+          repositories: kubernetes
+          permission-contents: write
+
+      - name: Send testing-image-published
+        if: steps.wired.outputs.wired == 'true'
+        env:
+          GH_TOKEN: ${{ steps.token.outputs.token }}
+          VERSION: ${{ needs.resolve.outputs.version }}
+        run: |
+          set -euo pipefail
+          gh api repos/simplerisk/kubernetes/dispatches \
+            -f event_type=testing-image-published \
+            -f "client_payload[version]=${VERSION}" \
+            -f "client_payload[tag]=${VERSION}-php85"
+          echo "notified simplerisk/kubernetes: ${VERSION}-php85 is published" >> "$GITHUB_STEP_SUMMARY"
 
   # The full-stack image is built here for the same build-once reason as the
   # minimal one: GA promotes this digest rather than rebuilding from the prod
